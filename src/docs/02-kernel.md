@@ -114,7 +114,7 @@ Invalid operational models must not be constructible.
 
 Invariants that depend only on an entity's own data are enforced by that entity, or its value objects, at construction.
 
-Invariants that span several entities are enforced by a dedicated builder, the single gateway through which entities are created: it resolves the referenced objects, validates semantic consistency, and only then emits the entity.
+Invariants that span several entities are enforced by a dedicated mechanism of knowledge admission, the single gateway through which entities are created: it resolves the referenced objects, validates semantic consistency, and only then emits the entity.
 
 Either way, invalid coordination models fail at build time rather than during projection.
 
@@ -124,7 +124,7 @@ Either way, invalid coordination models fail at build time rather than during pr
 
 Kernel entities relate to one another through stable identities.
 
-The builder may temporarily require references in order to validate semantic consistency.
+The knowledge admission may temporarily require references in order to validate semantic consistency.
 
 Once validation succeeds, only identities are retained.
 
