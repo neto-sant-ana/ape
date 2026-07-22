@@ -512,6 +512,18 @@ fn rejects_commitment_with_unknown_dependency() {
 }
 
 #[test]
+fn rejects_supersede_of_unknown_commitment() {
+    let f = discrete_graph();
+
+    let result = Axiom::new(&f.store).admit_commitment(CommitmentInput {
+        supersedes: Some(CommitmentId::from([1u8; 32])),
+        ..commitment_input(&f)
+    });
+
+    assert!(matches!(result, Err(AxiomError::UnknownCommitment(_))));
+}
+
+#[test]
 fn admits_a_recognized_event_and_rejects_an_unrecognized_one() {
     let mut f = discrete_graph();
     let commitment = f.store.add_commitment(commit(&f).unwrap());
