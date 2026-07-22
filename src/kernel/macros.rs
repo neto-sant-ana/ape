@@ -3,13 +3,14 @@
 //! - `define_id` — defines a newtype over `[u8; 32]` for a strongly-typed id,
 //!   giving each entity a distinct id type so foreign references can't be mixed up.
 //!
-//! - `define_entity` — defines an entity struct wrapping a shared `Identity`
-//!   and derives its id from the SHA-256 hash of `name` plus the core fields.
-//!   Entity fields are private with read-only getters: an entity is immutable
-//!   once constructed. Fields tagged `#[serde(alias = "no_hash")]` are kept for
-//!   serialization but excluded from the id. It also generates a paired input
-//!   struct (named after `via`) carrying `name` and every field, so construction
-//!   takes a single named-field value instead of a long positional argument list.
+//! - `define_entity` — defines an entity struct holding its content-addressed
+//!   `id` plus its fields, and derives the id from the SHA-256 hash of the
+//!   canonical fields. Entity fields are private with read-only getters (and an
+//!   `id()`): an entity is immutable once constructed. Fields tagged
+//!   `#[serde(alias = "no_hash")]` are kept for serialization but excluded from
+//!   the id. It also generates a paired input struct (named after `via`) carrying
+//!   every field, so construction takes a single named-field value instead of a
+//!   long positional argument list.
 //!
 //! - `define_value_object` — defines a plain, id-less value object (struct or enum),
 //!   compared by value.
@@ -69,28 +70,20 @@ macro_rules! define_entity {
     }) => {
         #[derive(Debug, Clone, ::serde::Serialize)]
         pub struct $name {
-            base: $crate::kernel::entities::identification::Identity<$id_type>,
+            id: $id_type,
             $($( #[$attr] )* $field_name : $field_type),*
         }
 
         #[derive(Debug, Clone)]
         pub struct $input {
-            pub name: String,
             $(pub $field_name : $field_type),*
         }
 
         impl $name {
             pub fn create(input: $input) -> Result<Self, $crate::kernel::entities::identification::IdentityError> {
-                let $input { name, $($field_name),* } = input;
+                let $input { $($field_name),* } = input;
 
                 let mut hasher = <::sha2::Sha256 as ::sha2::Digest>::new();
-
-                ::sha2::Digest::update(
-                    &mut hasher,
-                    &::postcard::to_allocvec(&name).map_err(
-                        |_| $crate::kernel::entities::identification::IdentityError::Serialization,
-                    )?,
-                );
 
                 $(
                     hash_field_conditional!(hasher, $field_name, [ $( #[$attr] )* ]);
@@ -101,9 +94,13 @@ macro_rules! define_entity {
                 id_bytes.copy_from_slice(&hash_result);
 
                 Ok(Self {
-                    base: $crate::kernel::entities::identification::Identity::new(<$id_type>::from(id_bytes), name)?,
+                    id: <$id_type>::from(id_bytes),
                     $($field_name),*
                 })
+            }
+
+            pub fn id(&self) -> $id_type {
+                self.id
             }
 
             $(
@@ -111,20 +108,6 @@ macro_rules! define_entity {
                     &self.$field_name
                 }
             )*
-        }
-
-        impl std::ops::Deref for $name {
-            type Target = $crate::kernel::entities::identification::Identity<$id_type>;
-
-            fn deref(&self) -> &Self::Target {
-                &self.base
-            }
-        }
-
-        impl AsRef<$crate::kernel::entities::identification::Identity<$id_type>> for $name {
-            fn as_ref(&self) -> &$crate::kernel::entities::identification::Identity<$id_type> {
-                &self.base
-            }
         }
     };
 }

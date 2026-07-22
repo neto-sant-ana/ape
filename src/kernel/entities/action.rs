@@ -6,11 +6,12 @@
 
 use crate::kernel::entities::ResourceId;
 
-use crate::kernel::value_objects::ActionKind;
+use crate::kernel::value_objects::{ActionKind, Name};
 
 define_id!(ActionId);
 define_entity! {
     pub struct Action(ActionId) via ActionInput {
+        name: Name,
         kind: ActionKind,
         resource: ResourceId,
     }
