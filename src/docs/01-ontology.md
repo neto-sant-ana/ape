@@ -116,7 +116,9 @@ Events never describe intentions.
 
 They describe observations.
 
-An Event may fulfill, cancel or otherwise affect existing Commitments according to the semantics defined by their Statements.
+An Event may fulfill or cancel a Commitment according to the semantics defined by its Statement.
+
+Through dependency relationships, this outcome may indirectly affect other Commitments.
 
 Events do not directly store operational state.
 
