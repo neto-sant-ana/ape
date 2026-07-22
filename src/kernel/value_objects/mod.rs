@@ -17,9 +17,6 @@ pub use date::DateError;
 mod identifier;
 pub use identifier::{Identifier, IdentifierError};
 
-mod occurrence;
-pub use occurrence::{Occurrence, OccurrenceError};
-
 mod settlement;
 pub use settlement::{Observation, Settlement};
 pub use settlement::{ObservationError, SettlementError};
