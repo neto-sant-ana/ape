@@ -6,12 +6,12 @@
 //! 
 //! - `ResourceInstance` — a concrete occurrence of a `Resource`, referenced by id.
 
-use crate::kernel::value_objects::{Name, ResourceKind};
+use crate::kernel::value_objects::{Identifier, ResourceKind};
 
 define_id!(ResourceId);
 define_entity! {
     pub struct Resource(ResourceId) via ResourceInput {
-        name: Name,
+        label: Identifier,
         kind: ResourceKind,
     }
 }
@@ -19,7 +19,7 @@ define_entity! {
 define_id!(ResourceInstanceId);
 define_entity! {
     pub struct ResourceInstance(ResourceInstanceId) via ResourceInstanceInput {
-        name: Name,
+        label: Identifier,
         resource: ResourceId,
     }
 }
