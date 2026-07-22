@@ -14,6 +14,9 @@ mod date;
 pub use date::Date;
 pub use date::DateError;
 
+mod name;
+pub use name::{Name, NameError};
+
 mod occurrence;
 pub use occurrence::{Occurrence, OccurrenceError};
 
