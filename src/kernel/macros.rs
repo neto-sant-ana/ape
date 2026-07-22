@@ -4,19 +4,14 @@
 //!   giving each entity a distinct id type so foreign references can't be mixed up.
 //!
 //! - `define_entity` — defines an entity struct holding its content-addressed
-//!   `id` plus its fields, and derives the id from the SHA-256 hash of the
-//!   canonical fields. Entity fields are private with read-only getters (and an
-//!   `id()`): an entity is immutable once constructed. Fields tagged
-//!   `#[serde(alias = "no_hash")]` are kept for serialization but excluded from
-//!   the id. It also generates a paired input struct (named after `via`) carrying
-//!   every field, so construction takes a single named-field value instead of a
-//!   long positional argument list.
+//!   `id` plus its fields, and derives the id from the SHA-256 hash of every
+//!   field. Entity fields are private with read-only getters (and an `id()`): an
+//!   entity is immutable once constructed. It also generates a paired input struct
+//!   (named after `via`) carrying every field, so construction takes a single
+//!   named-field value instead of a long positional argument list.
 //!
 //! - `define_value_object` — defines a plain, id-less value object (struct or enum),
 //!   compared by value.
-//!
-//! - `hash_field_conditional` — internal helper driving that per-field decision:
-//!   it feeds a field into the hasher unless it carries the `no_hash` marker.
 //!
 //! - `define_error` — defines a `thiserror` error enum from `Variant => "message"` pairs.
 
@@ -66,12 +61,12 @@ macro_rules! define_id {
 
 macro_rules! define_entity {
     (pub struct $name:ident($id_type:ty) via $input:ident {
-        $($( #[$attr:meta] )* $field_name:ident : $field_type:ty),* $(,)?
+        $($field_name:ident : $field_type:ty),* $(,)?
     }) => {
         #[derive(Debug, Clone, ::serde::Serialize)]
         pub struct $name {
             id: $id_type,
-            $($( #[$attr] )* $field_name : $field_type),*
+            $($field_name : $field_type),*
         }
 
         #[derive(Debug, Clone)]
@@ -86,7 +81,12 @@ macro_rules! define_entity {
                 let mut hasher = <::sha2::Sha256 as ::sha2::Digest>::new();
 
                 $(
-                    hash_field_conditional!(hasher, $field_name, [ $( #[$attr] )* ]);
+                    ::sha2::Digest::update(
+                        &mut hasher,
+                        &::postcard::to_allocvec(&$field_name).map_err(
+                            |_| $crate::kernel::entities::identification::IdentityError::Serialization,
+                        )?,
+                    );
                 )*
 
                 let hash_result = ::sha2::Digest::finalize(hasher);
@@ -129,29 +129,6 @@ macro_rules! define_value_object {
         pub enum $name {
             $( $body )*
         }
-    };
-}
-
-macro_rules! hash_field_conditional {
-    // Case A: The tag #[serde(alias = "no_hash")] was found inside the package.
-    // Interrupts the hash generation.
-    ($hasher:ident, $field_name:ident, [ #[serde(alias = "no_hash")] $( #[$rest:meta] )* ]) => {};
-
-    // Case B: Any other attribute was found.
-    // Discards it and analyzes the rest of the list.
-    ($hasher:ident, $field_name:ident, [ #[$first:meta] $( #[$rest:meta] )* ]) => {
-        hash_field_conditional!($hasher, $field_name, [ $( #[$rest] )* ]);
-    };
-
-    // Case C: The package was completely empty (every attribute was cleared or there was no attribute at all).
-    // Serialization is run and hashing happens normally — and fails explicitly if it cannot.
-    ($hasher:ident, $field_name:ident, [ ]) => {
-        ::sha2::Digest::update(
-            &mut $hasher,
-            &::postcard::to_allocvec(&$field_name).map_err(
-                |_| $crate::kernel::entities::identification::IdentityError::Serialization,
-            )?,
-        );
     };
 }
 
