@@ -453,6 +453,53 @@ fn rejects_supersede_of_a_different_statement() {
 }
 
 #[test]
+fn rejects_supersede_of_a_different_resource_instance() {
+    let mut f = discrete_graph();
+
+    let other_instance = f.store.add_instance(
+        ResourceInstance::create(ResourceInstanceInput {
+            label: ident("instance-2"),
+            resource: f.resource,
+        })
+        .unwrap(),
+    );
+
+    let superseded = f.store.add_commitment(
+        Axiom::new(&f.store)
+            .admit_commitment(CommitmentInput {
+                resource: other_instance,
+                ..commitment_input(&f)
+            })
+            .unwrap(),
+    );
+
+    let result = Axiom::new(&f.store).admit_commitment(CommitmentInput {
+        supersedes: Some(superseded),
+        ..commitment_input(&f)
+    });
+
+    assert!(matches!(
+        result,
+        Err(AxiomError::SupersedeResourceInstanceMismatch)
+    ));
+}
+
+#[test]
+fn admits_supersede_revising_the_same_target() {
+    let mut f = discrete_graph();
+
+    let original = f.store.add_commitment(commit(&f).unwrap());
+
+    let result = Axiom::new(&f.store).admit_commitment(CommitmentInput {
+        supersedes: Some(original),
+        due_date: date(2027, 6, 30),
+        ..commitment_input(&f)
+    });
+
+    assert!(result.is_ok());
+}
+
+#[test]
 fn rejects_commitment_with_unknown_dependency() {
     let f = discrete_graph();
 

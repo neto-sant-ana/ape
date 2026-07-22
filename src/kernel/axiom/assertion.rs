@@ -65,6 +65,10 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
             if *superseded.statement() != input.statement {
                 return Err(AxiomError::SupersedeStatementMismatch);
             }
+
+            if *superseded.resource() != input.resource {
+                return Err(AxiomError::SupersedeResourceInstanceMismatch);
+            }
         }
 
         for dependency in &input.dependencies {
