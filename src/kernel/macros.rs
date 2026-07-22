@@ -75,7 +75,7 @@ macro_rules! define_entity {
         }
 
         impl $name {
-            pub fn create(input: $input) -> Result<Self, $crate::kernel::entities::identification::IdentityError> {
+            pub(crate) fn create(input: $input) -> Result<Self, $crate::kernel::entities::identification::IdentityError> {
                 let $input { $($field_name),* } = input;
 
                 let mut hasher = <::sha2::Sha256 as ::sha2::Digest>::new();

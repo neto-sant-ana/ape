@@ -151,7 +151,7 @@ Entities cannot be created in an invalid state.
 
 Invariants that depend only on an entity's own data are validated by the entity, or its value objects, at construction.
 
-Invariants that span several entities are validated by a dedicated builder, the single entry point through which entities are created, which resolves the needed references, checks semantic consistency, and only then emits the entity holding stable identities.
+Invariants that span several entities are validated by a dedicated mechanism of knowledge admission, the single entry point through which entities are created, which resolves the needed references, checks semantic consistency, and only then emits the entity holding stable identities.
 
 Validation stays separate from instantiation, keeping the construction path predictable and composable.
 

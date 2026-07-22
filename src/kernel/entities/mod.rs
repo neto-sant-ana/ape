@@ -1,4 +1,5 @@
 mod identification;
+pub use identification::IdentityError;
 
 mod agent;
 pub use agent::{Agent, AgentId, AgentInput, Role, RoleId, RoleInput};
