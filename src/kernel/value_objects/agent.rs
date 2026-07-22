@@ -2,9 +2,7 @@
 //! assigned to a statement.
 //!
 //! - `AgentKind` — whether an agent is a company or an individual.
-//! 
-//! - `Eligibility` — the roles an agent is allowed to assume.
-//! 
+//!
 //! - `Participants` — the roles required to execute (`actors`) and to benefit from
 //!   (`recipients`) a statement.
 //! 
@@ -20,38 +18,6 @@ define_value_object! {
     pub enum AgentKind {
         Company,
         Individual,
-    }
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq)]
-pub struct Eligibility(BTreeSet<RoleId>);
-impl Eligibility {
-    pub fn new(roles: impl IntoIterator<Item = RoleId>) -> Result<Self, EligibilityError> {
-        let roles: BTreeSet<RoleId> = roles.into_iter().collect();
-
-        if roles.is_empty() {
-            return Err(EligibilityError::Empty);
-        }
-
-        Ok(Self(roles))
-    }
-
-    pub fn can_assume_role(&self, role_id: &RoleId) -> bool {
-        self.0.contains(role_id)
-    }
-
-    pub fn can_assume_any<'a>(&self, roles: impl IntoIterator<Item = &'a RoleId>) -> bool {
-        roles.into_iter().any(|r| self.can_assume_role(r))
-    }
-
-    pub fn roles(&self) -> &BTreeSet<RoleId> {
-        &self.0
-    }
-}
-
-define_error! {
-    pub enum EligibilityError {
-        Empty => "an eligibility must grant at least one role",
     }
 }
 
@@ -145,7 +111,7 @@ define_error! {
 
 #[cfg(test)]
 mod tests {
-    use super::{Assignment, Eligibility, Participants};
+    use super::{Assignment, Participants};
     use crate::kernel::entities::{AgentId, RoleId};
 
     fn role(byte: u8) -> RoleId {
@@ -154,20 +120,6 @@ mod tests {
 
     fn agent(byte: u8) -> AgentId {
         AgentId::from([byte; 32])
-    }
-
-    #[test]
-    fn eligibility_rejects_empty() {
-        assert!(Eligibility::new([]).is_err());
-    }
-
-    #[test]
-    fn eligibility_checks_membership() {
-        let e = Eligibility::new([role(1), role(2)]).unwrap();
-
-        assert!(e.can_assume_role(&role(1)));
-        assert!(!e.can_assume_role(&role(9)));
-        assert!(e.can_assume_any([&role(9), &role(2)]));
     }
 
     #[test]

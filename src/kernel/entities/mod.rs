@@ -15,4 +15,7 @@ mod statement;
 pub use statement::{Statement, StatementId, StatementInput};
 
 mod assertion;
-pub use assertion::{Commitment, CommitmentId, CommitmentInput, Event, EventId, EventInput};
+pub use assertion::{
+    Commitment, CommitmentId, CommitmentInput, EligibilityAssignment, EligibilityAssignmentId,
+    EligibilityAssignmentInput, Event, EventId, EventInput,
+};

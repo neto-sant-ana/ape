@@ -1,5 +1,4 @@
-//! Assertions about operational coordination: `Commitment` (planned) and `Event`
-//! (factual).
+//! Assertions admitted as knowledge about operational coordination.
 //!
 //! A `Commitment` is a proposed execution of a statement, completed with an
 //! `assignment`, a `due_date`, an optional commitment it `supersedes`, its
@@ -18,10 +17,12 @@
 //! cancels a commitment per that commitment's statement, links to the
 //! `previous_event` in the chain, and carries the `occurrence` pairing when it
 //! happened with when it was recorded.
+//! 
+//! An `EligibilityAssignment` asserts that an agent may assume a role.
 
 use std::collections::BTreeSet;
 
-use crate::kernel::entities::{ResourceInstanceId, StatementId};
+use crate::kernel::entities::{AgentId, ResourceInstanceId, RoleId, StatementId};
 
 use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation, Occurrence};
 
@@ -46,5 +47,13 @@ define_entity! {
         observation: Observation,
         previous_event: Option<EventId>,
         occurrence: Occurrence,
+    }
+}
+
+define_id!(EligibilityAssignmentId);
+define_entity! {
+    pub struct EligibilityAssignment(EligibilityAssignmentId) via EligibilityAssignmentInput {
+        agent: AgentId,
+        role: RoleId,
     }
 }
