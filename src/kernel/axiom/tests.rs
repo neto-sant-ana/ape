@@ -4,14 +4,14 @@ use super::{Axiom, AxiomError, Knowledge};
 
 use crate::kernel::entities::{
     Action, ActionId, ActionInput, Agent, AgentId, AgentInput, Commitment, CommitmentId,
-    CommitmentInput, Event, EventId, EventInput, Resource, ResourceId, ResourceInput,
-    ResourceInstance, ResourceInstanceId, ResourceInstanceInput, Role, RoleId, RoleInput, Statement,
-    StatementId, StatementInput,
+    CommitmentInput, EligibilityAssignment, EligibilityAssignmentInput, Event, EventId, EventInput,
+    Resource, ResourceId, ResourceInput, ResourceInstance, ResourceInstanceId,
+    ResourceInstanceInput, Role, RoleId, RoleInput, Statement, StatementId, StatementInput,
 };
 
 use crate::kernel::value_objects::{
-    ActionKind, ActionValue, AgentKind, Assignment, Date, Effect, Eligibility, Observation,
-    Occurrence, Participants, ResourceKind, Settlement,
+    ActionKind, ActionValue, AgentKind, Assignment, Date, Effect, Identifier, Observation,
+    Participants, ResourceKind, Settlement,
 };
 
 #[derive(Default)]
@@ -24,6 +24,7 @@ struct Store {
     statements: BTreeMap<StatementId, Statement>,
     commitments: BTreeMap<CommitmentId, Commitment>,
     events: BTreeMap<EventId, Event>,
+    eligibility: BTreeMap<(AgentId, RoleId), EligibilityAssignment>,
 }
 impl Knowledge for Store {
     fn role(&self, id: RoleId) -> Option<&Role> {
@@ -49,6 +50,9 @@ impl Knowledge for Store {
     }
     fn event(&self, id: EventId) -> Option<&Event> {
         self.events.get(&id)
+    }
+    fn eligibility(&self, agent: AgentId, role: RoleId) -> Option<&EligibilityAssignment> {
+        self.eligibility.get(&(agent, role))
     }
 }
 impl Store {
@@ -87,13 +91,13 @@ impl Store {
         self.commitments.insert(id, c);
         id
     }
+    fn add_eligibility(&mut self, ea: EligibilityAssignment) {
+        self.eligibility.insert((*ea.agent(), *ea.role()), ea);
+    }
 }
 
-fn name() -> String {
-    "name".to_string()
-}
-fn description() -> String {
-    "description".to_string()
+fn ident(value: &str) -> Identifier {
+    Identifier::new(value).unwrap()
 }
 fn obs(name: &str) -> Observation {
     Observation::new(name).unwrap()
@@ -116,74 +120,64 @@ struct Fixture {
 fn discrete_graph() -> Fixture {
     let mut store = Store::default();
 
-    let actor_role = store.add_role(
-        Role::create(RoleInput {
-            name: "actor".into(),
-            description: description(),
-        })
-        .unwrap(),
-    );
-
-    let recipient_role = store.add_role(
-        Role::create(RoleInput {
-            name: "recipient".into(),
-            description: description(),
-        })
-        .unwrap(),
-    );
+    let actor_role = store.add_role(Role::create(RoleInput { label: ident("actor") }).unwrap());
+    let recipient_role =
+        store.add_role(Role::create(RoleInput { label: ident("recipient") }).unwrap());
 
     let accountable = store.add_agent(
         Agent::create(AgentInput {
-            name: "accountable".into(),
-            description: description(),
+            label: ident("accountable"),
             kind: AgentKind::Company,
-            eligibility: Eligibility::new([actor_role]).unwrap(),
         })
         .unwrap(),
     );
-
     let executor = store.add_agent(
         Agent::create(AgentInput {
-            name: "executor".into(),
-            description: description(),
+            label: ident("executor"),
             kind: AgentKind::Individual,
-            eligibility: Eligibility::new([actor_role]).unwrap(),
+        })
+        .unwrap(),
+    );
+    let beneficiary = store.add_agent(
+        Agent::create(AgentInput {
+            label: ident("beneficiary"),
+            kind: AgentKind::Company,
         })
         .unwrap(),
     );
 
-    let beneficiary = store.add_agent(
-        Agent::create(AgentInput {
-            name: "beneficiary".into(),
-            description: description(),
-            kind: AgentKind::Company,
-            eligibility: Eligibility::new([recipient_role]).unwrap(),
+    store.add_eligibility(
+        EligibilityAssignment::create(EligibilityAssignmentInput {
+            agent: executor,
+            role: actor_role,
+        })
+        .unwrap(),
+    );
+    store.add_eligibility(
+        EligibilityAssignment::create(EligibilityAssignmentInput {
+            agent: beneficiary,
+            role: recipient_role,
         })
         .unwrap(),
     );
 
     let resource = store.add_resource(
         Resource::create(ResourceInput {
-            name: "resource".into(),
-            description: description(),
+            label: ident("resource"),
             kind: ResourceKind::Discrete,
         })
         .unwrap(),
     );
-
     let instance = store.add_instance(
         ResourceInstance::create(ResourceInstanceInput {
-            name: "instance".into(),
-            description: description(),
+            label: ident("instance"),
             resource,
         })
         .unwrap(),
     );
-
     let action = store.add_action(
         Action::create(ActionInput {
-            name: "action".into(),
-            description: description(),
+            verb: ident("sign"),
             kind: ActionKind::Discrete,
             resource,
         })
@@ -192,8 +186,6 @@ fn discrete_graph() -> Fixture {
 
     let statement = store.add_statement(
         Statement::create(StatementInput {
-            name: "statement".into(),
-            description: description(),
             participants: Participants::new([actor_role], [recipient_role]).unwrap(),
             action,
             settlement: Settlement::new([obs("Signed")], [obs("Cancelled")]).unwrap(),
@@ -215,15 +207,12 @@ fn discrete_graph() -> Fixture {
 }
 fn commitment_input(f: &Fixture) -> CommitmentInput {
     CommitmentInput {
-        name: name(),
-        description: description(),
         assignment: Assignment::new(f.accountable, [f.executor], [f.beneficiary]).unwrap(),
         statement: f.statement,
         resource: f.instance,
         due_date: date(2026, 12, 31),
         supersedes: None,
         action_value: ActionValue::none(),
-        recorded_at: date(2026, 1, 1),
         dependencies: BTreeSet::new(),
     }
 }
@@ -244,8 +233,7 @@ fn rejects_action_on_missing_resource() {
 
     assert!(matches!(
         axiom.admit_action(ActionInput {
-            name: name(),
-            description: description(),
+            verb: ident("sign"),
             kind: ActionKind::Discrete,
             resource: ResourceId::from([9u8; 32]),
         }),
@@ -259,8 +247,7 @@ fn rejects_action_kind_not_matching_resource_kind() {
 
     let resource = store.add_resource(
         Resource::create(ResourceInput {
-            name: name(),
-            description: description(),
+            label: ident("resource"),
             kind: ResourceKind::Discrete,
         })
         .unwrap(),
@@ -270,8 +257,7 @@ fn rejects_action_kind_not_matching_resource_kind() {
 
     assert!(matches!(
         axiom.admit_action(ActionInput {
-            name: name(),
-            description: description(),
+            verb: ident("increase"),
             kind: ActionKind::Quantifiable(Effect::Increase),
             resource,
         }),
@@ -280,39 +266,13 @@ fn rejects_action_kind_not_matching_resource_kind() {
 }
 
 #[test]
-fn rejects_agent_eligible_for_unknown_role() {
-    let store = Store::default();
-    let axiom = Axiom::new(&store);
-
-    assert!(matches!(
-        axiom.admit_agent(AgentInput {
-            name: name(),
-            description: description(),
-            kind: AgentKind::Company,
-            eligibility: Eligibility::new([RoleId::from([7u8; 32])]).unwrap(),
-        }),
-        Err(AxiomError::UnknownRole(_))
-    ));
-}
-
-#[test]
 fn rejects_statement_referencing_unknown_action() {
     let mut store = Store::default();
-
-    let role = store.add_role(
-        Role::create(RoleInput {
-            name: name(),
-            description: description(),
-        })
-        .unwrap(),
-    );
-
+    let role = store.add_role(Role::create(RoleInput { label: ident("role") }).unwrap());
     let axiom = Axiom::new(&store);
 
     assert!(matches!(
         axiom.admit_statement(StatementInput {
-            name: name(),
-            description: description(),
             participants: Participants::new([role], [role]).unwrap(),
             action: ActionId::from([3u8; 32]),
             settlement: Settlement::new([obs("Signed")], [obs("Cancelled")]).unwrap(),
@@ -322,22 +282,75 @@ fn rejects_statement_referencing_unknown_action() {
 }
 
 #[test]
+fn admits_a_valid_eligibility_assignment() {
+    let mut store = Store::default();
+    let role = store.add_role(Role::create(RoleInput { label: ident("role") }).unwrap());
+    let agent = store.add_agent(
+        Agent::create(AgentInput {
+            label: ident("agent"),
+            kind: AgentKind::Company,
+        })
+        .unwrap(),
+    );
+    let axiom = Axiom::new(&store);
+
+    assert!(
+        axiom
+            .admit_eligibility_assignment(EligibilityAssignmentInput { agent, role })
+            .is_ok()
+    );
+}
+
+#[test]
+fn rejects_eligibility_assignment_for_unknown_agent() {
+    let mut store = Store::default();
+    let role = store.add_role(Role::create(RoleInput { label: ident("role") }).unwrap());
+    let axiom = Axiom::new(&store);
+
+    assert!(matches!(
+        axiom.admit_eligibility_assignment(EligibilityAssignmentInput {
+            agent: AgentId::from([9u8; 32]),
+            role,
+        }),
+        Err(AxiomError::UnknownAgent(_))
+    ));
+}
+
+#[test]
+fn rejects_eligibility_assignment_for_unknown_role() {
+    let mut store = Store::default();
+    let agent = store.add_agent(
+        Agent::create(AgentInput {
+            label: ident("agent"),
+            kind: AgentKind::Company,
+        })
+        .unwrap(),
+    );
+    let axiom = Axiom::new(&store);
+
+    assert!(matches!(
+        axiom.admit_eligibility_assignment(EligibilityAssignmentInput {
+            agent,
+            role: RoleId::from([9u8; 32]),
+        }),
+        Err(AxiomError::UnknownRole(_))
+    ));
+}
+
+#[test]
 fn rejects_commitment_with_instance_of_another_resource() {
     let mut f = discrete_graph();
 
     let other = f.store.add_resource(
         Resource::create(ResourceInput {
-            name: "other-resource".into(),
-            description: description(),
+            label: ident("other-resource"),
             kind: ResourceKind::Discrete,
         })
         .unwrap(),
     );
-
     let alien = f.store.add_instance(
         ResourceInstance::create(ResourceInstanceInput {
-            name: "alien-instance".into(),
-            description: description(),
+            label: ident("alien-instance"),
             resource: other,
         })
         .unwrap(),
@@ -359,47 +372,38 @@ fn rejects_discrete_commitment_carrying_a_value() {
     input.action_value = ActionValue::value(5.0).unwrap();
 
     let result = Axiom::new(&f.store).admit_commitment(input);
-    
+
     assert!(matches!(result, Err(AxiomError::ActionValueMismatch)));
 }
 
 #[test]
-fn rejects_executor_ineligible_for_actor_role() {
+fn rejects_executor_without_eligibility_for_an_actor_role() {
     let mut f = discrete_graph();
 
     let bad = f.store.add_agent(
         Agent::create(AgentInput {
-            name: "bad-executor".into(),
-            description: description(),
+            label: ident("bad-executor"),
             kind: AgentKind::Individual,
-            eligibility: Eligibility::new([f.recipient_role]).unwrap(),
         })
         .unwrap(),
     );
 
     f.executor = bad;
 
-    assert!(matches!(commit(&f), Err(AxiomError::IneligibleExecutor(_))));
+    assert!(matches!(
+        commit(&f),
+        Err(AxiomError::AgentNotEligibleForRole(_))
+    ));
 }
 
 #[test]
 fn accountable_needs_no_role_only_existence() {
     let mut f = discrete_graph();
 
-    let unrelated_role = f.store.add_role(
-        Role::create(RoleInput {
-            name: "unrelated".into(),
-            description: description(),
-        })
-        .unwrap(),
-    );
-
     let bystander = f.store.add_agent(
         Agent::create(AgentInput {
-            name: "bystander".into(),
-            description: description(),
+            label: ident("bystander"),
             kind: AgentKind::Company,
-            eligibility: Eligibility::new([unrelated_role]).unwrap(),
         })
         .unwrap(),
     );
@@ -415,8 +419,7 @@ fn rejects_supersede_of_a_different_statement() {
 
     let action = f.store.add_action(
         Action::create(ActionInput {
-            name: "other-action".into(),
-            description: description(),
+            verb: ident("other-action"),
             kind: ActionKind::Discrete,
             resource: f.resource,
         })
@@ -425,8 +428,6 @@ fn rejects_supersede_of_a_different_statement() {
 
     let other_statement = f.store.add_statement(
         Statement::create(StatementInput {
-            name: "other-statement".into(),
-            description: description(),
             participants: Participants::new([f.actor_role], [f.recipient_role]).unwrap(),
             action,
             settlement: Settlement::new([obs("Signed")], [obs("Cancelled")]).unwrap(),
@@ -445,7 +446,6 @@ fn rejects_supersede_of_a_different_statement() {
 
     let result = Axiom::new(&f.store).admit_commitment(CommitmentInput {
         supersedes: Some(superseded),
-        recorded_at: date(2026, 1, 2),
         ..commitment_input(&f)
     });
 
@@ -473,24 +473,20 @@ fn admits_a_recognized_event_and_rejects_an_unrecognized_one() {
     assert!(
         axiom
             .admit_event(EventInput {
-                name: name(),
-                description: description(),
                 commitment_id: commitment,
                 observation: obs("Signed"),
                 previous_event: None,
-                occurrence: Occurrence::new(date(2026, 6, 1), date(2026, 6, 2)).unwrap(),
+                occurred_at: date(2026, 6, 1),
             })
             .is_ok()
     );
 
     assert!(matches!(
         axiom.admit_event(EventInput {
-            name: name(),
-            description: description(),
             commitment_id: commitment,
             observation: obs("Unrelated"),
             previous_event: None,
-            occurrence: Occurrence::new(date(2026, 6, 1), date(2026, 6, 2)).unwrap(),
+            occurred_at: date(2026, 6, 1),
         }),
         Err(AxiomError::ObservationNotSettling)
     ));

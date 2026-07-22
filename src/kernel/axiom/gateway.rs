@@ -11,8 +11,9 @@
 //! [`Knowledge`] trait that higher layers implement.
 
 use crate::kernel::entities::{
-    Action, ActionId, Agent, AgentId, Commitment, CommitmentId, Event, EventId, Resource,
-    ResourceId, ResourceInstance, ResourceInstanceId, Role, RoleId, Statement, StatementId,
+    Action, ActionId, Agent, AgentId, Commitment, CommitmentId, EligibilityAssignment, Event,
+    EventId, Resource, ResourceId, ResourceInstance, ResourceInstanceId, Role, RoleId, Statement,
+    StatementId,
 };
 
 pub trait Knowledge {
@@ -24,6 +25,7 @@ pub trait Knowledge {
     fn statement(&self, id: StatementId) -> Option<&Statement>;
     fn commitment(&self, id: CommitmentId) -> Option<&Commitment>;
     fn event(&self, id: EventId) -> Option<&Event>;
+    fn eligibility(&self, agent: AgentId, role: RoleId) -> Option<&EligibilityAssignment>;
 }
 
 pub struct Axiom<'k, K: Knowledge> {

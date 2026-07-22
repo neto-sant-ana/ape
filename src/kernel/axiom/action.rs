@@ -14,7 +14,7 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
             .ok_or(AxiomError::UnknownResource(input.resource))?;
 
         let compatible = matches!(
-            (&input.kind, &target.kind),
+            (&input.kind, target.kind()),
             (ActionKind::Discrete, ResourceKind::Discrete)
                 | (ActionKind::Quantifiable(_), ResourceKind::Quantifiable(_))
         );

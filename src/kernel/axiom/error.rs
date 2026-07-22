@@ -46,11 +46,8 @@ pub enum AxiomError {
     #[error("action value does not match the statement action's kind")]
     ActionValueMismatch,
 
-    #[error("executor {0} is not eligible for any of the statement's actor roles")]
-    IneligibleExecutor(AgentId),
-
-    #[error("beneficiary {0} is not eligible for any of the statement's recipient roles")]
-    IneligibleBeneficiary(AgentId),
+    #[error("agent {0} is not eligible for any role required of it by the statement")]
+    AgentNotEligibleForRole(AgentId),
 
     #[error("a superseding commitment must reference the same statement as the one it supersedes")]
     SupersedeStatementMismatch,
