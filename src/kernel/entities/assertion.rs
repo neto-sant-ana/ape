@@ -33,6 +33,7 @@ define_entity! {
         due_date: Date,
         supersedes: Option<CommitmentId>,
         action_value: ActionValue,
+        recorded_at: Date,
 
         #[serde(alias = "no_hash")]
         dependencies: BTreeSet<CommitmentId>,
@@ -45,5 +46,7 @@ define_entity! {
         commitment_id: CommitmentId,
         observation: Observation,
         previous_event: Option<EventId>,
+        occurred_at: Date,
+        recorded_at: Date,
     }
 }
