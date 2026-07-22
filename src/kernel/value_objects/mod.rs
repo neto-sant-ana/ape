@@ -3,8 +3,8 @@ pub use action::ActionValueError;
 pub use action::{ActionKind, ActionValue, Effect};
 
 mod agent;
-pub use agent::{AgentKind, Assignment, Eligibility, Participants};
-pub use agent::{AssignmentError, EligibilityError, ParticipantsError};
+pub use agent::{AgentKind, Assignment, Participants};
+pub use agent::{AssignmentError, ParticipantsError};
 
 mod resource;
 pub use resource::ConstraintError;
@@ -14,8 +14,8 @@ mod date;
 pub use date::Date;
 pub use date::DateError;
 
-mod occurrence;
-pub use occurrence::{Occurrence, OccurrenceError};
+mod identifier;
+pub use identifier::{Identifier, IdentifierError};
 
 mod settlement;
 pub use settlement::{Observation, Settlement};
