@@ -10,14 +10,14 @@ use crate::kernel::value_objects::ResourceKind;
 
 define_id!(ResourceId);
 define_entity! {
-    pub struct Resource(ResourceId) {
+    pub struct Resource(ResourceId) via ResourceInput {
         kind: ResourceKind
     }
 }
 
 define_id!(ResourceInstanceId);
 define_entity! {
-    pub struct ResourceInstance(ResourceInstanceId) {
+    pub struct ResourceInstance(ResourceInstanceId) via ResourceInstanceInput {
         resource: ResourceId
     }
 }

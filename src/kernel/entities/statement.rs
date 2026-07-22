@@ -15,7 +15,7 @@ use crate::kernel::value_objects::{Participants, Settlement};
 
 define_id!(StatementId);
 define_entity! {
-    pub struct Statement(StatementId) {
+    pub struct Statement(StatementId) via StatementInput {
         participants: Participants,
         action: ActionId,
         settlement: Settlement,

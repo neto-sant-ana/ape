@@ -11,12 +11,12 @@ use crate::kernel::value_objects::{AgentKind, Eligibility};
 
 define_id!(RoleId);
 define_entity! {
-    pub struct Role(RoleId){}
+    pub struct Role(RoleId) via RoleInput {}
 }
 
 define_id!(AgentId);
 define_entity! {
-    pub struct Agent(AgentId) {
+    pub struct Agent(AgentId) via AgentInput {
         kind: AgentKind,
 
         #[serde(alias = "no_hash")]

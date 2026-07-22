@@ -27,7 +27,7 @@ use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation, O
 
 define_id!(CommitmentId);
 define_entity! {
-    pub struct Commitment(CommitmentId) {
+    pub struct Commitment(CommitmentId) via CommitmentInput {
         assignment: Assignment,
         statement: StatementId,
         resource: ResourceInstanceId,
@@ -43,7 +43,7 @@ define_entity! {
 
 define_id!(EventId);
 define_entity! {
-    pub struct Event(EventId) {
+    pub struct Event(EventId) via EventInput {
         commitment_id: CommitmentId,
         observation: Observation,
         previous_event: Option<EventId>,

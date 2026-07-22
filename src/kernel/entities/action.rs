@@ -10,7 +10,7 @@ use crate::kernel::value_objects::ActionKind;
 
 define_id!(ActionId);
 define_entity! {
-    pub struct Action(ActionId) {
+    pub struct Action(ActionId) via ActionInput {
         kind: ActionKind,
         resource: ResourceId,
     }
