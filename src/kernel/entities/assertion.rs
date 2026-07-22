@@ -15,14 +15,15 @@
 //! - `Invalid` — invalidated by a dependency or a system constraint.
 //!
 //! An `Event` is a factual execution of coordination relevance; it settles or
-//! cancels a commitment per that commitment's statement, and links to the
-//! `previous_event` in the chain.
+//! cancels a commitment per that commitment's statement, links to the
+//! `previous_event` in the chain, and carries the `occurrence` pairing when it
+//! happened with when it was recorded.
 
 use std::collections::BTreeSet;
 
 use crate::kernel::entities::{ResourceInstanceId, StatementId};
 
-use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation};
+use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation, Occurrence};
 
 define_id!(CommitmentId);
 define_entity! {
@@ -46,7 +47,6 @@ define_entity! {
         commitment_id: CommitmentId,
         observation: Observation,
         previous_event: Option<EventId>,
-        occurred_at: Date,
-        recorded_at: Date,
+        occurrence: Occurrence,
     }
 }

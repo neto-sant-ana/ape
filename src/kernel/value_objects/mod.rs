@@ -14,6 +14,9 @@ mod date;
 pub use date::Date;
 pub use date::DateError;
 
+mod occurrence;
+pub use occurrence::{Occurrence, OccurrenceError};
+
 mod settlement;
 pub use settlement::{Observation, Settlement};
 pub use settlement::{ObservationError, SettlementError};
