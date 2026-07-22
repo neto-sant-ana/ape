@@ -7,9 +7,9 @@
 //!   and derives its id from the SHA-256 hash of `name` plus the core fields.
 //!   Fields tagged `#[serde(alias = "no_hash")]` are kept for serialization but
 //!   excluded from the id, so mutating them leaves the identity stable. It also
-//!   generates a paired input struct (named after `via`) carrying `name`,
-//!   `description` and every field, so construction takes a single named-field
-//!   value instead of a long positional argument list.
+//!   generates a paired input struct (named after `via`) carrying `name` and
+//!   every field, so construction takes a single named-field value instead of a
+//!   long positional argument list.
 //!
 //! - `define_value_object` — defines a plain, id-less value object (struct or enum),
 //!   compared by value.
@@ -76,13 +76,12 @@ macro_rules! define_entity {
         #[derive(Debug, Clone)]
         pub struct $input {
             pub name: String,
-            pub description: String,
             $(pub $field_name : $field_type),*
         }
 
         impl $name {
             pub fn create(input: $input) -> Result<Self, $crate::kernel::entities::identification::IdentityError> {
-                let $input { name, description, $($field_name),* } = input;
+                let $input { name, $($field_name),* } = input;
 
                 let mut hasher = <::sha2::Sha256 as ::sha2::Digest>::new();
                 let _ = &mut hasher;
@@ -100,7 +99,7 @@ macro_rules! define_entity {
                 id_bytes.copy_from_slice(&hash_result);
 
                 Ok(Self {
-                    base: $crate::kernel::entities::identification::Identity::new(<$id_type>::from(id_bytes), name, description)?,
+                    base: $crate::kernel::entities::identification::Identity::new(<$id_type>::from(id_bytes), name)?,
                     $($field_name),*
                 })
             }
