@@ -5,11 +5,11 @@
 //!
 //! - `define_entity` — defines an entity struct wrapping a shared `Identity`
 //!   and derives its id from the SHA-256 hash of `name` plus the core fields.
-//!   Fields tagged `#[serde(alias = "no_hash")]` are kept for serialization but
-//!   excluded from the id, so mutating them leaves the identity stable. It also
-//!   generates a paired input struct (named after `via`) carrying `name` and
-//!   every field, so construction takes a single named-field value instead of a
-//!   long positional argument list.
+//!   Entity fields are private with read-only getters: an entity is immutable
+//!   once constructed. Fields tagged `#[serde(alias = "no_hash")]` are kept for
+//!   serialization but excluded from the id. It also generates a paired input
+//!   struct (named after `via`) carrying `name` and every field, so construction
+//!   takes a single named-field value instead of a long positional argument list.
 //!
 //! - `define_value_object` — defines a plain, id-less value object (struct or enum),
 //!   compared by value.
@@ -70,7 +70,7 @@ macro_rules! define_entity {
         #[derive(Debug, Clone, ::serde::Serialize)]
         pub struct $name {
             base: $crate::kernel::entities::identification::Identity<$id_type>,
-            $($( #[$attr] )* pub $field_name : $field_type),*
+            $($( #[$attr] )* $field_name : $field_type),*
         }
 
         #[derive(Debug, Clone)]
@@ -103,6 +103,12 @@ macro_rules! define_entity {
                     $($field_name),*
                 })
             }
+
+            $(
+                pub fn $field_name(&self) -> &$field_type {
+                    &self.$field_name
+                }
+            )*
         }
 
         impl std::ops::Deref for $name {
