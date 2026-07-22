@@ -84,11 +84,13 @@ macro_rules! define_entity {
                 let $input { name, $($field_name),* } = input;
 
                 let mut hasher = <::sha2::Sha256 as ::sha2::Digest>::new();
-                let _ = &mut hasher;
 
-                if let Ok(bytes) = ::postcard::to_allocvec(&name) {
-                    ::sha2::Digest::update(&mut hasher, &bytes);
-                }
+                ::sha2::Digest::update(
+                    &mut hasher,
+                    &::postcard::to_allocvec(&name).map_err(
+                        |_| $crate::kernel::entities::identification::IdentityError::Serialization,
+                    )?,
+                );
 
                 $(
                     hash_field_conditional!(hasher, $field_name, [ $( #[$attr] )* ]);
@@ -159,11 +161,14 @@ macro_rules! hash_field_conditional {
     };
 
     // Case C: The package was completely empty (every attribute was cleared or there was no attribute at all).
-    // Serialization is run and hashing happens normally!
+    // Serialization is run and hashing happens normally — and fails explicitly if it cannot.
     ($hasher:ident, $field_name:ident, [ ]) => {
-        if let Ok(bytes) = ::postcard::to_allocvec(&$field_name) {
-            ::sha2::Digest::update(&mut $hasher, &bytes);
-        }
+        ::sha2::Digest::update(
+            &mut $hasher,
+            &::postcard::to_allocvec(&$field_name).map_err(
+                |_| $crate::kernel::entities::identification::IdentityError::Serialization,
+            )?,
+        );
     };
 }
 

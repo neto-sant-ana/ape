@@ -32,6 +32,7 @@ impl<Id: Copy> Identity<Id> {
 define_error! {
     pub enum IdentityError {
         EmptyName => "an entity must have a non-blank name",
+        Serialization => "failed to serialize a field while computing the entity id",
     }
 }
 
