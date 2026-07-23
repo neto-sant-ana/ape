@@ -20,3 +20,6 @@ pub use identifier::{Identifier, IdentifierError};
 mod settlement;
 pub use settlement::{Observation, Settlement};
 pub use settlement::{ObservationError, SettlementError};
+
+mod term;
+pub use term::{Term, TermError};

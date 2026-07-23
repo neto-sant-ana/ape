@@ -1,8 +1,9 @@
 //! Assertions admitted as knowledge about operational coordination.
 //!
 //! A `Commitment` is a proposed execution of a statement, completed with an
-//! `assignment`, a `due_date`, an optional commitment it `supersedes`, its
-//! `action_value`, and the other commitments it depends on (`dependencies`). Its
+//! `assignment`, a `term` (when it was committed and when it is due), an
+//! optional commitment it `supersedes`, its `action_value`, and the other
+//! commitments it depends on (`dependencies`). Its
 //! state is not stored but derived from those relations and the events:
 //!
 //! - `Open` — valid, on schedule, not blocked by a dependency.
@@ -17,13 +18,16 @@
 //! cancels a commitment per that commitment's statement, links to the
 //! `previous_event` in the chain, and records when it `occurred_at`.
 //! 
-//! An `EligibilityAssignment` asserts that an agent may assume a role.
+//! An `EligibilityAssignment` asserts the full set of `roles` an agent may
+//! assume as of `occurred_at`. The roles an agent may assume at a given moment
+//! are those carried by the latest assignment whose `occurred_at` does not
+//! exceed that moment; an empty set withdraws the agent from every role.
 
 use std::collections::BTreeSet;
 
 use crate::kernel::entities::{AgentId, ResourceInstanceId, RoleId, StatementId};
 
-use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation};
+use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation, Term};
 
 define_id!(CommitmentId);
 define_entity! {
@@ -31,7 +35,7 @@ define_entity! {
         assignment: Assignment,
         statement: StatementId,
         resource: ResourceInstanceId,
-        due_date: Date,
+        term: Term,
         supersedes: Option<CommitmentId>,
         action_value: ActionValue,
         dependencies: BTreeSet<CommitmentId>,
@@ -52,6 +56,7 @@ define_id!(EligibilityAssignmentId);
 define_entity! {
     pub struct EligibilityAssignment(EligibilityAssignmentId) via EligibilityAssignmentInput {
         agent: AgentId,
-        role: RoleId,
+        roles: BTreeSet<RoleId>,
+        occurred_at: Date,
     }
 }

@@ -11,7 +11,7 @@ use crate::kernel::entities::{
 
 use crate::kernel::value_objects::{
     ActionKind, ActionValue, AgentKind, Assignment, Date, Effect, Identifier, Observation,
-    Participants, ResourceKind, Settlement,
+    Participants, ResourceKind, Settlement, Term,
 };
 
 #[derive(Default)]
@@ -24,7 +24,7 @@ struct Store {
     statements: BTreeMap<StatementId, Statement>,
     commitments: BTreeMap<CommitmentId, Commitment>,
     events: BTreeMap<EventId, Event>,
-    eligibility: BTreeMap<(AgentId, RoleId), EligibilityAssignment>,
+    eligibility: BTreeMap<AgentId, BTreeMap<Date, EligibilityAssignment>>,
 }
 impl Knowledge for Store {
     fn role(&self, id: RoleId) -> Option<&Role> {
@@ -51,8 +51,11 @@ impl Knowledge for Store {
     fn event(&self, id: EventId) -> Option<&Event> {
         self.events.get(&id)
     }
-    fn eligibility(&self, agent: AgentId, role: RoleId) -> Option<&EligibilityAssignment> {
-        self.eligibility.get(&(agent, role))
+    fn eligibilities_of(&self, agent: AgentId) -> impl Iterator<Item = &EligibilityAssignment> {
+        self.eligibility
+            .get(&agent)
+            .into_iter()
+            .flat_map(|by_date| by_date.values())
     }
 }
 impl Store {
@@ -92,7 +95,10 @@ impl Store {
         id
     }
     fn add_eligibility(&mut self, ea: EligibilityAssignment) {
-        self.eligibility.insert((*ea.agent(), *ea.role()), ea);
+        self.eligibility
+            .entry(*ea.agent())
+            .or_default()
+            .insert(*ea.occurred_at(), ea);
     }
 }
 
@@ -149,14 +155,16 @@ fn discrete_graph() -> Fixture {
     store.add_eligibility(
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: executor,
-            role: actor_role,
+            roles: BTreeSet::from([actor_role]),
+            occurred_at: date(2025, 1, 1),
         })
         .unwrap(),
     );
     store.add_eligibility(
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: beneficiary,
-            role: recipient_role,
+            roles: BTreeSet::from([recipient_role]),
+            occurred_at: date(2025, 1, 1),
         })
         .unwrap(),
     );
@@ -210,7 +218,7 @@ fn commitment_input(f: &Fixture) -> CommitmentInput {
         assignment: Assignment::new(f.accountable, [f.executor], [f.beneficiary]).unwrap(),
         statement: f.statement,
         resource: f.instance,
-        due_date: date(2026, 12, 31),
+        term: Term::new(date(2026, 1, 1), date(2026, 12, 31)).unwrap(),
         supersedes: None,
         action_value: ActionValue::none(),
         dependencies: BTreeSet::new(),
@@ -296,7 +304,11 @@ fn admits_a_valid_eligibility_assignment() {
 
     assert!(
         axiom
-            .admit_eligibility_assignment(EligibilityAssignmentInput { agent, role })
+            .admit_eligibility_assignment(EligibilityAssignmentInput {
+                agent,
+                roles: BTreeSet::from([role]),
+                occurred_at: date(2026, 1, 1),
+            })
             .is_ok()
     );
 }
@@ -310,7 +322,8 @@ fn rejects_eligibility_assignment_for_unknown_agent() {
     assert!(matches!(
         axiom.admit_eligibility_assignment(EligibilityAssignmentInput {
             agent: AgentId::from([9u8; 32]),
-            role,
+            roles: BTreeSet::from([role]),
+            occurred_at: date(2026, 1, 1),
         }),
         Err(AxiomError::UnknownAgent(_))
     ));
@@ -331,7 +344,8 @@ fn rejects_eligibility_assignment_for_unknown_role() {
     assert!(matches!(
         axiom.admit_eligibility_assignment(EligibilityAssignmentInput {
             agent,
-            role: RoleId::from([9u8; 32]),
+            roles: BTreeSet::from([RoleId::from([9u8; 32])]),
+            occurred_at: date(2026, 1, 1),
         }),
         Err(AxiomError::UnknownRole(_))
     ));
@@ -492,7 +506,7 @@ fn admits_supersede_revising_the_same_target() {
 
     let result = Axiom::new(&f.store).admit_commitment(CommitmentInput {
         supersedes: Some(original),
-        due_date: date(2027, 6, 30),
+        term: Term::new(date(2026, 1, 1), date(2027, 6, 30)).unwrap(),
         ..commitment_input(&f)
     });
 
@@ -549,4 +563,147 @@ fn admits_a_recognized_event_and_rejects_an_unrecognized_one() {
         }),
         Err(AxiomError::ObservationNotSettling)
     ));
+}
+
+// The commitments in `discrete_graph` are committed_at 2026-01-01; the executor
+// is made eligible at 2025-01-01. The tests below pin eligibility around that
+// commit instant.
+
+#[test]
+fn admits_an_empty_eligibility_assignment_as_a_withdrawal() {
+    let mut store = Store::default();
+    let agent = store.add_agent(
+        Agent::create(AgentInput {
+            label: ident("agent"),
+            kind: AgentKind::Company,
+        })
+        .unwrap(),
+    );
+    let axiom = Axiom::new(&store);
+
+    assert!(
+        axiom
+            .admit_eligibility_assignment(EligibilityAssignmentInput {
+                agent,
+                roles: BTreeSet::new(),
+                occurred_at: date(2026, 1, 1),
+            })
+            .is_ok()
+    );
+}
+
+#[test]
+fn eligibility_takes_effect_on_its_own_occurred_at() {
+    let mut f = discrete_graph();
+
+    let sameday = f.store.add_agent(
+        Agent::create(AgentInput {
+            label: ident("sameday"),
+            kind: AgentKind::Individual,
+        })
+        .unwrap(),
+    );
+    f.store.add_eligibility(
+        EligibilityAssignment::create(EligibilityAssignmentInput {
+            agent: sameday,
+            roles: BTreeSet::from([f.actor_role]),
+            occurred_at: date(2026, 1, 1), // exactly the commitment's committed_at
+        })
+        .unwrap(),
+    );
+    f.executor = sameday;
+
+    assert!(commit(&f).is_ok());
+}
+
+#[test]
+fn eligibility_recorded_after_committed_at_is_not_yet_in_effect() {
+    let mut f = discrete_graph();
+
+    let latecomer = f.store.add_agent(
+        Agent::create(AgentInput {
+            label: ident("latecomer"),
+            kind: AgentKind::Individual,
+        })
+        .unwrap(),
+    );
+    f.store.add_eligibility(
+        EligibilityAssignment::create(EligibilityAssignmentInput {
+            agent: latecomer,
+            roles: BTreeSet::from([f.actor_role]),
+            occurred_at: date(2026, 6, 1), // after the commitment's committed_at
+        })
+        .unwrap(),
+    );
+    f.executor = latecomer;
+
+    assert!(matches!(
+        commit(&f),
+        Err(AxiomError::AgentNotEligibleForRole(_))
+    ));
+}
+
+#[test]
+fn a_later_empty_assignment_withdraws_eligibility() {
+    let mut f = discrete_graph();
+
+    // The executor is eligible from 2025-01-01; withdraw before committed_at.
+    f.store.add_eligibility(
+        EligibilityAssignment::create(EligibilityAssignmentInput {
+            agent: f.executor,
+            roles: BTreeSet::new(),
+            occurred_at: date(2025, 6, 1),
+        })
+        .unwrap(),
+    );
+
+    assert!(matches!(
+        commit(&f),
+        Err(AxiomError::AgentNotEligibleForRole(_))
+    ));
+}
+
+#[test]
+fn a_withdrawal_after_committed_at_does_not_apply_retroactively() {
+    let mut f = discrete_graph();
+
+    // A withdrawal later than the commitment's committed_at must not corrupt the
+    // eligibility that held when the commitment was made.
+    f.store.add_eligibility(
+        EligibilityAssignment::create(EligibilityAssignmentInput {
+            agent: f.executor,
+            roles: BTreeSet::new(),
+            occurred_at: date(2027, 1, 1),
+        })
+        .unwrap(),
+    );
+
+    assert!(commit(&f).is_ok());
+}
+
+#[test]
+fn an_assignment_carrying_several_roles_satisfies_any_of_them() {
+    let mut f = discrete_graph();
+
+    let extra_role = f
+        .store
+        .add_role(Role::create(RoleInput { label: ident("extra") }).unwrap());
+    let multi = f.store.add_agent(
+        Agent::create(AgentInput {
+            label: ident("multi"),
+            kind: AgentKind::Individual,
+        })
+        .unwrap(),
+    );
+    f.store.add_eligibility(
+        EligibilityAssignment::create(EligibilityAssignmentInput {
+            agent: multi,
+            roles: BTreeSet::from([extra_role, f.actor_role]),
+            occurred_at: date(2025, 1, 1),
+        })
+        .unwrap(),
+    );
+    f.executor = multi;
+
+    assert!(commit(&f).is_ok());
 }

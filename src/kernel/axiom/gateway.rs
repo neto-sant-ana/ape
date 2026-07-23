@@ -16,6 +16,8 @@ use crate::kernel::entities::{
     StatementId,
 };
 
+use crate::kernel::value_objects::Date;
+
 pub trait Knowledge {
     fn role(&self, id: RoleId) -> Option<&Role>;
     fn agent(&self, id: AgentId) -> Option<&Agent>;
@@ -25,7 +27,19 @@ pub trait Knowledge {
     fn statement(&self, id: StatementId) -> Option<&Statement>;
     fn commitment(&self, id: CommitmentId) -> Option<&Commitment>;
     fn event(&self, id: EventId) -> Option<&Event>;
-    fn eligibility(&self, agent: AgentId, role: RoleId) -> Option<&EligibilityAssignment>;
+
+    /// Every eligibility assignment recorded for `agent`, in any order.
+    fn eligibilities_of(&self, agent: AgentId) -> impl Iterator<Item = &EligibilityAssignment>;
+
+    /// The assignment in effect for `agent` as of `at`: the latest one whose
+    /// `occurred_at` does not exceed `at`. The boundary rule lives here, once,
+    /// so no adapter can diverge on it. Uniqueness of `(agent, occurred_at)` is
+    /// the canonical history's responsibility, not the Axiom's.
+    fn eligibility_at(&self, agent: AgentId, at: &Date) -> Option<&EligibilityAssignment> {
+        self.eligibilities_of(agent)
+            .filter(|e| e.occurred_at().up_to(at))
+            .max_by_key(|e| *e.occurred_at())
+    }
 }
 
 pub struct Axiom<'k, K: Knowledge> {

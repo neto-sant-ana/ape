@@ -9,7 +9,7 @@ use crate::kernel::entities::{
     EventInput, RoleId,
 };
 
-use crate::kernel::value_objects::ActionKind;
+use crate::kernel::value_objects::{ActionKind, Date};
 
 impl<'k, K: Knowledge> Axiom<'k, K> {
     pub fn admit_commitment(&self, input: CommitmentInput) -> Result<Commitment, AxiomError> {
@@ -48,12 +48,14 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
             return Err(AxiomError::UnknownAgent(input.assignment.accountable()));
         }
 
+        let committed_at = input.term.committed_at();
+
         for executor in input.assignment.executors() {
-            self.require_eligible(*executor, stmt.participants().actors())?;
+            self.require_eligible(*executor, stmt.participants().actors(), committed_at)?;
         }
 
         for beneficiary in input.assignment.beneficiaries() {
-            self.require_eligible(*beneficiary, stmt.participants().recipients())?;
+            self.require_eligible(*beneficiary, stmt.participants().recipients(), committed_at)?;
         }
 
         if let Some(superseded_id) = input.supersedes {
@@ -114,21 +116,32 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
             return Err(AxiomError::UnknownAgent(input.agent));
         }
 
-        if self.knowledge.role(input.role).is_none() {
-            return Err(AxiomError::UnknownRole(input.role));
+        for role in &input.roles {
+            if self.knowledge.role(*role).is_none() {
+                return Err(AxiomError::UnknownRole(*role));
+            }
         }
 
+        // An empty role set is admissible on purpose: it is how an agent is
+        // withdrawn from every role as of `occurred_at`, without inventing a
+        // fictitious role. So there is no non-empty requirement here.
         Ok(EligibilityAssignment::create(input)?)
     }
 
-    fn require_eligible(&self, agent: AgentId, roles: &BTreeSet<RoleId>) -> Result<(), AxiomError> {
+    fn require_eligible(
+        &self,
+        agent: AgentId,
+        roles: &BTreeSet<RoleId>,
+        at: &Date,
+    ) -> Result<(), AxiomError> {
         if self.knowledge.agent(agent).is_none() {
             return Err(AxiomError::UnknownAgent(agent));
         }
 
-        let eligible = roles
-            .iter()
-            .any(|role| self.knowledge.eligibility(agent, *role).is_some());
+        let eligible = self
+            .knowledge
+            .eligibility_at(agent, at)
+            .is_some_and(|assignment| !assignment.roles().is_disjoint(roles));
 
         if eligible {
             Ok(())
