@@ -18,10 +18,12 @@
 //! cancels a commitment per that commitment's statement, links to the
 //! `previous_event` in the chain, and records when it `occurred_at`.
 //! 
-//! An `EligibilityAssignment` asserts the full set of `roles` an agent may
-//! assume as of `occurred_at`. The roles an agent may assume at a given moment
-//! are those carried by the latest assignment whose `occurred_at` does not
-//! exceed that moment; an empty set withdraws the agent from every role.
+//! An `EligibilityAssignment` declares the full set of `roles` an agent may
+//! assume, effective from `effective_from`. Unlike an `Event`, it is not an
+//! observation but a decision, so its date may lie in the future; the roles an
+//! agent may assume at a given moment are those carried by the latest assignment
+//! whose `effective_from` does not exceed that moment. An empty set withdraws the
+//! agent from every role.
 
 use std::collections::BTreeSet;
 
@@ -57,6 +59,6 @@ define_entity! {
     pub struct EligibilityAssignment(EligibilityAssignmentId) via EligibilityAssignmentInput {
         agent: AgentId,
         roles: BTreeSet<RoleId>,
-        occurred_at: Date,
+        effective_from: Date,
     }
 }

@@ -96,7 +96,7 @@ fn eligibility(tag: u8) -> EligibilityAssignment {
     EligibilityAssignment::create(EligibilityAssignmentInput {
         agent: AgentId::from([tag; 32]),
         roles: BTreeSet::from([RoleId::from([tag; 32])]),
-        occurred_at: date(2025, 1, 1),
+        effective_from: date(2025, 1, 1),
     })
     .unwrap()
 }

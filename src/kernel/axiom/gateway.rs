@@ -32,13 +32,13 @@ pub trait Knowledge {
     fn eligibilities_of(&self, agent: AgentId) -> impl Iterator<Item = &EligibilityAssignment>;
 
     /// The assignment in effect for `agent` as of `at`: the latest one whose
-    /// `occurred_at` does not exceed `at`. The boundary rule lives here, once,
-    /// so no adapter can diverge on it. Uniqueness of `(agent, occurred_at)` is
+    /// `effective_from` does not exceed `at`. The boundary rule lives here, once,
+    /// so no adapter can diverge on it. Uniqueness of `(agent, effective_from)` is
     /// the canonical history's responsibility, not the Axiom's.
     fn eligibility_at(&self, agent: AgentId, at: &Date) -> Option<&EligibilityAssignment> {
         self.eligibilities_of(agent)
-            .filter(|e| e.occurred_at().up_to(at))
-            .max_by_key(|e| *e.occurred_at())
+            .filter(|e| e.effective_from().up_to(at))
+            .max_by_key(|e| *e.effective_from())
     }
 }
 
