@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 use super::{AppendOutcome, CanonError, Canonical, CanonicalHistory};
 
@@ -10,8 +11,8 @@ use crate::kernel::entities::{
 
 use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation, Term};
 
-/// The reference in-memory canonical history. It enforces only the atomic
-/// conditions — id absence and the event chain head — never the admission rules.
+/// The reference in-memory canonical history. It holds no admission rules — only
+/// durable storage and one compare-and-swap.
 #[derive(Default)]
 struct MemoryHistory {
     commitments: BTreeMap<CommitmentId, Canonical<Commitment>>,
@@ -24,47 +25,43 @@ impl CanonicalHistory for MemoryHistory {
         self.head
     }
 
-    fn append_commitment(
-        &mut self,
-        commitment: Canonical<Commitment>,
-    ) -> Result<AppendOutcome, CanonError> {
-        let id = commitment.assertion().id();
-        if self.commitments.contains_key(&id) {
-            return Ok(AppendOutcome::AlreadyPresent);
-        }
-        self.commitments.insert(id, commitment);
-        Ok(AppendOutcome::Admitted)
+    fn put_commitment(&mut self, commitment: Canonical<Commitment>) -> AppendOutcome {
+        put_if_absent(&mut self.commitments, commitment.assertion().id(), commitment)
     }
 
-    fn append_eligibility(
-        &mut self,
-        eligibility: Canonical<EligibilityAssignment>,
-    ) -> Result<AppendOutcome, CanonError> {
-        let id = eligibility.assertion().id();
-        if self.eligibility.contains_key(&id) {
-            return Ok(AppendOutcome::AlreadyPresent);
-        }
-        self.eligibility.insert(id, eligibility);
-        Ok(AppendOutcome::Admitted)
+    fn put_eligibility(&mut self, eligibility: Canonical<EligibilityAssignment>) -> AppendOutcome {
+        put_if_absent(&mut self.eligibility, eligibility.assertion().id(), eligibility)
     }
 
-    fn append_event(&mut self, event: Canonical<Event>) -> Result<AppendOutcome, CanonError> {
-        let id = event.assertion().id();
-        if self.events.contains_key(&id) {
-            return Ok(AppendOutcome::AlreadyPresent);
-        }
+    fn put_event(&mut self, event: Canonical<Event>) -> AppendOutcome {
+        put_if_absent(&mut self.events, event.assertion().id(), event)
+    }
 
-        let expected = *event.assertion().previous_event();
+    fn advance_head(
+        &mut self,
+        expected: Option<EventId>,
+        new: EventId,
+    ) -> Result<(), CanonError> {
         if self.head != expected {
             return Err(CanonError::UnexpectedHead {
                 expected,
                 found: self.head,
             });
         }
+        self.head = Some(new);
+        Ok(())
+    }
+}
 
-        self.events.insert(id, event);
-        self.head = Some(id);
-        Ok(AppendOutcome::Admitted)
+fn put_if_absent<K: Ord, V>(map: &mut BTreeMap<K, V>, key: K, value: V) -> AppendOutcome {
+    use std::collections::btree_map::Entry;
+
+    match map.entry(key) {
+        Entry::Vacant(slot) => {
+            slot.insert(value);
+            AppendOutcome::Admitted
+        }
+        Entry::Occupied(_) => AppendOutcome::AlreadyPresent,
     }
 }
 
@@ -72,8 +69,6 @@ fn date(y: i32, m: u8, d: u8) -> Date {
     Date::from_ymd(y, m, d).unwrap()
 }
 
-// The store never inspects entity contents beyond their id and chain link, so the
-// factory data only needs to be valid and distinct — `tag` varies the id.
 fn commitment(tag: u8) -> Commitment {
     Commitment::create(CommitmentInput {
         assignment: Assignment::new(
@@ -112,114 +107,110 @@ fn event(commitment: CommitmentId, previous: Option<EventId>, observation: &str)
 }
 
 #[test]
-fn append_commitment_is_idempotent_by_id() {
+fn put_commitment_is_idempotent_by_id() {
     let mut history = MemoryHistory::default();
     let record = Canonical::new(commitment(1), date(2026, 7, 1));
 
     assert_eq!(
-        history.append_commitment(record.clone()).unwrap(),
+        history.put_commitment(record.clone()),
         AppendOutcome::Admitted
     );
+
     assert_eq!(
-        history.append_commitment(record).unwrap(),
+        history.put_commitment(record),
         AppendOutcome::AlreadyPresent
     );
 }
 
 #[test]
-fn append_eligibility_is_idempotent_by_id() {
+fn put_eligibility_is_idempotent_by_id() {
     let mut history = MemoryHistory::default();
     let record = Canonical::new(eligibility(1), date(2026, 7, 1));
 
     assert_eq!(
-        history.append_eligibility(record.clone()).unwrap(),
+        history.put_eligibility(record.clone()),
         AppendOutcome::Admitted
     );
+
     assert_eq!(
-        history.append_eligibility(record).unwrap(),
+        history.put_eligibility(record),
         AppendOutcome::AlreadyPresent
     );
 }
 
 #[test]
-fn events_extend_a_single_chain_and_advance_the_head() {
+fn put_event_is_idempotent_by_id() {
+    let mut history = MemoryHistory::default();
+    let record = Canonical::new(event(commitment(1).id(), None, "Signed"), date(2026, 7, 1));
+
+    assert_eq!(history.put_event(record.clone()), AppendOutcome::Admitted);
+    assert_eq!(history.put_event(record), AppendOutcome::AlreadyPresent);
+}
+
+#[test]
+fn advance_head_extends_from_the_expected_head() {
     let mut history = MemoryHistory::default();
     let commitment = commitment(1);
+
     assert_eq!(history.head(), None);
 
-    let genesis = Canonical::new(event(commitment.id(), None, "Signed"), date(2026, 7, 1));
-    let genesis_id = genesis.assertion().id();
-    assert_eq!(
-        history.append_event(genesis).unwrap(),
-        AppendOutcome::Admitted
-    );
-    assert_eq!(history.head(), Some(genesis_id));
+    let genesis = event(commitment.id(), None, "Signed").id();
 
-    let next = Canonical::new(
-        event(commitment.id(), Some(genesis_id), "Paid"),
-        date(2026, 7, 2),
-    );
-    let next_id = next.assertion().id();
-    assert_eq!(history.append_event(next).unwrap(), AppendOutcome::Admitted);
-    assert_eq!(history.head(), Some(next_id));
+    assert!(history.advance_head(None, genesis).is_ok());
+    assert_eq!(history.head(), Some(genesis));
+
+    let next = event(commitment.id(), Some(genesis), "Paid").id();
+
+    assert!(history.advance_head(Some(genesis), next).is_ok());
+    assert_eq!(history.head(), Some(next));
 }
 
 #[test]
-fn rejects_a_second_genesis_event() {
+fn advance_head_rejects_a_stale_expected() {
     let mut history = MemoryHistory::default();
     let commitment = commitment(1);
+    let genesis = event(commitment.id(), None, "Signed").id();
 
-    history
-        .append_event(Canonical::new(
-            event(commitment.id(), None, "Signed"),
-            date(2026, 7, 1),
-        ))
-        .unwrap();
+    history.advance_head(None, genesis).unwrap();
 
-    // A different genesis (distinct observation, still previous_event == None) must
-    // not fork the chain: the head is no longer empty.
-    let second_genesis = Canonical::new(event(commitment.id(), None, "Paid"), date(2026, 7, 2));
+    let other = event(commitment.id(), None, "Paid").id();
+
     assert!(matches!(
-        history.append_event(second_genesis),
+        history.advance_head(None, other),
         Err(CanonError::UnexpectedHead {
             expected: None,
-            found: Some(_),
-        })
+            found: Some(found),
+        }) if found == genesis
     ));
-}
 
-#[test]
-fn rejects_an_event_extending_a_stale_head() {
-    let mut history = MemoryHistory::default();
-    let commitment = commitment(1);
-
-    let genesis = Canonical::new(event(commitment.id(), None, "Signed"), date(2026, 7, 1));
-    let genesis_id = genesis.assertion().id();
-    history.append_event(genesis).unwrap();
-
-    // An event built against a head that never was — the CAS reports what it
-    // expected against the real head, signalling a rebuild.
     let alien = EventId::from([9u8; 32]);
-    let stale = Canonical::new(event(commitment.id(), Some(alien), "Paid"), date(2026, 7, 2));
+
     assert!(matches!(
-        history.append_event(stale),
+        history.advance_head(Some(alien), other),
         Err(CanonError::UnexpectedHead { expected, found })
-            if expected == Some(alien) && found == Some(genesis_id)
+            if expected == Some(alien) && found == Some(genesis)
     ));
 }
 
 #[test]
-fn re_appending_the_same_event_is_idempotent() {
+fn a_stored_event_left_unlinked_is_a_harmless_dangling_object() {
     let mut history = MemoryHistory::default();
     let commitment = commitment(1);
-    let genesis = Canonical::new(event(commitment.id(), None, "Signed"), date(2026, 7, 1));
+
+    let genesis = event(commitment.id(), None, "Signed");
+    let genesis_id = genesis.id();
+
+    history.put_event(Canonical::new(genesis, date(2026, 7, 1)));
+    history.advance_head(None, genesis_id).unwrap();
+
+    let orphan = event(commitment.id(), None, "Paid");
+    let orphan_id = orphan.id();
 
     assert_eq!(
-        history.append_event(genesis.clone()).unwrap(),
+        history.put_event(Canonical::new(orphan, date(2026, 7, 2))),
         AppendOutcome::Admitted
     );
-    assert_eq!(
-        history.append_event(genesis).unwrap(),
-        AppendOutcome::AlreadyPresent
-    );
+
+    assert!(history.advance_head(None, orphan_id).is_err());
+    assert_eq!(history.head(), Some(genesis_id));
 }
