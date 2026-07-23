@@ -1,24 +1,69 @@
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use super::{AppendOutcome, CanonError, Canonical, CanonicalHistory};
+use super::{AppendOutcome, Canon, CanonError, Canonical, CanonicalHistory, EventSubmission};
 
+use crate::kernel::axiom::Knowledge;
 use crate::kernel::entities::{
-    AgentId, Commitment, CommitmentId, CommitmentInput, EligibilityAssignment,
-    EligibilityAssignmentId, EligibilityAssignmentInput, Event, EventId, EventInput,
-    ResourceInstanceId, RoleId, StatementId,
+    Action, ActionId, ActionInput, Agent, AgentId, AgentInput, Commitment, CommitmentId,
+    CommitmentInput, EligibilityAssignment, EligibilityAssignmentId, EligibilityAssignmentInput,
+    Event, EventId, EventInput, Resource, ResourceId, ResourceInput, ResourceInstance,
+    ResourceInstanceId, ResourceInstanceInput, Role, RoleId, RoleInput, Statement, StatementId,
+    StatementInput,
+};
+use crate::kernel::value_objects::{
+    ActionKind, ActionValue, AgentKind, Assignment, Date, Identifier, Observation, Participants,
+    ResourceKind, Settlement, Term,
 };
 
-use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation, Term};
-
-/// The reference in-memory canonical history. It holds no admission rules — only
-/// durable storage and one compare-and-swap.
+/// The reference in-memory canonical history: the two faces of one repository.
+/// `Knowledge` answers the Axiom's lookups (returning the assertion inside each
+/// record); the [`CanonicalHistory`] primitives are a dumb put-if-absent and a
+/// dumb compare-and-swap. Definitional entities are seeded directly by the tests;
+/// the assertion families arrive through the primitives.
 #[derive(Default)]
 struct MemoryHistory {
+    roles: BTreeMap<RoleId, Role>,
+    agents: BTreeMap<AgentId, Agent>,
+    resources: BTreeMap<ResourceId, Resource>,
+    instances: BTreeMap<ResourceInstanceId, ResourceInstance>,
+    actions: BTreeMap<ActionId, Action>,
+    statements: BTreeMap<StatementId, Statement>,
     commitments: BTreeMap<CommitmentId, Canonical<Commitment>>,
     eligibility: BTreeMap<EligibilityAssignmentId, Canonical<EligibilityAssignment>>,
     events: BTreeMap<EventId, Canonical<Event>>,
     head: Option<EventId>,
+}
+impl Knowledge for MemoryHistory {
+    fn role(&self, id: RoleId) -> Option<&Role> {
+        self.roles.get(&id)
+    }
+    fn agent(&self, id: AgentId) -> Option<&Agent> {
+        self.agents.get(&id)
+    }
+    fn resource(&self, id: ResourceId) -> Option<&Resource> {
+        self.resources.get(&id)
+    }
+    fn resource_instance(&self, id: ResourceInstanceId) -> Option<&ResourceInstance> {
+        self.instances.get(&id)
+    }
+    fn action(&self, id: ActionId) -> Option<&Action> {
+        self.actions.get(&id)
+    }
+    fn statement(&self, id: StatementId) -> Option<&Statement> {
+        self.statements.get(&id)
+    }
+    fn commitment(&self, id: CommitmentId) -> Option<&Commitment> {
+        self.commitments.get(&id).map(|c| c.assertion())
+    }
+    fn event(&self, id: EventId) -> Option<&Event> {
+        self.events.get(&id).map(|e| e.assertion())
+    }
+    fn eligibilities_of(&self, agent: AgentId) -> impl Iterator<Item = &EligibilityAssignment> {
+        self.eligibility
+            .values()
+            .map(|e| e.assertion())
+            .filter(move |e| *e.agent() == agent)
+    }
 }
 impl CanonicalHistory for MemoryHistory {
     fn head(&self) -> Option<EventId> {
@@ -37,11 +82,7 @@ impl CanonicalHistory for MemoryHistory {
         put_if_absent(&mut self.events, event.assertion().id(), event)
     }
 
-    fn advance_head(
-        &mut self,
-        expected: Option<EventId>,
-        new: EventId,
-    ) -> Result<(), CanonError> {
+    fn advance_head(&mut self, expected: Option<EventId>, new: EventId) -> Result<(), CanonError> {
         if self.head != expected {
             return Err(CanonError::UnexpectedHead {
                 expected,
@@ -50,6 +91,38 @@ impl CanonicalHistory for MemoryHistory {
         }
         self.head = Some(new);
         Ok(())
+    }
+}
+impl MemoryHistory {
+    fn add_role(&mut self, r: Role) -> RoleId {
+        let id = r.id();
+        self.roles.insert(id, r);
+        id
+    }
+    fn add_agent(&mut self, a: Agent) -> AgentId {
+        let id = a.id();
+        self.agents.insert(id, a);
+        id
+    }
+    fn add_resource(&mut self, r: Resource) -> ResourceId {
+        let id = r.id();
+        self.resources.insert(id, r);
+        id
+    }
+    fn add_instance(&mut self, i: ResourceInstance) -> ResourceInstanceId {
+        let id = i.id();
+        self.instances.insert(id, i);
+        id
+    }
+    fn add_action(&mut self, a: Action) -> ActionId {
+        let id = a.id();
+        self.actions.insert(id, a);
+        id
+    }
+    fn add_statement(&mut self, s: Statement) -> StatementId {
+        let id = s.id();
+        self.statements.insert(id, s);
+        id
     }
 }
 
@@ -68,6 +141,17 @@ fn put_if_absent<K: Ord, V>(map: &mut BTreeMap<K, V>, key: K, value: V) -> Appen
 fn date(y: i32, m: u8, d: u8) -> Date {
     Date::from_ymd(y, m, d).unwrap()
 }
+fn ident(value: &str) -> Identifier {
+    Identifier::new(value).unwrap()
+}
+fn obs(name: &str) -> Observation {
+    Observation::new(name).unwrap()
+}
+
+// ---------------------------------------------------------------------------
+// Standalone factories for the primitive tests: the store never inspects entity
+// contents beyond their id, so the data only needs to be valid and distinct.
+// ---------------------------------------------------------------------------
 
 fn commitment(tag: u8) -> Commitment {
     Commitment::create(CommitmentInput {
@@ -106,32 +190,152 @@ fn event(commitment: CommitmentId, previous: Option<EventId>, observation: &str)
     .unwrap()
 }
 
+// ---------------------------------------------------------------------------
+// A valid seeded graph for the orchestrator tests, so the Axiom's lookups succeed.
+// ---------------------------------------------------------------------------
+
+struct Graph {
+    history: MemoryHistory,
+    accountable: AgentId,
+    executor: AgentId,
+    beneficiary: AgentId,
+    actor_role: RoleId,
+    instance: ResourceInstanceId,
+    statement: StatementId,
+}
+fn graph() -> Graph {
+    let mut history = MemoryHistory::default();
+
+    let actor_role = history.add_role(Role::create(RoleInput { label: ident("actor") }).unwrap());
+    let recipient_role =
+        history.add_role(Role::create(RoleInput { label: ident("recipient") }).unwrap());
+
+    let accountable = history.add_agent(
+        Agent::create(AgentInput {
+            label: ident("accountable"),
+            kind: AgentKind::Company,
+        })
+        .unwrap(),
+    );
+    let executor = history.add_agent(
+        Agent::create(AgentInput {
+            label: ident("executor"),
+            kind: AgentKind::Individual,
+        })
+        .unwrap(),
+    );
+    let beneficiary = history.add_agent(
+        Agent::create(AgentInput {
+            label: ident("beneficiary"),
+            kind: AgentKind::Company,
+        })
+        .unwrap(),
+    );
+
+    // Eligibility effective before any commitment's committed_at (2026-01-01).
+    history.put_eligibility(
+        Canonical::new(
+            EligibilityAssignment::create(EligibilityAssignmentInput {
+                agent: executor,
+                roles: BTreeSet::from([actor_role]),
+                effective_from: date(2025, 1, 1),
+            })
+            .unwrap(),
+            date(2025, 1, 1),
+        )
+        .unwrap(),
+    );
+    history.put_eligibility(
+        Canonical::new(
+            EligibilityAssignment::create(EligibilityAssignmentInput {
+                agent: beneficiary,
+                roles: BTreeSet::from([recipient_role]),
+                effective_from: date(2025, 1, 1),
+            })
+            .unwrap(),
+            date(2025, 1, 1),
+        )
+        .unwrap(),
+    );
+
+    let resource = history.add_resource(
+        Resource::create(ResourceInput {
+            label: ident("resource"),
+            kind: ResourceKind::Discrete,
+        })
+        .unwrap(),
+    );
+    let instance = history.add_instance(
+        ResourceInstance::create(ResourceInstanceInput {
+            label: ident("instance"),
+            resource,
+        })
+        .unwrap(),
+    );
+    let action = history.add_action(
+        Action::create(ActionInput {
+            verb: ident("sign"),
+            kind: ActionKind::Discrete,
+            resource,
+        })
+        .unwrap(),
+    );
+    let statement = history.add_statement(
+        Statement::create(StatementInput {
+            participants: Participants::new([actor_role], [recipient_role]).unwrap(),
+            action,
+            settlement: Settlement::new([obs("Signed")], [obs("Cancelled")]).unwrap(),
+        })
+        .unwrap(),
+    );
+
+    Graph {
+        history,
+        accountable,
+        executor,
+        beneficiary,
+        actor_role,
+        instance,
+        statement,
+    }
+}
+fn commitment_input(g: &Graph) -> CommitmentInput {
+    CommitmentInput {
+        assignment: Assignment::new(g.accountable, [g.executor], [g.beneficiary]).unwrap(),
+        statement: g.statement,
+        resource: g.instance,
+        term: Term::new(date(2026, 1, 1), date(2026, 12, 31)).unwrap(),
+        supersedes: None,
+        action_value: ActionValue::none(),
+        dependencies: BTreeSet::new(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Primitive-level tests: the dumb port.
+// ---------------------------------------------------------------------------
+
 #[test]
 fn put_commitment_is_idempotent_by_id() {
     let mut history = MemoryHistory::default();
-    let record = Canonical::new(commitment(1), date(2026, 7, 1));
+    let record = Canonical::new(commitment(1), date(2026, 7, 1)).unwrap();
 
     assert_eq!(
         history.put_commitment(record.clone()),
         AppendOutcome::Admitted
     );
-
-    assert_eq!(
-        history.put_commitment(record),
-        AppendOutcome::AlreadyPresent
-    );
+    assert_eq!(history.put_commitment(record), AppendOutcome::AlreadyPresent);
 }
 
 #[test]
 fn put_eligibility_is_idempotent_by_id() {
     let mut history = MemoryHistory::default();
-    let record = Canonical::new(eligibility(1), date(2026, 7, 1));
+    let record = Canonical::new(eligibility(1), date(2026, 7, 1)).unwrap();
 
     assert_eq!(
         history.put_eligibility(record.clone()),
         AppendOutcome::Admitted
     );
-
     assert_eq!(
         history.put_eligibility(record),
         AppendOutcome::AlreadyPresent
@@ -141,7 +345,7 @@ fn put_eligibility_is_idempotent_by_id() {
 #[test]
 fn put_event_is_idempotent_by_id() {
     let mut history = MemoryHistory::default();
-    let record = Canonical::new(event(commitment(1).id(), None, "Signed"), date(2026, 7, 1));
+    let record = Canonical::new(event(commitment(1).id(), None, "Signed"), date(2026, 7, 1)).unwrap();
 
     assert_eq!(history.put_event(record.clone()), AppendOutcome::Admitted);
     assert_eq!(history.put_event(record), AppendOutcome::AlreadyPresent);
@@ -151,16 +355,13 @@ fn put_event_is_idempotent_by_id() {
 fn advance_head_extends_from_the_expected_head() {
     let mut history = MemoryHistory::default();
     let commitment = commitment(1);
-
     assert_eq!(history.head(), None);
 
     let genesis = event(commitment.id(), None, "Signed").id();
-
     assert!(history.advance_head(None, genesis).is_ok());
     assert_eq!(history.head(), Some(genesis));
 
     let next = event(commitment.id(), Some(genesis), "Paid").id();
-
     assert!(history.advance_head(Some(genesis), next).is_ok());
     assert_eq!(history.head(), Some(next));
 }
@@ -170,11 +371,9 @@ fn advance_head_rejects_a_stale_expected() {
     let mut history = MemoryHistory::default();
     let commitment = commitment(1);
     let genesis = event(commitment.id(), None, "Signed").id();
-
     history.advance_head(None, genesis).unwrap();
 
     let other = event(commitment.id(), None, "Paid").id();
-
     assert!(matches!(
         history.advance_head(None, other),
         Err(CanonError::UnexpectedHead {
@@ -184,7 +383,6 @@ fn advance_head_rejects_a_stale_expected() {
     ));
 
     let alien = EventId::from([9u8; 32]);
-
     assert!(matches!(
         history.advance_head(Some(alien), other),
         Err(CanonError::UnexpectedHead { expected, found })
@@ -199,18 +397,147 @@ fn a_stored_event_left_unlinked_is_a_harmless_dangling_object() {
 
     let genesis = event(commitment.id(), None, "Signed");
     let genesis_id = genesis.id();
-
-    history.put_event(Canonical::new(genesis, date(2026, 7, 1)));
+    history.put_event(Canonical::new(genesis, date(2026, 7, 1)).unwrap());
     history.advance_head(None, genesis_id).unwrap();
 
     let orphan = event(commitment.id(), None, "Paid");
     let orphan_id = orphan.id();
-
     assert_eq!(
-        history.put_event(Canonical::new(orphan, date(2026, 7, 2))),
+        history.put_event(Canonical::new(orphan, date(2026, 7, 2)).unwrap()),
         AppendOutcome::Admitted
     );
-
     assert!(history.advance_head(None, orphan_id).is_err());
     assert_eq!(history.head(), Some(genesis_id));
+}
+
+// ---------------------------------------------------------------------------
+// Envelope-level tests: the recorded_at invariant, by construction.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn an_event_recorded_before_it_occurred_is_rejected() {
+    let observed = event(commitment(1).id(), None, "Signed"); // occurs 2026-06-01
+
+    assert!(matches!(
+        Canonical::new(observed, date(2026, 5, 31)),
+        Err(CanonError::RecordedBeforeFact { .. })
+    ));
+}
+
+#[test]
+fn a_commitment_recorded_before_it_was_committed_is_rejected() {
+    assert!(matches!(
+        Canonical::new(commitment(1), date(2025, 12, 31)), // committed 2026-01-01
+        Err(CanonError::RecordedBeforeFact { .. })
+    ));
+}
+
+#[test]
+fn an_eligibility_may_be_recorded_before_it_takes_effect() {
+    // A forward decision, not an observation, so no floor on recorded_at.
+    assert!(Canonical::new(eligibility(1), date(2020, 1, 1)).is_ok());
+}
+
+// ---------------------------------------------------------------------------
+// Orchestrator-level tests: admission composes Axiom + envelope + primitives.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn admits_a_valid_commitment_and_is_idempotent() {
+    let g = graph();
+    let input = commitment_input(&g);
+    let mut canon = Canon::new(g.history);
+
+    // recorded_at differs between the two, but identity is content-addressed, so
+    // the second admission is a no-op.
+    assert_eq!(
+        canon.admit_commitment(input.clone(), date(2026, 2, 1)).unwrap(),
+        AppendOutcome::Admitted
+    );
+    assert_eq!(
+        canon.admit_commitment(input, date(2026, 3, 1)).unwrap(),
+        AppendOutcome::AlreadyPresent
+    );
+}
+
+#[test]
+fn propagates_a_structural_rejection_from_the_axiom() {
+    let g = graph();
+    let input = CommitmentInput {
+        assignment: Assignment::new(AgentId::from([99u8; 32]), [g.executor], [g.beneficiary])
+            .unwrap(),
+        ..commitment_input(&g)
+    };
+    let mut canon = Canon::new(g.history);
+
+    assert!(matches!(
+        canon.admit_commitment(input, date(2026, 2, 1)),
+        Err(CanonError::Axiom(_))
+    ));
+}
+
+#[test]
+fn admits_an_eligibility_declared_effective_in_the_future() {
+    let g = graph();
+    let agent = g.accountable;
+    let role = g.actor_role;
+    let mut canon = Canon::new(g.history);
+
+    // Effective from 2030, recorded in 2026: a legitimate forward declaration.
+    assert_eq!(
+        canon
+            .admit_eligibility(
+                EligibilityAssignmentInput {
+                    agent,
+                    roles: BTreeSet::from([role]),
+                    effective_from: date(2030, 1, 1),
+                },
+                date(2026, 1, 1),
+            )
+            .unwrap(),
+        AppendOutcome::Admitted
+    );
+}
+
+#[test]
+fn admits_events_extending_the_chain() {
+    let g = graph();
+    let input = commitment_input(&g);
+    let commitment_id = Commitment::create(input.clone()).unwrap().id();
+    let mut canon = Canon::new(g.history);
+    canon.admit_commitment(input, date(2026, 2, 1)).unwrap();
+
+    assert_eq!(canon.history().head(), None);
+
+    assert_eq!(
+        canon
+            .admit_event(
+                EventSubmission {
+                    commitment_id,
+                    observation: obs("Signed"),
+                    occurred_at: date(2026, 6, 1),
+                },
+                date(2026, 6, 2),
+            )
+            .unwrap(),
+        AppendOutcome::Admitted
+    );
+    let first = canon.history().head();
+    assert!(first.is_some());
+
+    assert_eq!(
+        canon
+            .admit_event(
+                EventSubmission {
+                    commitment_id,
+                    observation: obs("Cancelled"),
+                    occurred_at: date(2026, 7, 1),
+                },
+                date(2026, 7, 2),
+            )
+            .unwrap(),
+        AppendOutcome::Admitted
+    );
+    assert!(canon.history().head().is_some());
+    assert_ne!(canon.history().head(), first);
 }
