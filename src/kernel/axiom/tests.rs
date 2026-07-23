@@ -98,7 +98,7 @@ impl Store {
         self.eligibility
             .entry(*ea.agent())
             .or_default()
-            .insert(*ea.occurred_at(), ea);
+            .insert(*ea.effective_from(), ea);
     }
 }
 
@@ -156,7 +156,7 @@ fn discrete_graph() -> Fixture {
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: executor,
             roles: BTreeSet::from([actor_role]),
-            occurred_at: date(2025, 1, 1),
+            effective_from: date(2025, 1, 1),
         })
         .unwrap(),
     );
@@ -164,7 +164,7 @@ fn discrete_graph() -> Fixture {
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: beneficiary,
             roles: BTreeSet::from([recipient_role]),
-            occurred_at: date(2025, 1, 1),
+            effective_from: date(2025, 1, 1),
         })
         .unwrap(),
     );
@@ -307,7 +307,7 @@ fn admits_a_valid_eligibility_assignment() {
             .admit_eligibility_assignment(EligibilityAssignmentInput {
                 agent,
                 roles: BTreeSet::from([role]),
-                occurred_at: date(2026, 1, 1),
+                effective_from: date(2026, 1, 1),
             })
             .is_ok()
     );
@@ -323,7 +323,7 @@ fn rejects_eligibility_assignment_for_unknown_agent() {
         axiom.admit_eligibility_assignment(EligibilityAssignmentInput {
             agent: AgentId::from([9u8; 32]),
             roles: BTreeSet::from([role]),
-            occurred_at: date(2026, 1, 1),
+            effective_from: date(2026, 1, 1),
         }),
         Err(AxiomError::UnknownAgent(_))
     ));
@@ -345,7 +345,7 @@ fn rejects_eligibility_assignment_for_unknown_role() {
         axiom.admit_eligibility_assignment(EligibilityAssignmentInput {
             agent,
             roles: BTreeSet::from([RoleId::from([9u8; 32])]),
-            occurred_at: date(2026, 1, 1),
+            effective_from: date(2026, 1, 1),
         }),
         Err(AxiomError::UnknownRole(_))
     ));
@@ -586,14 +586,14 @@ fn admits_an_empty_eligibility_assignment_as_a_withdrawal() {
             .admit_eligibility_assignment(EligibilityAssignmentInput {
                 agent,
                 roles: BTreeSet::new(),
-                occurred_at: date(2026, 1, 1),
+                effective_from: date(2026, 1, 1),
             })
             .is_ok()
     );
 }
 
 #[test]
-fn eligibility_takes_effect_on_its_own_occurred_at() {
+fn eligibility_takes_effect_on_its_own_effective_from() {
     let mut f = discrete_graph();
 
     let sameday = f.store.add_agent(
@@ -607,7 +607,7 @@ fn eligibility_takes_effect_on_its_own_occurred_at() {
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: sameday,
             roles: BTreeSet::from([f.actor_role]),
-            occurred_at: date(2026, 1, 1), // exactly the commitment's committed_at
+            effective_from: date(2026, 1, 1), // exactly the commitment's committed_at
         })
         .unwrap(),
     );
@@ -631,7 +631,7 @@ fn eligibility_recorded_after_committed_at_is_not_yet_in_effect() {
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: latecomer,
             roles: BTreeSet::from([f.actor_role]),
-            occurred_at: date(2026, 6, 1), // after the commitment's committed_at
+            effective_from: date(2026, 6, 1), // after the commitment's committed_at
         })
         .unwrap(),
     );
@@ -652,7 +652,7 @@ fn a_later_empty_assignment_withdraws_eligibility() {
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: f.executor,
             roles: BTreeSet::new(),
-            occurred_at: date(2025, 6, 1),
+            effective_from: date(2025, 6, 1),
         })
         .unwrap(),
     );
@@ -673,7 +673,7 @@ fn a_withdrawal_after_committed_at_does_not_apply_retroactively() {
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: f.executor,
             roles: BTreeSet::new(),
-            occurred_at: date(2027, 1, 1),
+            effective_from: date(2027, 1, 1),
         })
         .unwrap(),
     );
@@ -699,7 +699,7 @@ fn an_assignment_carrying_several_roles_satisfies_any_of_them() {
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: multi,
             roles: BTreeSet::from([extra_role, f.actor_role]),
-            occurred_at: date(2025, 1, 1),
+            effective_from: date(2025, 1, 1),
         })
         .unwrap(),
     );
