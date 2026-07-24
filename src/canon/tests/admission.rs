@@ -6,7 +6,7 @@ use crate::canon::{CanonError, EventSubmission};
 #[test]
 fn admits_a_valid_commitment_and_is_idempotent() {
     let g = graph();
-    let input = commitment_input(&g);
+    let input = commitment_input(&g.seeded);
 
     let mut canon = g.canon;
     let first = canon
@@ -22,9 +22,9 @@ fn propagates_a_structural_rejection_from_the_axiom() {
     let g = graph();
 
     let input = CommitmentInput {
-        assignment: Assignment::new(AgentId::from([99u8; 32]), [g.executor], [g.beneficiary])
+        assignment: Assignment::new(AgentId::from([99u8; 32]), [g.seeded.executor], [g.seeded.beneficiary])
             .unwrap(),
-        ..commitment_input(&g)
+        ..commitment_input(&g.seeded)
     };
 
     let mut canon = g.canon;
@@ -38,8 +38,8 @@ fn propagates_a_structural_rejection_from_the_axiom() {
 #[test]
 fn admits_an_eligibility_declared_effective_in_the_future() {
     let g = graph();
-    let agent = g.accountable;
-    let role = g.actor_role;
+    let agent = g.seeded.accountable;
+    let role = g.seeded.actor_role;
     let mut canon = g.canon;
 
     assert!(
@@ -59,8 +59,8 @@ fn admits_an_eligibility_declared_effective_in_the_future() {
 #[test]
 fn re_declaring_the_same_eligibility_is_idempotent() {
     let g = graph();
-    let agent = g.accountable;
-    let role = g.actor_role;
+    let agent = g.seeded.accountable;
+    let role = g.seeded.actor_role;
     let mut canon = g.canon;
 
     let first = canon
@@ -91,8 +91,8 @@ fn re_declaring_the_same_eligibility_is_idempotent() {
 #[test]
 fn rejects_a_conflicting_eligibility_at_the_same_instant() {
     let g = graph();
-    let agent = g.accountable;
-    let role = g.actor_role;
+    let agent = g.seeded.accountable;
+    let role = g.seeded.actor_role;
     let mut canon = g.canon;
 
     canon
@@ -122,8 +122,8 @@ fn rejects_a_conflicting_eligibility_at_the_same_instant() {
 #[test]
 fn admits_a_later_eligibility_for_the_same_agent() {
     let g = graph();
-    let agent = g.accountable;
-    let role = g.actor_role;
+    let agent = g.seeded.accountable;
+    let role = g.seeded.actor_role;
     let mut canon = g.canon;
 
     canon
@@ -154,10 +154,10 @@ fn admits_a_later_eligibility_for_the_same_agent() {
 #[test]
 fn admits_events_extending_the_chain() {
     let g = graph();
-    let first_input = commitment_input(&g);
+    let first_input = commitment_input(&g.seeded);
     let second_input = CommitmentInput {
         term: Term::new(date(2026, 2, 1), date(2027, 1, 1)).unwrap(),
-        ..commitment_input(&g)
+        ..commitment_input(&g.seeded)
     };
     let mut canon = g.canon;
     let first_commitment = canon
@@ -199,7 +199,7 @@ fn admits_events_extending_the_chain() {
 #[test]
 fn re_admitting_the_same_event_fact_is_idempotent() {
     let g = graph();
-    let input = commitment_input(&g);
+    let input = commitment_input(&g.seeded);
     let mut canon = g.canon;
     let commitment_id = canon.admit_commitment(input, date(2026, 2, 1)).unwrap();
 
@@ -232,7 +232,7 @@ fn re_admitting_the_same_event_fact_is_idempotent() {
 #[test]
 fn rejects_a_conflicting_settlement_of_an_already_settled_commitment() {
     let g = graph();
-    let input = commitment_input(&g);
+    let input = commitment_input(&g.seeded);
     let mut canon = g.canon;
     let commitment_id = canon.admit_commitment(input, date(2026, 2, 1)).unwrap();
 
