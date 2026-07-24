@@ -86,6 +86,13 @@ impl CanonicalHistory for MemoryHistory {
             .map(|e| e.assertion())
     }
 
+    fn canonical_commitment(&self, id: CommitmentId) -> Option<&Canonical<Commitment>> {
+        self.commitments.get(&id)
+    }
+    fn canonical_event(&self, id: EventId) -> Option<&Canonical<Event>> {
+        self.events.get(&id)
+    }
+
     fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome {
         put_if_absent(&mut self.roles, role.assertion().id(), role)
     }
@@ -118,27 +125,28 @@ impl CanonicalHistory for MemoryHistory {
             eligibility,
         )
     }
-    fn put_event(&mut self, event: Canonical<Event>) -> AppendOutcome {
-        let commitment = *event.assertion().commitment_id();
+    fn append_event(&mut self, event: Canonical<Event>) -> Result<AppendOutcome, CanonError> {
         let id = event.assertion().id();
-        let outcome = put_if_absent(&mut self.events, id, event);
-
-        if outcome == AppendOutcome::Admitted {
-            self.events_by_commitment.insert(commitment, id);
+        if self.events.contains_key(&id) {
+            return Ok(AppendOutcome::AlreadyPresent);
         }
 
-        outcome
-    }
-
-    fn advance_head(&mut self, expected: Option<EventId>, new: EventId) -> Result<(), CanonError> {
+        let expected = *event.assertion().previous_event();
         if self.head != expected {
             return Err(CanonError::UnexpectedHead {
                 expected,
                 found: self.head,
             });
         }
-        self.head = Some(new);
-        Ok(())
+
+        // Persist, index by commitment, and advance the head as one indivisible
+        // step: a refused append (above) has already returned, leaving no trace.
+        let commitment = *event.assertion().commitment_id();
+        self.events.insert(id, event);
+        self.events_by_commitment.insert(commitment, id);
+        self.head = Some(id);
+
+        Ok(AppendOutcome::Admitted)
     }
 }
 

@@ -30,6 +30,13 @@ pub trait CanonicalHistory: Knowledge {
 
     fn event_of(&self, commitment: CommitmentId) -> Option<&Event>;
 
+    /// The canonical records — the assertion together with its `recorded_at` —
+    /// behind the bare-entity reads inherited from `Knowledge`. A projection reads
+    /// these to answer questions as of a recording instant; the Axiom, validating
+    /// structure only, needs just the bare entity.
+    fn canonical_commitment(&self, id: CommitmentId) -> Option<&Canonical<Commitment>>;
+    fn canonical_event(&self, id: EventId) -> Option<&Canonical<Event>>;
+
     fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome;
     fn put_agent(&mut self, agent: Canonical<Agent>) -> AppendOutcome;
     fn put_resource(&mut self, resource: Canonical<Resource>) -> AppendOutcome;
@@ -39,10 +46,5 @@ pub trait CanonicalHistory: Knowledge {
 
     fn put_commitment(&mut self, commitment: Canonical<Commitment>) -> AppendOutcome;
     fn put_eligibility(&mut self, eligibility: Canonical<EligibilityAssignment>) -> AppendOutcome;
-    fn put_event(&mut self, event: Canonical<Event>) -> AppendOutcome;
-
-    /// Compare-and-swap the chain head: set it to `new` only while it still equals
-    /// `expected`. `expected == None` requires the chain to be empty.
-    fn advance_head(&mut self, expected: Option<EventId>, new: EventId)
-    -> Result<(), CanonError>;
+    fn append_event(&mut self, event: Canonical<Event>) -> Result<AppendOutcome, CanonError>;
 }

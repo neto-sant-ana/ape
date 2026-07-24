@@ -86,7 +86,9 @@ impl<H: CanonicalHistory> Canon<H> {
                 return Ok(settled.id());
             }
 
-            return Err(CanonError::CommitmentAlreadySettled(submission.commitment_id));
+            return Err(CanonError::CommitmentAlreadySettled(
+                submission.commitment_id,
+            ));
         }
 
         let previous = self.history.head();
@@ -100,8 +102,9 @@ impl<H: CanonicalHistory> Canon<H> {
 
         let id = event.id();
 
-        self.history.put_event(Canonical::new(event, recorded_at)?);
-        self.history.advance_head(previous, id)?;
+        self.history
+            .append_event(Canonical::new(event, recorded_at)?)
+            .unwrap();
 
         Ok(id)
     }

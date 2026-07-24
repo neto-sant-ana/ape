@@ -16,7 +16,8 @@ use crate::canon::{AppendOutcome, Canonical, CanonicalHistory};
 
 use crate::kernel::entities::{
     AgentId, Commitment, CommitmentId, CommitmentInput, EligibilityAssignment,
-    EligibilityAssignmentInput, Event, EventId, EventInput, ResourceInstanceId, RoleId, StatementId,
+    EligibilityAssignmentInput, Event, EventId, EventInput, ResourceInstanceId, RoleId,
+    StatementId,
 };
 
 use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation, Term};
@@ -25,9 +26,9 @@ pub fn verify<H: CanonicalHistory>(instance: impl Fn() -> H) {
     commitment_put_is_idempotent(instance());
     eligibility_put_is_idempotent(instance());
     event_put_is_idempotent(instance());
-    advance_head_is_compare_and_swap(instance());
-    a_stored_event_left_unlinked_is_harmless(instance());
+    append_event_is_atomic_compare_and_append(instance());
     event_of_returns_the_settling_event(instance());
+    canonical_reads_expose_the_stored_record(instance());
 }
 
 pub fn commitment_put_is_idempotent<H: CanonicalHistory>(mut history: H) {
@@ -61,62 +62,64 @@ pub fn eligibility_put_is_idempotent<H: CanonicalHistory>(mut history: H) {
 pub fn event_put_is_idempotent<H: CanonicalHistory>(mut history: H) {
     let record = sample_event(CommitmentId::from([1; 32]), None, "Signed");
 
-    assert_eq!(history.put_event(record.clone()), AppendOutcome::Admitted);
+    assert!(matches!(
+        history.append_event(record.clone()),
+        Ok(AppendOutcome::Admitted)
+    ));
 
-    assert_eq!(history.put_event(record), AppendOutcome::AlreadyPresent);
+    assert!(matches!(
+        history.append_event(record),
+        Ok(AppendOutcome::AlreadyPresent)
+    ));
 }
 
-pub fn advance_head_is_compare_and_swap<H: CanonicalHistory>(mut history: H) {
-    let commitment = CommitmentId::from([1; 32]);
+pub fn append_event_is_atomic_compare_and_append<H: CanonicalHistory>(mut history: H) {
+    assert_eq!(history.head(), None, "an empty history has no head");
 
-    assert_eq!(history.head(), None, "a instance history has no head");
-
-    let genesis = sample_event(commitment, None, "Signed");
+    let genesis = sample_event(CommitmentId::from([1; 32]), None, "Signed");
     let genesis_id = genesis.assertion().id();
-
-    history.put_event(genesis);
-
-    history
-        .advance_head(None, genesis_id)
-        .expect("genesis extends the empty chain");
-
+    history.append_event(genesis).unwrap();
     assert_eq!(history.head(), Some(genesis_id));
 
-    let rival = sample_event(commitment, None, "Paid").assertion().id();
-
-    assert!(
-        history.advance_head(None, rival).is_err(),
-        "a stale `expected` must be refused",
-    );
-
+    // An event built against the empty chain is stale now. The append is refused
+    // and leaves no trace: not the head, not the commitment index, not the by-id
+    // read — persisting and linking were one indivisible step.
+    let stale_commitment = CommitmentId::from([2; 32]);
+    let stale = sample_event(stale_commitment, None, "Paid");
+    let stale_id = stale.assertion().id();
+    assert!(history.append_event(stale).is_err(), "a stale head must be refused");
     assert_eq!(history.head(), Some(genesis_id));
+    assert!(history.event_of(stale_commitment).is_none());
+    assert!(history.event(stale_id).is_none());
 
-    let next = sample_event(commitment, Some(genesis_id), "Paid");
+    // Extending from the current head succeeds and moves it.
+    let next = sample_event(CommitmentId::from([3; 32]), Some(genesis_id), "Signed");
     let next_id = next.assertion().id();
-
-    history.put_event(next);
-
-    history
-        .advance_head(Some(genesis_id), next_id)
-        .expect("extends the current head");
-
+    history.append_event(next).unwrap();
     assert_eq!(history.head(), Some(next_id));
 }
 
-pub fn a_stored_event_left_unlinked_is_harmless<H: CanonicalHistory>(mut history: H) {
-    let commitment = CommitmentId::from([1; 32]);
-    let genesis = sample_event(commitment, None, "Signed");
-    let genesis_id = genesis.assertion().id();
+pub fn canonical_reads_expose_the_stored_record<H: CanonicalHistory>(mut history: H) {
+    let commitment = sample_commitment(1);
+    let commitment_id = commitment.assertion().id();
+    let commitment_recorded_at = *commitment.recorded_at();
+    history.put_commitment(commitment);
 
-    history.put_event(genesis);
-    history.advance_head(None, genesis_id).unwrap();
+    let stored = history
+        .canonical_commitment(commitment_id)
+        .expect("a stored commitment is readable as a canonical record");
+    assert_eq!(stored.assertion().id(), commitment_id);
+    assert_eq!(*stored.recorded_at(), commitment_recorded_at);
 
-    let orphan = sample_event(commitment, None, "Paid");
-    let orphan_id = orphan.assertion().id();
+    let event = sample_event(CommitmentId::from([9; 32]), None, "Signed");
+    let event_id = event.assertion().id();
+    let event_recorded_at = *event.recorded_at();
+    history.append_event(event).unwrap();
 
-    assert_eq!(history.put_event(orphan), AppendOutcome::Admitted);
-    assert!(history.advance_head(None, orphan_id).is_err());
-    assert_eq!(history.head(), Some(genesis_id));
+    let stored = history
+        .canonical_event(event_id)
+        .expect("a stored event is readable as a canonical record");
+    assert_eq!(*stored.recorded_at(), event_recorded_at);
 }
 
 pub fn event_of_returns_the_settling_event<H: CanonicalHistory>(mut history: H) {
@@ -130,7 +133,7 @@ pub fn event_of_returns_the_settling_event<H: CanonicalHistory>(mut history: H) 
     let event = sample_event(commitment, None, "Signed");
     let event_id = event.assertion().id();
 
-    history.put_event(event);
+    history.append_event(event).unwrap();
 
     assert_eq!(history.event_of(commitment).map(|e| e.id()), Some(event_id));
 
