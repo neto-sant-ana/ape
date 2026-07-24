@@ -530,6 +530,101 @@ fn admits_an_eligibility_declared_effective_in_the_future() {
 }
 
 #[test]
+fn re_declaring_the_same_eligibility_is_idempotent() {
+    let g = graph();
+    let agent = g.accountable;
+    let role = g.actor_role;
+    let mut canon = g.canon;
+
+    let first = canon
+        .admit_eligibility(
+            EligibilityAssignmentInput {
+                agent,
+                roles: BTreeSet::from([role]),
+                effective_from: date(2025, 1, 1),
+            },
+            date(2025, 1, 1),
+        )
+        .unwrap();
+
+    let again = canon
+        .admit_eligibility(
+            EligibilityAssignmentInput {
+                agent,
+                roles: BTreeSet::from([role]),
+                effective_from: date(2025, 1, 1),
+            },
+            date(2025, 6, 1),
+        )
+        .unwrap();
+
+    assert_eq!(first, again);
+}
+
+#[test]
+fn rejects_a_conflicting_eligibility_at_the_same_instant() {
+    let g = graph();
+    let agent = g.accountable;
+    let role = g.actor_role;
+    let mut canon = g.canon;
+
+    canon
+        .admit_eligibility(
+            EligibilityAssignmentInput {
+                agent,
+                roles: BTreeSet::from([role]),
+                effective_from: date(2025, 1, 1),
+            },
+            date(2025, 1, 1),
+        )
+        .unwrap();
+
+    assert!(matches!(
+        canon.admit_eligibility(
+            EligibilityAssignmentInput {
+                agent,
+                roles: BTreeSet::new(),
+                effective_from: date(2025, 1, 1),
+            },
+            date(2025, 1, 1),
+        ),
+        Err(CanonError::ConflictingEligibility { .. })
+    ));
+}
+
+#[test]
+fn admits_a_later_eligibility_for_the_same_agent() {
+    let g = graph();
+    let agent = g.accountable;
+    let role = g.actor_role;
+    let mut canon = g.canon;
+
+    canon
+        .admit_eligibility(
+            EligibilityAssignmentInput {
+                agent,
+                roles: BTreeSet::from([role]),
+                effective_from: date(2025, 1, 1),
+            },
+            date(2025, 1, 1),
+        )
+        .unwrap();
+
+    assert!(
+        canon
+            .admit_eligibility(
+                EligibilityAssignmentInput {
+                    agent,
+                    roles: BTreeSet::new(),
+                    effective_from: date(2026, 1, 1),
+                },
+                date(2026, 1, 1),
+            )
+            .is_ok()
+    );
+}
+
+#[test]
 fn admits_events_extending_the_chain() {
     let g = graph();
     let first_input = commitment_input(&g);

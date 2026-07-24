@@ -46,9 +46,32 @@ impl<H: CanonicalHistory> Canon<H> {
         admit_action(ActionInput) -> ActionId { admit_action, put_action },
         admit_statement(StatementInput) -> StatementId { admit_statement, put_statement },
         admit_commitment(CommitmentInput) -> CommitmentId { admit_commitment, put_commitment },
-        admit_eligibility(EligibilityAssignmentInput) -> EligibilityAssignmentId {
-            admit_eligibility_assignment, put_eligibility
-        },
+    }
+
+    pub fn admit_eligibility(
+        &mut self,
+        input: EligibilityAssignmentInput,
+        recorded_at: Date,
+    ) -> Result<EligibilityAssignmentId, CanonError> {
+        if let Some(existing) = self
+            .history
+            .eligibilities_of(input.agent)
+            .find(|e| *e.effective_from() == input.effective_from)
+        {
+            if existing.roles() == &input.roles {
+                return Ok(existing.id());
+            }
+            return Err(CanonError::ConflictingEligibility {
+                agent: input.agent,
+                effective_from: input.effective_from,
+            });
+        }
+
+        let eligibility = Axiom::new(&self.history).admit_eligibility_assignment(input)?;
+        let id = eligibility.id();
+        self.history
+            .put_eligibility(Canonical::new(eligibility, recorded_at)?);
+        Ok(id)
     }
 
     pub fn admit_event(

@@ -2,7 +2,7 @@
 
 use crate::kernel::axiom::AxiomError;
 
-use crate::kernel::entities::{CommitmentId, EventId};
+use crate::kernel::entities::{AgentId, CommitmentId, EventId};
 
 use crate::kernel::value_objects::Date;
 
@@ -19,6 +19,9 @@ pub enum CanonError {
 
     #[error("commitment {0} is already settled by an event")]
     CommitmentAlreadySettled(CommitmentId),
+
+    #[error("agent {agent} already has a different eligibility effective from {effective_from:?}")]
+    ConflictingEligibility { agent: AgentId, effective_from: Date },
 
     #[error("recorded_at {recorded_at:?} precedes the assertion's factual instant {fact:?}")]
     RecordedBeforeFact { fact: Date, recorded_at: Date },
