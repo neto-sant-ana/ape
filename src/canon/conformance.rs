@@ -9,10 +9,15 @@
 //!     ape::canon::conformance::verify(MyHistory::default);
 //! }
 //! ```
+//!
+//! An adapter that additionally claims to be thread-safe proves it with
+//! [`verify_thread_safe`], which drives concurrent contention against the atomic
+//! compare-and-append. A thread-safe adapter is a `Clone` handle whose clones share
+//! one backing store; the suite drives one clone per thread.
 
 use std::collections::BTreeSet;
 
-use crate::canon::{AppendOutcome, Canonical, CanonicalHistory};
+use crate::canon::{AppendOutcome, CanonError, Canonical, CanonicalHistory};
 
 use crate::kernel::entities::{
     AgentId, Commitment, CommitmentId, CommitmentInput, EligibilityAssignment,
@@ -141,6 +146,71 @@ pub fn event_of_returns_the_settling_event<H: CanonicalHistory>(mut history: H) 
         history.event_of(CommitmentId::from([2; 32])).is_none(),
         "an unsettled commitment has no event",
     );
+}
+
+/// The opt-in contention suite for an adapter that declares itself thread-safe.
+///
+/// `instance` must be a `Clone` handle whose clones share one backing store; each
+/// thread drives its own clone.
+pub fn verify_thread_safe<H>(instance: H)
+where
+    H: CanonicalHistory + Clone + Send + 'static,
+{
+    append_event_serializes_under_contention(instance);
+}
+
+/// Many threads race to extend the same head; the compare-and-append must serialize
+/// them: exactly one advances the head, and every loser is refused with
+/// [`CanonError::UnexpectedHead`] leaving no trace — no event by id, no commitment
+/// index entry. This is what proves the append is atomic under real threads, not
+/// merely a sequential check-then-write with a window a second thread can slip into.
+pub fn append_event_serializes_under_contention<H>(history: H)
+where
+    H: CanonicalHistory + Clone + Send + 'static,
+{
+    let genesis = sample_event(CommitmentId::from([0; 32]), None, "Signed");
+    let genesis_id = genesis.assertion().id();
+    history.clone().append_event(genesis).unwrap();
+
+    const CONTENDERS: u8 = 8;
+    let racers: Vec<_> = (1..=CONTENDERS)
+        .map(|tag| {
+            let mut adapter = history.clone();
+            std::thread::spawn(move || {
+                let commitment = CommitmentId::from([tag; 32]);
+                let event = sample_event(commitment, Some(genesis_id), "Signed");
+                let event_id = event.assertion().id();
+                (commitment, event_id, adapter.append_event(event))
+            })
+        })
+        .collect();
+
+    let outcomes: Vec<_> = racers.into_iter().map(|r| r.join().unwrap()).collect();
+
+    let winners = outcomes
+        .iter()
+        .filter(|(_, _, outcome)| matches!(outcome, Ok(AppendOutcome::Admitted)))
+        .count();
+    assert_eq!(winners, 1, "exactly one racer advances the head");
+
+    for (commitment, event_id, outcome) in &outcomes {
+        match outcome {
+            Ok(AppendOutcome::Admitted) => {
+                assert_eq!(history.head(), Some(*event_id), "the head is the sole winner's event");
+            }
+            Err(CanonError::UnexpectedHead { .. }) => {
+                assert!(
+                    history.event(*event_id).is_none(),
+                    "a refused append persists no event",
+                );
+                assert!(
+                    history.event_of(*commitment).is_none(),
+                    "a refused append indexes no commitment",
+                );
+            }
+            other => panic!("unexpected outcome under contention: {other:?}"),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

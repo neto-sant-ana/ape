@@ -7,6 +7,7 @@
 //! factories and the seeded [`graph`], reused across the test modules.
 
 mod admission;
+mod concurrent;
 mod envelope;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -356,6 +357,106 @@ fn commitment_input(g: &Graph) -> CommitmentInput {
         action_value: ActionValue::none(),
         dependencies: BTreeSet::new(),
     }
+}
+
+/// Seed a full valid graph through `canon` and admit one commitment, returning its
+/// id. Generic over the history so any adapter can be seeded — the concurrent one
+/// included.
+fn seed_commitment<H: CanonicalHistory>(canon: &mut Canon<H>) -> CommitmentId {
+    // Late enough to clear every RecordableAfter bound, the commitment's
+    // committed_at (2026-01-01) included.
+    let rec = date(2026, 7, 1);
+
+    let actor_role = canon
+        .admit_role(RoleInput { label: ident("actor") }, rec)
+        .unwrap();
+    let recipient_role = canon
+        .admit_role(RoleInput { label: ident("recipient") }, rec)
+        .unwrap();
+
+    let accountable = canon
+        .admit_agent(
+            AgentInput { label: ident("accountable"), kind: AgentKind::Company },
+            rec,
+        )
+        .unwrap();
+    let executor = canon
+        .admit_agent(
+            AgentInput { label: ident("executor"), kind: AgentKind::Individual },
+            rec,
+        )
+        .unwrap();
+    let beneficiary = canon
+        .admit_agent(
+            AgentInput { label: ident("beneficiary"), kind: AgentKind::Company },
+            rec,
+        )
+        .unwrap();
+
+    canon
+        .admit_eligibility(
+            EligibilityAssignmentInput {
+                agent: executor,
+                roles: BTreeSet::from([actor_role]),
+                effective_from: date(2025, 1, 1),
+            },
+            rec,
+        )
+        .unwrap();
+    canon
+        .admit_eligibility(
+            EligibilityAssignmentInput {
+                agent: beneficiary,
+                roles: BTreeSet::from([recipient_role]),
+                effective_from: date(2025, 1, 1),
+            },
+            rec,
+        )
+        .unwrap();
+
+    let resource = canon
+        .admit_resource(
+            ResourceInput { label: ident("resource"), kind: ResourceKind::Discrete },
+            rec,
+        )
+        .unwrap();
+    let instance = canon
+        .admit_resource_instance(
+            ResourceInstanceInput { label: ident("instance"), resource },
+            rec,
+        )
+        .unwrap();
+    let action = canon
+        .admit_action(
+            ActionInput { verb: ident("sign"), kind: ActionKind::Discrete, resource },
+            rec,
+        )
+        .unwrap();
+    let statement = canon
+        .admit_statement(
+            StatementInput {
+                participants: Participants::new([actor_role], [recipient_role]).unwrap(),
+                action,
+                settlement: Settlement::new([obs("Signed")], [obs("Cancelled")]).unwrap(),
+            },
+            rec,
+        )
+        .unwrap();
+
+    canon
+        .admit_commitment(
+            CommitmentInput {
+                assignment: Assignment::new(accountable, [executor], [beneficiary]).unwrap(),
+                statement,
+                resource: instance,
+                term: Term::new(date(2026, 1, 1), date(2026, 12, 31)).unwrap(),
+                supersedes: None,
+                action_value: ActionValue::none(),
+                dependencies: BTreeSet::new(),
+            },
+            rec,
+        )
+        .unwrap()
 }
 
 #[test]
