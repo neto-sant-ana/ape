@@ -28,14 +28,14 @@ pub enum AppendOutcome {
 pub trait CanonicalHistory: Knowledge {
     fn head(&self) -> Option<EventId>;
 
-    fn event_of(&self, commitment: CommitmentId) -> Option<&Event>;
+    fn event_of(&self, commitment: CommitmentId) -> Option<Event>;
 
     /// The canonical records — the assertion together with its `recorded_at` —
     /// behind the bare-entity reads inherited from `Knowledge`. A projection reads
     /// these to answer questions as of a recording instant; the Axiom, validating
     /// structure only, needs just the bare entity.
-    fn canonical_commitment(&self, id: CommitmentId) -> Option<&Canonical<Commitment>>;
-    fn canonical_event(&self, id: EventId) -> Option<&Canonical<Event>>;
+    fn canonical_commitment(&self, id: CommitmentId) -> Option<Canonical<Commitment>>;
+    fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>>;
 
     fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome;
     fn put_agent(&mut self, agent: Canonical<Agent>) -> AppendOutcome;

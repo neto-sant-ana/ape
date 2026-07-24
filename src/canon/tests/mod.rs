@@ -43,35 +43,37 @@ struct MemoryHistory {
     head: Option<EventId>,
 }
 impl Knowledge for MemoryHistory {
-    fn role(&self, id: RoleId) -> Option<&Role> {
-        self.roles.get(&id).map(|r| r.assertion())
+    fn role(&self, id: RoleId) -> Option<Role> {
+        self.roles.get(&id).map(|a| a.assertion().clone())
     }
-    fn agent(&self, id: AgentId) -> Option<&Agent> {
-        self.agents.get(&id).map(|a| a.assertion())
+    fn agent(&self, id: AgentId) -> Option<Agent> {
+        self.agents.get(&id).map(|a| a.assertion().clone())
     }
-    fn resource(&self, id: ResourceId) -> Option<&Resource> {
-        self.resources.get(&id).map(|r| r.assertion())
+    fn resource(&self, id: ResourceId) -> Option<Resource> {
+        self.resources.get(&id).map(|r| r.assertion().clone())
     }
-    fn resource_instance(&self, id: ResourceInstanceId) -> Option<&ResourceInstance> {
-        self.instances.get(&id).map(|i| i.assertion())
+    fn resource_instance(&self, id: ResourceInstanceId) -> Option<ResourceInstance> {
+        self.instances.get(&id).map(|i| i.assertion().clone())
     }
-    fn action(&self, id: ActionId) -> Option<&Action> {
-        self.actions.get(&id).map(|a| a.assertion())
+    fn action(&self, id: ActionId) -> Option<Action> {
+        self.actions.get(&id).map(|a| a.assertion().clone())
     }
-    fn statement(&self, id: StatementId) -> Option<&Statement> {
-        self.statements.get(&id).map(|s| s.assertion())
+    fn statement(&self, id: StatementId) -> Option<Statement> {
+        self.statements.get(&id).map(|s| s.assertion().clone())
     }
-    fn commitment(&self, id: CommitmentId) -> Option<&Commitment> {
-        self.commitments.get(&id).map(|c| c.assertion())
+    fn commitment(&self, id: CommitmentId) -> Option<Commitment> {
+        self.commitments.get(&id).map(|c| c.assertion().clone())
     }
-    fn event(&self, id: EventId) -> Option<&Event> {
-        self.events.get(&id).map(|e| e.assertion())
+    fn event(&self, id: EventId) -> Option<Event> {
+        self.events.get(&id).map(|e| e.assertion().clone())
     }
-    fn eligibilities_of(&self, agent: AgentId) -> impl Iterator<Item = &EligibilityAssignment> {
+    fn eligibilities_of(&self, agent: AgentId) -> Vec<EligibilityAssignment> {
         self.eligibility
             .values()
             .map(|e| e.assertion())
             .filter(move |e| *e.agent() == agent)
+            .cloned()
+            .collect()
     }
 }
 impl CanonicalHistory for MemoryHistory {
@@ -79,18 +81,18 @@ impl CanonicalHistory for MemoryHistory {
         self.head
     }
 
-    fn event_of(&self, commitment: CommitmentId) -> Option<&Event> {
+    fn event_of(&self, commitment: CommitmentId) -> Option<Event> {
         self.events_by_commitment
             .get(&commitment)
             .and_then(|id| self.events.get(id))
-            .map(|e| e.assertion())
+            .map(|e| e.assertion().clone())
     }
 
-    fn canonical_commitment(&self, id: CommitmentId) -> Option<&Canonical<Commitment>> {
-        self.commitments.get(&id)
+    fn canonical_commitment(&self, id: CommitmentId) -> Option<Canonical<Commitment>> {
+        self.commitments.get(&id).cloned()
     }
-    fn canonical_event(&self, id: EventId) -> Option<&Canonical<Event>> {
-        self.events.get(&id)
+    fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>> {
+        self.events.get(&id).cloned()
     }
 
     fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome {

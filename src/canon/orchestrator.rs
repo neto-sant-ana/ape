@@ -56,6 +56,7 @@ impl<H: CanonicalHistory> Canon<H> {
         if let Some(existing) = self
             .history
             .eligibilities_of(input.agent)
+            .into_iter()
             .find(|e| *e.effective_from() == input.effective_from)
         {
             if existing.roles() == &input.roles {
