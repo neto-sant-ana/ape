@@ -129,7 +129,7 @@ fn eligibility_takes_effect_on_its_own_effective_from() {
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: sameday,
             roles: BTreeSet::from([f.actor_role]),
-            effective_from: date(2026, 1, 1), // exactly the commitment's committed_at
+            effective_from: date(2026, 1, 1),
         })
         .unwrap(),
     );
@@ -155,7 +155,7 @@ fn eligibility_recorded_after_committed_at_is_not_yet_in_effect() {
         EligibilityAssignment::create(EligibilityAssignmentInput {
             agent: latecomer,
             roles: BTreeSet::from([f.actor_role]),
-            effective_from: date(2026, 6, 1), // after the commitment's committed_at
+            effective_from: date(2026, 6, 1),
         })
         .unwrap(),
     );
@@ -231,8 +231,6 @@ fn a_tie_on_effective_from_resolves_by_id_deterministically() {
     })
     .unwrap();
 
-    // Distinct roles hash to distinct ids; the greater id must win regardless of
-    // which was stored first.
     let winner = one.id().max(other.id());
     store.add_eligibility(one);
     store.add_eligibility(other);
