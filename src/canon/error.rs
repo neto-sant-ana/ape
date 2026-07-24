@@ -11,6 +11,8 @@ pub enum CanonError {
     #[error(transparent)]
     Axiom(#[from] AxiomError),
 
+    /// The event was built against a head that has since moved. Recovery is a fresh
+    /// admission through the Canon — which re-reads the head and re-runs settle-once.
     #[error("event chain head moved: the event extends {expected:?} but the head is {found:?}")]
     UnexpectedHead {
         expected: Option<EventId>,

@@ -74,6 +74,19 @@ impl<H: CanonicalHistory> Canon<H> {
         Ok(id)
     }
 
+    /// Admit an event, settling its commitment.
+    ///
+    /// Settle-once is enforced first, semantically: if the commitment already has
+    /// an event, an identical fact is idempotent and a different one is refused.
+    /// The Canon then stamps the event with the current head and appends it
+    /// atomically.
+    ///
+    /// If the head moves between the stamp and the append, the append is refused
+    /// with [`CanonError::UnexpectedHead`], which propagates from here. Recovery is
+    /// to call `admit_event` **again** — a fresh admission that re-runs the
+    /// settle-once check against the new state. The caller must not rebuild the
+    /// event and hand it to the history directly: only re-admission re-applies the
+    /// semantic checks, so settle-once holds under concurrency.
     pub fn admit_event(
         &mut self,
         submission: EventSubmission,
@@ -103,8 +116,7 @@ impl<H: CanonicalHistory> Canon<H> {
         let id = event.id();
 
         self.history
-            .append_event(Canonical::new(event, recorded_at)?)
-            .unwrap();
+            .append_event(Canonical::new(event, recorded_at)?)?;
 
         Ok(id)
     }

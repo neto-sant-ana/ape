@@ -46,5 +46,14 @@ pub trait CanonicalHistory: Knowledge {
 
     fn put_commitment(&mut self, commitment: Canonical<Commitment>) -> AppendOutcome;
     fn put_eligibility(&mut self, eligibility: Canonical<EligibilityAssignment>) -> AppendOutcome;
+
+    /// Append `event` to the chain atomically: persisting it, indexing it by
+    /// commitment, and advancing the head happen together, and only while the head
+    /// still equals the event's `previous_event`. A stale head is refused with
+    /// [`CanonError::UnexpectedHead`], leaving no trace.
+    ///
+    /// A refusal is not the adapter's to retry, nor the caller's to paper over by
+    /// re-stamping the event and resubmitting here. Recovery is a fresh admission through
+    /// the Canon, which re-runs the settle-once check.
     fn append_event(&mut self, event: Canonical<Event>) -> Result<AppendOutcome, CanonError>;
 }
