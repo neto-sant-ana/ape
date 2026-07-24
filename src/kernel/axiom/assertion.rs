@@ -123,7 +123,7 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
         }
 
         // An empty role set is admissible on purpose: it is how an agent is
-        // withdrawn from every role as of `occurred_at`.
+        // withdrawn from every role as of `effective_from`.
         Ok(EligibilityAssignment::create(input)?)
     }
 
