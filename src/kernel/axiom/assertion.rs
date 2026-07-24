@@ -123,8 +123,7 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
         }
 
         // An empty role set is admissible on purpose: it is how an agent is
-        // withdrawn from every role as of `occurred_at`, without inventing a
-        // fictitious role. So there is no non-empty requirement here.
+        // withdrawn from every role as of `occurred_at`.
         Ok(EligibilityAssignment::create(input)?)
     }
 
