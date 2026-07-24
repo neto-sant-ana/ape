@@ -15,9 +15,10 @@ use super::{Axiom, AxiomError, Knowledge};
 
 use crate::kernel::entities::{
     Action, ActionId, ActionInput, Agent, AgentId, AgentInput, Commitment, CommitmentId,
-    CommitmentInput, EligibilityAssignment, EligibilityAssignmentInput, Event, EventId, EventInput,
-    Resource, ResourceId, ResourceInput, ResourceInstance, ResourceInstanceId,
-    ResourceInstanceInput, Role, RoleId, RoleInput, Statement, StatementId, StatementInput,
+    CommitmentInput, EligibilityAssignment, EligibilityAssignmentId, EligibilityAssignmentInput,
+    Event, EventId, EventInput, Resource, ResourceId, ResourceInput, ResourceInstance,
+    ResourceInstanceId, ResourceInstanceInput, Role, RoleId, RoleInput, Statement, StatementId,
+    StatementInput,
 };
 
 use crate::kernel::value_objects::{
@@ -35,38 +36,39 @@ struct Store {
     statements: BTreeMap<StatementId, Statement>,
     commitments: BTreeMap<CommitmentId, Commitment>,
     events: BTreeMap<EventId, Event>,
-    eligibility: BTreeMap<AgentId, BTreeMap<Date, EligibilityAssignment>>,
+    eligibility: BTreeMap<AgentId, BTreeMap<EligibilityAssignmentId, EligibilityAssignment>>,
 }
 impl Knowledge for Store {
-    fn role(&self, id: RoleId) -> Option<&Role> {
-        self.roles.get(&id)
+    fn role(&self, id: RoleId) -> Option<Role> {
+        self.roles.get(&id).cloned()
     }
-    fn agent(&self, id: AgentId) -> Option<&Agent> {
-        self.agents.get(&id)
+    fn agent(&self, id: AgentId) -> Option<Agent> {
+        self.agents.get(&id).cloned()
     }
-    fn resource(&self, id: ResourceId) -> Option<&Resource> {
-        self.resources.get(&id)
+    fn resource(&self, id: ResourceId) -> Option<Resource> {
+        self.resources.get(&id).cloned()
     }
-    fn resource_instance(&self, id: ResourceInstanceId) -> Option<&ResourceInstance> {
-        self.instances.get(&id)
+    fn resource_instance(&self, id: ResourceInstanceId) -> Option<ResourceInstance> {
+        self.instances.get(&id).cloned()
     }
-    fn action(&self, id: ActionId) -> Option<&Action> {
-        self.actions.get(&id)
+    fn action(&self, id: ActionId) -> Option<Action> {
+        self.actions.get(&id).cloned()
     }
-    fn statement(&self, id: StatementId) -> Option<&Statement> {
-        self.statements.get(&id)
+    fn statement(&self, id: StatementId) -> Option<Statement> {
+        self.statements.get(&id).cloned()
     }
-    fn commitment(&self, id: CommitmentId) -> Option<&Commitment> {
-        self.commitments.get(&id)
+    fn commitment(&self, id: CommitmentId) -> Option<Commitment> {
+        self.commitments.get(&id).cloned()
     }
-    fn event(&self, id: EventId) -> Option<&Event> {
-        self.events.get(&id)
+    fn event(&self, id: EventId) -> Option<Event> {
+        self.events.get(&id).cloned()
     }
-    fn eligibilities_of(&self, agent: AgentId) -> impl Iterator<Item = &EligibilityAssignment> {
+    fn eligibilities_of(&self, agent: AgentId) -> Vec<EligibilityAssignment> {
         self.eligibility
             .get(&agent)
             .into_iter()
-            .flat_map(|by_date| by_date.values())
+            .flat_map(|by_id| by_id.values().cloned())
+            .collect()
     }
 }
 impl Store {
@@ -109,7 +111,7 @@ impl Store {
         self.eligibility
             .entry(*ea.agent())
             .or_default()
-            .insert(*ea.effective_from(), ea);
+            .insert(ea.id(), ea);
     }
 }
 
