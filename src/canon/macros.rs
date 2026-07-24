@@ -1,16 +1,16 @@
 //! Declarative macros for the Canon.
 //!
-//! - `no_factual_past` — implements `FactualPast` returning `None` for assertions
-//!   that carry no factual-past instant, so `recorded_at` is unbounded below for
-//!   them (definitional entities, and eligibility as a forward declaration).
+//! - `recordable_anytime` — implements `RecordableAfter` returning `None` for
+//!   assertions with no lower bound on `recorded_at` (definitional entities, and
+//!   eligibility as a forward declaration).
 //!
 //! - `canonical_admission` — generates the uniform `admit_*` methods of the Canon.
 
-macro_rules! no_factual_past {
+macro_rules! recordable_anytime {
     ($($type:ty),+ $(,)?) => {
         $(
-            impl $crate::canon::record::FactualPast for $type {
-                fn factual_past(&self) -> Option<&$crate::kernel::value_objects::Date> {
+            impl $crate::canon::record::RecordableAfter for $type {
+                fn recordable_after(&self) -> Option<&$crate::kernel::value_objects::Date> {
                     None
                 }
             }

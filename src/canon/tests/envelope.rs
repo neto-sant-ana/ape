@@ -8,7 +8,7 @@ fn an_event_recorded_before_it_occurred_is_rejected() {
 
     assert!(matches!(
         Canonical::new(observed, date(2026, 5, 31)),
-        Err(CanonError::RecordedBeforeFact { .. })
+        Err(CanonError::RecordedTooEarly { .. })
     ));
 }
 
@@ -16,7 +16,7 @@ fn an_event_recorded_before_it_occurred_is_rejected() {
 fn a_commitment_recorded_before_it_was_committed_is_rejected() {
     assert!(matches!(
         Canonical::new(commitment(1), date(2025, 12, 31)), // committed 2026-01-01
-        Err(CanonError::RecordedBeforeFact { .. })
+        Err(CanonError::RecordedTooEarly { .. })
     ));
 }
 

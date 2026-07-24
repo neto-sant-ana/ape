@@ -2,7 +2,7 @@
 //! into canonical history.
 //!
 //! `recorded_at` is when the knowledge entered the system, distinct from an
-//! assertion's own factual time (`occurred_at`, `committed_at`).
+//! assertion's own time (`occurred_at`, `committed_at`).
 
 use super::CanonError;
 
@@ -13,21 +13,28 @@ use crate::kernel::entities::{
 
 use crate::kernel::value_objects::Date;
 
-pub trait FactualPast {
-    fn factual_past(&self) -> Option<&Date>;
+/// The earliest instant at which an assertion could have been recorded — the lower
+/// bound its `recorded_at` must not precede.
+///
+/// An `Event` was observed (`occurred_at`) and a `Commitment` was decided
+/// (`committed_at`), so recording cannot predate that instant. Definitional
+/// entities and eligibility (a forward declaration whose `effective_from` may be
+/// future) impose no lower bound.
+pub trait RecordableAfter {
+    fn recordable_after(&self) -> Option<&Date>;
 }
 
-impl FactualPast for Commitment {
-    fn factual_past(&self) -> Option<&Date> {
+impl RecordableAfter for Commitment {
+    fn recordable_after(&self) -> Option<&Date> {
         Some(self.term().committed_at())
     }
 }
-impl FactualPast for Event {
-    fn factual_past(&self) -> Option<&Date> {
+impl RecordableAfter for Event {
+    fn recordable_after(&self) -> Option<&Date> {
         Some(self.occurred_at())
     }
 }
-no_factual_past!(
+recordable_anytime!(
     Role,
     Agent,
     Resource,
@@ -51,13 +58,13 @@ impl<T> Canonical<T> {
         &self.recorded_at
     }
 }
-impl<T: FactualPast> Canonical<T> {
+impl<T: RecordableAfter> Canonical<T> {
     pub(crate) fn new(assertion: T, recorded_at: Date) -> Result<Self, CanonError> {
-        if let Some(fact) = assertion.factual_past()
-            && !fact.up_to(&recorded_at)
+        if let Some(earliest) = assertion.recordable_after()
+            && !earliest.up_to(&recorded_at)
         {
-            return Err(CanonError::RecordedBeforeFact {
-                fact: *fact,
+            return Err(CanonError::RecordedTooEarly {
+                earliest: *earliest,
                 recorded_at,
             });
         }

@@ -23,6 +23,8 @@ pub enum CanonError {
     #[error("agent {agent} already has a different eligibility effective from {effective_from:?}")]
     ConflictingEligibility { agent: AgentId, effective_from: Date },
 
-    #[error("recorded_at {recorded_at:?} precedes the assertion's factual instant {fact:?}")]
-    RecordedBeforeFact { fact: Date, recorded_at: Date },
+    #[error(
+        "recorded_at {recorded_at:?} precedes {earliest:?}, the earliest this assertion could be recorded"
+    )]
+    RecordedTooEarly { earliest: Date, recorded_at: Date },
 }
