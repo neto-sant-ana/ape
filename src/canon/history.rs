@@ -7,8 +7,9 @@
 //! - `put_*` is a content-addressed put-if-absent: the id is the hash of the
 //!   content, so it is idempotent by construction and a re-put is a no-op.
 //! 
-//! - `advance_head` is a compare-and-swap on the single mutable pointer of the
-//!   event chain.
+//! - `append_event` is an atomic compare-and-append: it persists the event,
+//!   indexes it by commitment and advances the single event-chain head only
+//!   if the event still extends the current head.
 
 use super::{CanonError, Canonical};
 
