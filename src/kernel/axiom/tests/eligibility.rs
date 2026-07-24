@@ -204,6 +204,46 @@ fn a_withdrawal_after_committed_at_does_not_apply_retroactively() {
 }
 
 #[test]
+fn a_tie_on_effective_from_resolves_by_id_deterministically() {
+    let mut store = Store::default();
+
+    let agent = store.add_agent(
+        Agent::create(AgentInput {
+            label: ident("agent"),
+            kind: AgentKind::Individual,
+        })
+        .unwrap(),
+    );
+    let role_a = store.add_role(Role::create(RoleInput { label: ident("a") }).unwrap());
+    let role_b = store.add_role(Role::create(RoleInput { label: ident("b") }).unwrap());
+
+    let effective_from = date(2025, 1, 1);
+    let one = EligibilityAssignment::create(EligibilityAssignmentInput {
+        agent,
+        roles: BTreeSet::from([role_a]),
+        effective_from,
+    })
+    .unwrap();
+    let other = EligibilityAssignment::create(EligibilityAssignmentInput {
+        agent,
+        roles: BTreeSet::from([role_b]),
+        effective_from,
+    })
+    .unwrap();
+
+    // Distinct roles hash to distinct ids; the greater id must win regardless of
+    // which was stored first.
+    let winner = one.id().max(other.id());
+    store.add_eligibility(one);
+    store.add_eligibility(other);
+
+    assert_eq!(
+        store.eligibility_at(agent, &date(2026, 1, 1)).map(|e| e.id()),
+        Some(winner),
+    );
+}
+
+#[test]
 fn an_assignment_carrying_several_roles_satisfies_any_of_them() {
     let mut f = discrete_graph();
 

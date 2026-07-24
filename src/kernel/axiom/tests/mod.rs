@@ -15,9 +15,10 @@ use super::{Axiom, AxiomError, Knowledge};
 
 use crate::kernel::entities::{
     Action, ActionId, ActionInput, Agent, AgentId, AgentInput, Commitment, CommitmentId,
-    CommitmentInput, EligibilityAssignment, EligibilityAssignmentInput, Event, EventId, EventInput,
-    Resource, ResourceId, ResourceInput, ResourceInstance, ResourceInstanceId,
-    ResourceInstanceInput, Role, RoleId, RoleInput, Statement, StatementId, StatementInput,
+    CommitmentInput, EligibilityAssignment, EligibilityAssignmentId, EligibilityAssignmentInput,
+    Event, EventId, EventInput, Resource, ResourceId, ResourceInput, ResourceInstance,
+    ResourceInstanceId, ResourceInstanceInput, Role, RoleId, RoleInput, Statement, StatementId,
+    StatementInput,
 };
 
 use crate::kernel::value_objects::{
@@ -35,7 +36,7 @@ struct Store {
     statements: BTreeMap<StatementId, Statement>,
     commitments: BTreeMap<CommitmentId, Commitment>,
     events: BTreeMap<EventId, Event>,
-    eligibility: BTreeMap<AgentId, BTreeMap<Date, EligibilityAssignment>>,
+    eligibility: BTreeMap<AgentId, BTreeMap<EligibilityAssignmentId, EligibilityAssignment>>,
 }
 impl Knowledge for Store {
     fn role(&self, id: RoleId) -> Option<&Role> {
@@ -109,7 +110,7 @@ impl Store {
         self.eligibility
             .entry(*ea.agent())
             .or_default()
-            .insert(*ea.effective_from(), ea);
+            .insert(ea.id(), ea);
     }
 }
 

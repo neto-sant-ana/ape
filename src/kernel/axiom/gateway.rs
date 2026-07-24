@@ -32,10 +32,15 @@ pub trait Knowledge {
 
     /// The assignment in effect for `agent` as of `at`: the latest one whose
     /// `effective_from` does not exceed `at`.
+    ///
+    /// Two assignments sharing an `effective_from` should never coexist — the Canon
+    /// admits only one per `(agent, effective_from)`. Should a concurrent slip let a
+    /// duplicate slip through, the id breaks the tie, so the winner is the same across
+    /// every adapter and iteration order and the loser persists as a harmless shadow.
     fn eligibility_at(&self, agent: AgentId, at: &Date) -> Option<&EligibilityAssignment> {
         self.eligibilities_of(agent)
             .filter(|e| e.effective_from().up_to(at))
-            .max_by_key(|e| *e.effective_from())
+            .max_by_key(|e| (*e.effective_from(), e.id()))
     }
 }
 
