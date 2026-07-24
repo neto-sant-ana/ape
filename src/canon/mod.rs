@@ -13,5 +13,8 @@ pub use record::Canonical;
 mod orchestrator;
 pub use orchestrator::{Canon, EventSubmission};
 
+#[cfg(any(test, feature = "conformance"))]
+pub mod conformance;
+
 #[cfg(test)]
 mod tests;

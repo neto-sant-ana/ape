@@ -8,7 +8,6 @@
 
 mod admission;
 mod envelope;
-mod primitives;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -347,4 +346,9 @@ fn commitment_input(g: &Graph) -> CommitmentInput {
         action_value: ActionValue::none(),
         dependencies: BTreeSet::new(),
     }
+}
+
+#[test]
+fn the_reference_history_conforms() {
+    super::conformance::verify(MemoryHistory::default);
 }
