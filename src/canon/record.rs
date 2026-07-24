@@ -6,7 +6,10 @@
 
 use super::CanonError;
 
-use crate::kernel::entities::{Commitment, EligibilityAssignment, Event};
+use crate::kernel::entities::{
+    Action, Agent, Commitment, EligibilityAssignment, Event, Resource, ResourceInstance, Role,
+    Statement,
+};
 
 use crate::kernel::value_objects::Date;
 
@@ -24,11 +27,15 @@ impl FactualPast for Event {
         Some(self.occurred_at())
     }
 }
-impl FactualPast for EligibilityAssignment {
-    fn factual_past(&self) -> Option<&Date> {
-        None
-    }
-}
+no_factual_past!(
+    Role,
+    Agent,
+    Resource,
+    ResourceInstance,
+    Action,
+    Statement,
+    EligibilityAssignment,
+);
 
 #[derive(Debug, Clone)]
 pub struct Canonical<T> {

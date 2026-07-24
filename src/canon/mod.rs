@@ -1,9 +1,5 @@
-//! The Canon — the canonical admission layer.
-//!
-//! The Axiom decides whether an assertion may *exist*; the Canon decides whether
-//! it may become *history*. This module owns the append side of that history: the
-//! [`CanonicalHistory`] repository through which structurally valid assertions,
-//! wrapped as [`Canonical`] records, are atomically admitted.
+#[macro_use]
+mod macros;
 
 mod error;
 pub use error::CanonError;

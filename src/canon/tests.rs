@@ -1,8 +1,14 @@
+//! The reference in-memory canonical history: the two faces of one repository.
+//! `Knowledge` answers the Axiom's lookups (returning the assertion inside each
+//! record); the [`CanonicalHistory`] primitives are a dumb put-if-absent and a
+//! dumb compare-and-swap.
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::{AppendOutcome, Canon, CanonError, Canonical, CanonicalHistory, EventSubmission};
 
 use crate::kernel::axiom::Knowledge;
+
 use crate::kernel::entities::{
     Action, ActionId, ActionInput, Agent, AgentId, AgentInput, Commitment, CommitmentId,
     CommitmentInput, EligibilityAssignment, EligibilityAssignmentId, EligibilityAssignmentInput,
@@ -10,24 +16,20 @@ use crate::kernel::entities::{
     ResourceInstanceId, ResourceInstanceInput, Role, RoleId, RoleInput, Statement, StatementId,
     StatementInput,
 };
+
 use crate::kernel::value_objects::{
     ActionKind, ActionValue, AgentKind, Assignment, Date, Identifier, Observation, Participants,
     ResourceKind, Settlement, Term,
 };
 
-/// The reference in-memory canonical history: the two faces of one repository.
-/// `Knowledge` answers the Axiom's lookups (returning the assertion inside each
-/// record); the [`CanonicalHistory`] primitives are a dumb put-if-absent and a
-/// dumb compare-and-swap. Definitional entities are seeded directly by the tests;
-/// the assertion families arrive through the primitives.
 #[derive(Default)]
 struct MemoryHistory {
-    roles: BTreeMap<RoleId, Role>,
-    agents: BTreeMap<AgentId, Agent>,
-    resources: BTreeMap<ResourceId, Resource>,
-    instances: BTreeMap<ResourceInstanceId, ResourceInstance>,
-    actions: BTreeMap<ActionId, Action>,
-    statements: BTreeMap<StatementId, Statement>,
+    roles: BTreeMap<RoleId, Canonical<Role>>,
+    agents: BTreeMap<AgentId, Canonical<Agent>>,
+    resources: BTreeMap<ResourceId, Canonical<Resource>>,
+    instances: BTreeMap<ResourceInstanceId, Canonical<ResourceInstance>>,
+    actions: BTreeMap<ActionId, Canonical<Action>>,
+    statements: BTreeMap<StatementId, Canonical<Statement>>,
     commitments: BTreeMap<CommitmentId, Canonical<Commitment>>,
     eligibility: BTreeMap<EligibilityAssignmentId, Canonical<EligibilityAssignment>>,
     events: BTreeMap<EventId, Canonical<Event>>,
@@ -35,22 +37,22 @@ struct MemoryHistory {
 }
 impl Knowledge for MemoryHistory {
     fn role(&self, id: RoleId) -> Option<&Role> {
-        self.roles.get(&id)
+        self.roles.get(&id).map(|r| r.assertion())
     }
     fn agent(&self, id: AgentId) -> Option<&Agent> {
-        self.agents.get(&id)
+        self.agents.get(&id).map(|a| a.assertion())
     }
     fn resource(&self, id: ResourceId) -> Option<&Resource> {
-        self.resources.get(&id)
+        self.resources.get(&id).map(|r| r.assertion())
     }
     fn resource_instance(&self, id: ResourceInstanceId) -> Option<&ResourceInstance> {
-        self.instances.get(&id)
+        self.instances.get(&id).map(|i| i.assertion())
     }
     fn action(&self, id: ActionId) -> Option<&Action> {
-        self.actions.get(&id)
+        self.actions.get(&id).map(|a| a.assertion())
     }
     fn statement(&self, id: StatementId) -> Option<&Statement> {
-        self.statements.get(&id)
+        self.statements.get(&id).map(|s| s.assertion())
     }
     fn commitment(&self, id: CommitmentId) -> Option<&Commitment> {
         self.commitments.get(&id).map(|c| c.assertion())
@@ -70,14 +72,30 @@ impl CanonicalHistory for MemoryHistory {
         self.head
     }
 
+    fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome {
+        put_if_absent(&mut self.roles, role.assertion().id(), role)
+    }
+    fn put_agent(&mut self, agent: Canonical<Agent>) -> AppendOutcome {
+        put_if_absent(&mut self.agents, agent.assertion().id(), agent)
+    }
+    fn put_resource(&mut self, resource: Canonical<Resource>) -> AppendOutcome {
+        put_if_absent(&mut self.resources, resource.assertion().id(), resource)
+    }
+    fn put_resource_instance(&mut self, instance: Canonical<ResourceInstance>) -> AppendOutcome {
+        put_if_absent(&mut self.instances, instance.assertion().id(), instance)
+    }
+    fn put_action(&mut self, action: Canonical<Action>) -> AppendOutcome {
+        put_if_absent(&mut self.actions, action.assertion().id(), action)
+    }
+    fn put_statement(&mut self, statement: Canonical<Statement>) -> AppendOutcome {
+        put_if_absent(&mut self.statements, statement.assertion().id(), statement)
+    }
     fn put_commitment(&mut self, commitment: Canonical<Commitment>) -> AppendOutcome {
         put_if_absent(&mut self.commitments, commitment.assertion().id(), commitment)
     }
-
     fn put_eligibility(&mut self, eligibility: Canonical<EligibilityAssignment>) -> AppendOutcome {
         put_if_absent(&mut self.eligibility, eligibility.assertion().id(), eligibility)
     }
-
     fn put_event(&mut self, event: Canonical<Event>) -> AppendOutcome {
         put_if_absent(&mut self.events, event.assertion().id(), event)
     }
@@ -91,38 +109,6 @@ impl CanonicalHistory for MemoryHistory {
         }
         self.head = Some(new);
         Ok(())
-    }
-}
-impl MemoryHistory {
-    fn add_role(&mut self, r: Role) -> RoleId {
-        let id = r.id();
-        self.roles.insert(id, r);
-        id
-    }
-    fn add_agent(&mut self, a: Agent) -> AgentId {
-        let id = a.id();
-        self.agents.insert(id, a);
-        id
-    }
-    fn add_resource(&mut self, r: Resource) -> ResourceId {
-        let id = r.id();
-        self.resources.insert(id, r);
-        id
-    }
-    fn add_instance(&mut self, i: ResourceInstance) -> ResourceInstanceId {
-        let id = i.id();
-        self.instances.insert(id, i);
-        id
-    }
-    fn add_action(&mut self, a: Action) -> ActionId {
-        let id = a.id();
-        self.actions.insert(id, a);
-        id
-    }
-    fn add_statement(&mut self, s: Statement) -> StatementId {
-        let id = s.id();
-        self.statements.insert(id, s);
-        id
     }
 }
 
@@ -149,10 +135,8 @@ fn obs(name: &str) -> Observation {
 }
 
 // ---------------------------------------------------------------------------
-// Standalone factories for the primitive tests: the store never inspects entity
-// contents beyond their id, so the data only needs to be valid and distinct.
+// Standalone factories for the primitive and envelope tests
 // ---------------------------------------------------------------------------
-
 fn commitment(tag: u8) -> Commitment {
     Commitment::create(CommitmentInput {
         assignment: Assignment::new(
@@ -191,11 +175,11 @@ fn event(commitment: CommitmentId, previous: Option<EventId>, observation: &str)
 }
 
 // ---------------------------------------------------------------------------
-// A valid seeded graph for the orchestrator tests, so the Axiom's lookups succeed.
+// A valid graph, seeded entirely through the Canon, for the orchestrator tests.
 // ---------------------------------------------------------------------------
 
 struct Graph {
-    history: MemoryHistory,
+    canon: Canon<MemoryHistory>,
     accountable: AgentId,
     executor: AgentId,
     beneficiary: AgentId,
@@ -204,93 +188,104 @@ struct Graph {
     statement: StatementId,
 }
 fn graph() -> Graph {
-    let mut history = MemoryHistory::default();
+    let mut canon = Canon::new(MemoryHistory::default());
+    let rec = date(2025, 1, 1);
 
-    let actor_role = history.add_role(Role::create(RoleInput { label: ident("actor") }).unwrap());
-    let recipient_role =
-        history.add_role(Role::create(RoleInput { label: ident("recipient") }).unwrap());
+    let actor_role = canon.admit_role(RoleInput { label: ident("actor") }, rec).unwrap();
+    let recipient_role = canon
+        .admit_role(RoleInput { label: ident("recipient") }, rec)
+        .unwrap();
 
-    let accountable = history.add_agent(
-        Agent::create(AgentInput {
-            label: ident("accountable"),
-            kind: AgentKind::Company,
-        })
-        .unwrap(),
-    );
-    let executor = history.add_agent(
-        Agent::create(AgentInput {
-            label: ident("executor"),
-            kind: AgentKind::Individual,
-        })
-        .unwrap(),
-    );
-    let beneficiary = history.add_agent(
-        Agent::create(AgentInput {
-            label: ident("beneficiary"),
-            kind: AgentKind::Company,
-        })
-        .unwrap(),
-    );
+    let accountable = canon
+        .admit_agent(
+            AgentInput {
+                label: ident("accountable"),
+                kind: AgentKind::Company,
+            },
+            rec,
+        )
+        .unwrap();
+    let executor = canon
+        .admit_agent(
+            AgentInput {
+                label: ident("executor"),
+                kind: AgentKind::Individual,
+            },
+            rec,
+        )
+        .unwrap();
+    let beneficiary = canon
+        .admit_agent(
+            AgentInput {
+                label: ident("beneficiary"),
+                kind: AgentKind::Company,
+            },
+            rec,
+        )
+        .unwrap();
 
-    // Eligibility effective before any commitment's committed_at (2026-01-01).
-    history.put_eligibility(
-        Canonical::new(
-            EligibilityAssignment::create(EligibilityAssignmentInput {
+    canon
+        .admit_eligibility(
+            EligibilityAssignmentInput {
                 agent: executor,
                 roles: BTreeSet::from([actor_role]),
                 effective_from: date(2025, 1, 1),
-            })
-            .unwrap(),
-            date(2025, 1, 1),
+            },
+            rec,
         )
-        .unwrap(),
-    );
-    history.put_eligibility(
-        Canonical::new(
-            EligibilityAssignment::create(EligibilityAssignmentInput {
+        .unwrap();
+    canon
+        .admit_eligibility(
+            EligibilityAssignmentInput {
                 agent: beneficiary,
                 roles: BTreeSet::from([recipient_role]),
                 effective_from: date(2025, 1, 1),
-            })
-            .unwrap(),
-            date(2025, 1, 1),
+            },
+            rec,
         )
-        .unwrap(),
-    );
+        .unwrap();
 
-    let resource = history.add_resource(
-        Resource::create(ResourceInput {
-            label: ident("resource"),
-            kind: ResourceKind::Discrete,
-        })
-        .unwrap(),
-    );
-    let instance = history.add_instance(
-        ResourceInstance::create(ResourceInstanceInput {
-            label: ident("instance"),
-            resource,
-        })
-        .unwrap(),
-    );
-    let action = history.add_action(
-        Action::create(ActionInput {
-            verb: ident("sign"),
-            kind: ActionKind::Discrete,
-            resource,
-        })
-        .unwrap(),
-    );
-    let statement = history.add_statement(
-        Statement::create(StatementInput {
-            participants: Participants::new([actor_role], [recipient_role]).unwrap(),
-            action,
-            settlement: Settlement::new([obs("Signed")], [obs("Cancelled")]).unwrap(),
-        })
-        .unwrap(),
-    );
+    let resource = canon
+        .admit_resource(
+            ResourceInput {
+                label: ident("resource"),
+                kind: ResourceKind::Discrete,
+            },
+            rec,
+        )
+        .unwrap();
+    let instance = canon
+        .admit_resource_instance(
+            ResourceInstanceInput {
+                label: ident("instance"),
+                resource,
+            },
+            rec,
+        )
+        .unwrap();
+    let action = canon
+        .admit_action(
+            ActionInput {
+                verb: ident("sign"),
+                kind: ActionKind::Discrete,
+                resource,
+            },
+            rec,
+        )
+        .unwrap();
+    let statement = canon
+        .admit_statement(
+            StatementInput {
+                participants: Participants::new([actor_role], [recipient_role]).unwrap(),
+                action,
+                settlement: Settlement::new([obs("Signed")], [obs("Cancelled")]).unwrap(),
+            },
+            rec,
+        )
+        .unwrap();
 
     Graph {
-        history,
+        canon,
         accountable,
         executor,
         beneficiary,
@@ -312,7 +307,7 @@ fn commitment_input(g: &Graph) -> CommitmentInput {
 }
 
 // ---------------------------------------------------------------------------
-// Primitive-level tests: the dumb port.
+// Primitive-level tests
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -411,7 +406,7 @@ fn a_stored_event_left_unlinked_is_a_harmless_dangling_object() {
 }
 
 // ---------------------------------------------------------------------------
-// Envelope-level tests: the recorded_at invariant, by construction.
+// Envelope-level tests
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -434,41 +429,36 @@ fn a_commitment_recorded_before_it_was_committed_is_rejected() {
 
 #[test]
 fn an_eligibility_may_be_recorded_before_it_takes_effect() {
-    // A forward decision, not an observation, so no floor on recorded_at.
     assert!(Canonical::new(eligibility(1), date(2020, 1, 1)).is_ok());
 }
 
 // ---------------------------------------------------------------------------
-// Orchestrator-level tests: admission composes Axiom + envelope + primitives.
+// Orchestrator-level tests
 // ---------------------------------------------------------------------------
 
 #[test]
 fn admits_a_valid_commitment_and_is_idempotent() {
     let g = graph();
     let input = commitment_input(&g);
-    let mut canon = Canon::new(g.history);
 
-    // recorded_at differs between the two, but identity is content-addressed, so
-    // the second admission is a no-op.
-    assert_eq!(
-        canon.admit_commitment(input.clone(), date(2026, 2, 1)).unwrap(),
-        AppendOutcome::Admitted
-    );
-    assert_eq!(
-        canon.admit_commitment(input, date(2026, 3, 1)).unwrap(),
-        AppendOutcome::AlreadyPresent
-    );
+    let mut canon = g.canon;
+    let first = canon.admit_commitment(input.clone(), date(2026, 2, 1)).unwrap();
+    let again = canon.admit_commitment(input, date(2026, 3, 1)).unwrap();
+
+    assert_eq!(first, again);
 }
 
 #[test]
 fn propagates_a_structural_rejection_from_the_axiom() {
     let g = graph();
+
     let input = CommitmentInput {
         assignment: Assignment::new(AgentId::from([99u8; 32]), [g.executor], [g.beneficiary])
             .unwrap(),
         ..commitment_input(&g)
     };
-    let mut canon = Canon::new(g.history);
+
+    let mut canon = g.canon;
 
     assert!(matches!(
         canon.admit_commitment(input, date(2026, 2, 1)),
@@ -481,10 +471,9 @@ fn admits_an_eligibility_declared_effective_in_the_future() {
     let g = graph();
     let agent = g.accountable;
     let role = g.actor_role;
-    let mut canon = Canon::new(g.history);
+    let mut canon = g.canon;
 
-    // Effective from 2030, recorded in 2026: a legitimate forward declaration.
-    assert_eq!(
+    assert!(
         canon
             .admit_eligibility(
                 EligibilityAssignmentInput {
@@ -494,8 +483,7 @@ fn admits_an_eligibility_declared_effective_in_the_future() {
                 },
                 date(2026, 1, 1),
             )
-            .unwrap(),
-        AppendOutcome::Admitted
+            .is_ok()
     );
 }
 
@@ -503,41 +491,35 @@ fn admits_an_eligibility_declared_effective_in_the_future() {
 fn admits_events_extending_the_chain() {
     let g = graph();
     let input = commitment_input(&g);
-    let commitment_id = Commitment::create(input.clone()).unwrap().id();
-    let mut canon = Canon::new(g.history);
-    canon.admit_commitment(input, date(2026, 2, 1)).unwrap();
+    let mut canon = g.canon;
+    let commitment_id = canon.admit_commitment(input, date(2026, 2, 1)).unwrap();
 
     assert_eq!(canon.history().head(), None);
 
-    assert_eq!(
-        canon
-            .admit_event(
-                EventSubmission {
-                    commitment_id,
-                    observation: obs("Signed"),
-                    occurred_at: date(2026, 6, 1),
-                },
-                date(2026, 6, 2),
-            )
-            .unwrap(),
-        AppendOutcome::Admitted
-    );
-    let first = canon.history().head();
-    assert!(first.is_some());
+    let first = canon
+        .admit_event(
+            EventSubmission {
+                commitment_id,
+                observation: obs("Signed"),
+                occurred_at: date(2026, 6, 1),
+            },
+            date(2026, 6, 2),
+        )
+        .unwrap();
 
-    assert_eq!(
-        canon
-            .admit_event(
-                EventSubmission {
-                    commitment_id,
-                    observation: obs("Cancelled"),
-                    occurred_at: date(2026, 7, 1),
-                },
-                date(2026, 7, 2),
-            )
-            .unwrap(),
-        AppendOutcome::Admitted
-    );
-    assert!(canon.history().head().is_some());
-    assert_ne!(canon.history().head(), first);
+    assert_eq!(canon.history().head(), Some(first));
+
+    let second = canon
+        .admit_event(
+            EventSubmission {
+                commitment_id,
+                observation: obs("Cancelled"),
+                occurred_at: date(2026, 7, 1),
+            },
+            date(2026, 7, 2),
+        )
+        .unwrap();
+
+    assert_eq!(canon.history().head(), Some(second));
+    assert_ne!(first, second);
 }

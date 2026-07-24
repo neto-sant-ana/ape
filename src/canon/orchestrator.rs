@@ -3,20 +3,21 @@
 //! It is the single entry point through which knowledge becomes history: it
 //! delegates structural validation to the Axiom, enriches the assertion with
 //! canonical metadata (`recorded_at`, via [`Canonical`]), and admits it through
-//! the mechanical [`CanonicalHistory`] primitives. Applications hold a `Canon`,
-//! never the history directly, so an assertion cannot reach storage without having
-//! passed the Axiom — the reason the admission rules live here and not in an
-//! adapter.
+//! the mechanical [`CanonicalHistory`] primitives.
+
+use super::{CanonError, Canonical, CanonicalHistory};
 
 use crate::kernel::axiom::Axiom;
-use crate::kernel::entities::{CommitmentId, CommitmentInput, EligibilityAssignmentInput, EventInput};
+
+use crate::kernel::entities::{
+    ActionId, ActionInput, AgentId, AgentInput, CommitmentId, CommitmentInput,
+    EligibilityAssignmentId, EligibilityAssignmentInput, EventId, EventInput, ResourceId,
+    ResourceInput, ResourceInstanceId, ResourceInstanceInput, RoleId, RoleInput, StatementId,
+    StatementInput,
+};
+
 use crate::kernel::value_objects::{Date, Observation};
 
-use super::{AppendOutcome, CanonError, Canonical, CanonicalHistory};
-
-/// An event as submitted to the Canon: everything an `Event` carries except its
-/// place in the chain. The caller neither knows nor sets `previous_event`; the
-/// Canon stamps it with the current head so the link cannot be forged.
 pub struct EventSubmission {
     pub commitment_id: CommitmentId,
     pub observation: Observation,
@@ -35,36 +36,26 @@ impl<H: CanonicalHistory> Canon<H> {
         &self.history
     }
 
-    pub fn admit_commitment(
-        &mut self,
-        input: CommitmentInput,
-        recorded_at: Date,
-    ) -> Result<AppendOutcome, CanonError> {
-        let commitment = Axiom::new(&self.history).admit_commitment(input)?;
-        let record = Canonical::new(commitment, recorded_at)?;
-
-        Ok(self.history.put_commitment(record))
-    }
-
-    pub fn admit_eligibility(
-        &mut self,
-        input: EligibilityAssignmentInput,
-        recorded_at: Date,
-    ) -> Result<AppendOutcome, CanonError> {
-        let eligibility = Axiom::new(&self.history).admit_eligibility_assignment(input)?;
-        let record = Canonical::new(eligibility, recorded_at)?;
-
-        Ok(self.history.put_eligibility(record))
+    canonical_admission! {
+        admit_role(RoleInput) -> RoleId { admit_role, put_role },
+        admit_agent(AgentInput) -> AgentId { admit_agent, put_agent },
+        admit_resource(ResourceInput) -> ResourceId { admit_resource, put_resource },
+        admit_resource_instance(ResourceInstanceInput) -> ResourceInstanceId {
+            admit_resource_instance, put_resource_instance
+        },
+        admit_action(ActionInput) -> ActionId { admit_action, put_action },
+        admit_statement(StatementInput) -> StatementId { admit_statement, put_statement },
+        admit_commitment(CommitmentInput) -> CommitmentId { admit_commitment, put_commitment },
+        admit_eligibility(EligibilityAssignmentInput) -> EligibilityAssignmentId {
+            admit_eligibility_assignment, put_eligibility
+        },
     }
 
     pub fn admit_event(
         &mut self,
         submission: EventSubmission,
         recorded_at: Date,
-    ) -> Result<AppendOutcome, CanonError> {
-        // The Canon stamps the link with the head it reads; the same head is what
-        // `advance_head` checks against, so a concurrent extension is caught by the
-        // compare-and-swap rather than by this read.
+    ) -> Result<EventId, CanonError> {
         let previous = self.history.head();
 
         let event = Axiom::new(&self.history).admit_event(EventInput {
@@ -75,11 +66,10 @@ impl<H: CanonicalHistory> Canon<H> {
         })?;
 
         let id = event.id();
-        let record = Canonical::new(event, recorded_at)?;
 
-        self.history.put_event(record);
+        self.history.put_event(Canonical::new(event, recorded_at)?);
         self.history.advance_head(previous, id)?;
 
-        Ok(AppendOutcome::Admitted)
+        Ok(id)
     }
 }

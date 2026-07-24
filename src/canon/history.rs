@@ -10,10 +10,14 @@
 //! - `advance_head` is a compare-and-swap on the single mutable pointer of the
 //!   event chain.
 
-use crate::kernel::axiom::Knowledge;
-use crate::kernel::entities::{Commitment, EligibilityAssignment, Event, EventId};
-
 use super::{CanonError, Canonical};
+
+use crate::kernel::axiom::Knowledge;
+
+use crate::kernel::entities::{
+    Action, Agent, Commitment, EligibilityAssignment, Event, EventId, Resource, ResourceInstance,
+    Role, Statement,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppendOutcome {
@@ -21,12 +25,16 @@ pub enum AppendOutcome {
     AlreadyPresent,
 }
 
-/// Read and write are two faces of one repository: `Knowledge` (the kernel's read
-/// abstraction, which the Axiom consumes) plus the append primitives below. A
-/// single store serves both, so the head an event is stamped against is the head
-/// its append is checked against.
 pub trait CanonicalHistory: Knowledge {
     fn head(&self) -> Option<EventId>;
+
+    fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome;
+    fn put_agent(&mut self, agent: Canonical<Agent>) -> AppendOutcome;
+    fn put_resource(&mut self, resource: Canonical<Resource>) -> AppendOutcome;
+    fn put_resource_instance(&mut self, instance: Canonical<ResourceInstance>) -> AppendOutcome;
+    fn put_action(&mut self, action: Canonical<Action>) -> AppendOutcome;
+    fn put_statement(&mut self, statement: Canonical<Statement>) -> AppendOutcome;
+
     fn put_commitment(&mut self, commitment: Canonical<Commitment>) -> AppendOutcome;
     fn put_eligibility(&mut self, eligibility: Canonical<EligibilityAssignment>) -> AppendOutcome;
     fn put_event(&mut self, event: Canonical<Event>) -> AppendOutcome;
