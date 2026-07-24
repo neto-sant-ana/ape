@@ -1,6 +1,7 @@
 //! Envelope-level tests: the recorded_at invariant, by construction.
 
 use super::*;
+use crate::canon::{CanonError, Canonical};
 
 #[test]
 fn an_event_recorded_before_it_occurred_is_rejected() {

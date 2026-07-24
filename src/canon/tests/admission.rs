@@ -1,7 +1,7 @@
 //! Orchestrator-level tests: admission composes Axiom + envelope + primitives.
 
 use super::*;
-use crate::canon::EventSubmission;
+use crate::canon::{CanonError, EventSubmission};
 
 #[test]
 fn admits_a_valid_commitment_and_is_idempotent() {

@@ -1,169 +1,27 @@
 //! Shared test harness for the Canon, and the test modules built on it.
 //!
-//! [`MemoryHistory`] is the reference in-memory canonical history: the two faces
-//! of one repository. `Knowledge` answers the Axiom's lookups (returning the
-//! assertion inside each record); the [`CanonicalHistory`] primitives are a dumb
-//! put-if-absent and a dumb compare-and-swap. Alongside it live the standalone
-//! factories and the seeded [`graph`], reused across the test modules.
+//! The tests run against the reference [`InMemoryHistory`] adapter (in `canon::memory`).
+//! Here live the standalone factories and the seeded [`graph`] / [`seed_commitment`],
+//! reused across the test modules.
 
 mod admission;
 mod concurrent;
 mod envelope;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
-use super::{AppendOutcome, Canon, CanonError, Canonical, CanonicalHistory};
-
-use crate::kernel::axiom::Knowledge;
+use super::{Canon, CanonicalHistory, InMemoryHistory};
 
 use crate::kernel::entities::{
-    Action, ActionId, ActionInput, Agent, AgentId, AgentInput, Commitment, CommitmentId,
-    CommitmentInput, EligibilityAssignment, EligibilityAssignmentId, EligibilityAssignmentInput,
-    Event, EventId, EventInput, Resource, ResourceId, ResourceInput, ResourceInstance,
-    ResourceInstanceId, ResourceInstanceInput, Role, RoleId, RoleInput, Statement, StatementId,
-    StatementInput,
+    ActionInput, AgentId, AgentInput, Commitment, CommitmentId, CommitmentInput,
+    EligibilityAssignment, EligibilityAssignmentInput, Event, EventId, EventInput, ResourceInput,
+    ResourceInstanceId, ResourceInstanceInput, RoleId, RoleInput, StatementId, StatementInput,
 };
 
 use crate::kernel::value_objects::{
     ActionKind, ActionValue, AgentKind, Assignment, Date, Identifier, Observation, Participants,
     ResourceKind, Settlement, Term,
 };
-
-#[derive(Default)]
-struct MemoryHistory {
-    roles: BTreeMap<RoleId, Canonical<Role>>,
-    agents: BTreeMap<AgentId, Canonical<Agent>>,
-    resources: BTreeMap<ResourceId, Canonical<Resource>>,
-    instances: BTreeMap<ResourceInstanceId, Canonical<ResourceInstance>>,
-    actions: BTreeMap<ActionId, Canonical<Action>>,
-    statements: BTreeMap<StatementId, Canonical<Statement>>,
-    commitments: BTreeMap<CommitmentId, Canonical<Commitment>>,
-    eligibility: BTreeMap<EligibilityAssignmentId, Canonical<EligibilityAssignment>>,
-    events: BTreeMap<EventId, Canonical<Event>>,
-    events_by_commitment: BTreeMap<CommitmentId, EventId>,
-    head: Option<EventId>,
-}
-impl Knowledge for MemoryHistory {
-    fn role(&self, id: RoleId) -> Option<Role> {
-        self.roles.get(&id).map(|a| a.assertion().clone())
-    }
-    fn agent(&self, id: AgentId) -> Option<Agent> {
-        self.agents.get(&id).map(|a| a.assertion().clone())
-    }
-    fn resource(&self, id: ResourceId) -> Option<Resource> {
-        self.resources.get(&id).map(|r| r.assertion().clone())
-    }
-    fn resource_instance(&self, id: ResourceInstanceId) -> Option<ResourceInstance> {
-        self.instances.get(&id).map(|i| i.assertion().clone())
-    }
-    fn action(&self, id: ActionId) -> Option<Action> {
-        self.actions.get(&id).map(|a| a.assertion().clone())
-    }
-    fn statement(&self, id: StatementId) -> Option<Statement> {
-        self.statements.get(&id).map(|s| s.assertion().clone())
-    }
-    fn commitment(&self, id: CommitmentId) -> Option<Commitment> {
-        self.commitments.get(&id).map(|c| c.assertion().clone())
-    }
-    fn event(&self, id: EventId) -> Option<Event> {
-        self.events.get(&id).map(|e| e.assertion().clone())
-    }
-    fn eligibilities_of(&self, agent: AgentId) -> Vec<EligibilityAssignment> {
-        self.eligibility
-            .values()
-            .map(|e| e.assertion())
-            .filter(move |e| *e.agent() == agent)
-            .cloned()
-            .collect()
-    }
-}
-impl CanonicalHistory for MemoryHistory {
-    fn head(&self) -> Option<EventId> {
-        self.head
-    }
-
-    fn event_of(&self, commitment: CommitmentId) -> Option<Event> {
-        self.events_by_commitment
-            .get(&commitment)
-            .and_then(|id| self.events.get(id))
-            .map(|e| e.assertion().clone())
-    }
-
-    fn canonical_commitment(&self, id: CommitmentId) -> Option<Canonical<Commitment>> {
-        self.commitments.get(&id).cloned()
-    }
-    fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>> {
-        self.events.get(&id).cloned()
-    }
-
-    fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome {
-        put_if_absent(&mut self.roles, role.assertion().id(), role)
-    }
-    fn put_agent(&mut self, agent: Canonical<Agent>) -> AppendOutcome {
-        put_if_absent(&mut self.agents, agent.assertion().id(), agent)
-    }
-    fn put_resource(&mut self, resource: Canonical<Resource>) -> AppendOutcome {
-        put_if_absent(&mut self.resources, resource.assertion().id(), resource)
-    }
-    fn put_resource_instance(&mut self, instance: Canonical<ResourceInstance>) -> AppendOutcome {
-        put_if_absent(&mut self.instances, instance.assertion().id(), instance)
-    }
-    fn put_action(&mut self, action: Canonical<Action>) -> AppendOutcome {
-        put_if_absent(&mut self.actions, action.assertion().id(), action)
-    }
-    fn put_statement(&mut self, statement: Canonical<Statement>) -> AppendOutcome {
-        put_if_absent(&mut self.statements, statement.assertion().id(), statement)
-    }
-    fn put_commitment(&mut self, commitment: Canonical<Commitment>) -> AppendOutcome {
-        put_if_absent(
-            &mut self.commitments,
-            commitment.assertion().id(),
-            commitment,
-        )
-    }
-    fn put_eligibility(&mut self, eligibility: Canonical<EligibilityAssignment>) -> AppendOutcome {
-        put_if_absent(
-            &mut self.eligibility,
-            eligibility.assertion().id(),
-            eligibility,
-        )
-    }
-    fn append_event(&mut self, event: Canonical<Event>) -> Result<AppendOutcome, CanonError> {
-        let id = event.assertion().id();
-        if self.events.contains_key(&id) {
-            return Ok(AppendOutcome::AlreadyPresent);
-        }
-
-        let expected = *event.assertion().previous_event();
-        if self.head != expected {
-            return Err(CanonError::UnexpectedHead {
-                expected,
-                found: self.head,
-            });
-        }
-
-        // Persist, index by commitment, and advance the head as one indivisible
-        // step: a refused append (above) has already returned, leaving no trace.
-        let commitment = *event.assertion().commitment_id();
-        self.events.insert(id, event);
-        self.events_by_commitment.insert(commitment, id);
-        self.head = Some(id);
-
-        Ok(AppendOutcome::Admitted)
-    }
-}
-
-fn put_if_absent<K: Ord, V>(map: &mut BTreeMap<K, V>, key: K, value: V) -> AppendOutcome {
-    use std::collections::btree_map::Entry;
-
-    match map.entry(key) {
-        Entry::Vacant(slot) => {
-            slot.insert(value);
-            AppendOutcome::Admitted
-        }
-        Entry::Occupied(_) => AppendOutcome::AlreadyPresent,
-    }
-}
 
 fn date(y: i32, m: u8, d: u8) -> Date {
     Date::from_ymd(y, m, d).unwrap()
@@ -220,7 +78,7 @@ fn event(commitment: CommitmentId, previous: Option<EventId>, observation: &str)
 // ---------------------------------------------------------------------------
 
 struct Graph {
-    canon: Canon<MemoryHistory>,
+    canon: Canon<InMemoryHistory>,
     accountable: AgentId,
     executor: AgentId,
     beneficiary: AgentId,
@@ -229,7 +87,7 @@ struct Graph {
     statement: StatementId,
 }
 fn graph() -> Graph {
-    let mut canon = Canon::new(MemoryHistory::default());
+    let mut canon = Canon::new(InMemoryHistory::default());
     let rec = date(2025, 1, 1);
 
     let actor_role = canon
@@ -359,36 +217,51 @@ fn commitment_input(g: &Graph) -> CommitmentInput {
     }
 }
 
-/// Seed a full valid graph through `canon` and admit one commitment, returning its
-/// id. Generic over the history so any adapter can be seeded — the concurrent one
-/// included.
+/// Seed a full valid graph through `canon` and admit one commitment, returning its id.
 fn seed_commitment<H: CanonicalHistory>(canon: &mut Canon<H>) -> CommitmentId {
-    // Late enough to clear every RecordableAfter bound, the commitment's
-    // committed_at (2026-01-01) included.
     let rec = date(2026, 7, 1);
 
     let actor_role = canon
-        .admit_role(RoleInput { label: ident("actor") }, rec)
+        .admit_role(
+            RoleInput {
+                label: ident("actor"),
+            },
+            rec,
+        )
         .unwrap();
     let recipient_role = canon
-        .admit_role(RoleInput { label: ident("recipient") }, rec)
+        .admit_role(
+            RoleInput {
+                label: ident("recipient"),
+            },
+            rec,
+        )
         .unwrap();
 
     let accountable = canon
         .admit_agent(
-            AgentInput { label: ident("accountable"), kind: AgentKind::Company },
+            AgentInput {
+                label: ident("accountable"),
+                kind: AgentKind::Company,
+            },
             rec,
         )
         .unwrap();
     let executor = canon
         .admit_agent(
-            AgentInput { label: ident("executor"), kind: AgentKind::Individual },
+            AgentInput {
+                label: ident("executor"),
+                kind: AgentKind::Individual,
+            },
             rec,
         )
         .unwrap();
     let beneficiary = canon
         .admit_agent(
-            AgentInput { label: ident("beneficiary"), kind: AgentKind::Company },
+            AgentInput {
+                label: ident("beneficiary"),
+                kind: AgentKind::Company,
+            },
             rec,
         )
         .unwrap();
@@ -416,19 +289,29 @@ fn seed_commitment<H: CanonicalHistory>(canon: &mut Canon<H>) -> CommitmentId {
 
     let resource = canon
         .admit_resource(
-            ResourceInput { label: ident("resource"), kind: ResourceKind::Discrete },
+            ResourceInput {
+                label: ident("resource"),
+                kind: ResourceKind::Discrete,
+            },
             rec,
         )
         .unwrap();
     let instance = canon
         .admit_resource_instance(
-            ResourceInstanceInput { label: ident("instance"), resource },
+            ResourceInstanceInput {
+                label: ident("instance"),
+                resource,
+            },
             rec,
         )
         .unwrap();
     let action = canon
         .admit_action(
-            ActionInput { verb: ident("sign"), kind: ActionKind::Discrete, resource },
+            ActionInput {
+                verb: ident("sign"),
+                kind: ActionKind::Discrete,
+                resource,
+            },
             rec,
         )
         .unwrap();
@@ -457,9 +340,4 @@ fn seed_commitment<H: CanonicalHistory>(canon: &mut Canon<H>) -> CommitmentId {
             rec,
         )
         .unwrap()
-}
-
-#[test]
-fn the_reference_history_conforms() {
-    super::conformance::verify(MemoryHistory::default);
 }

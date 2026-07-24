@@ -13,6 +13,11 @@ pub use record::Canonical;
 mod orchestrator;
 pub use orchestrator::{Canon, EventSubmission};
 
+#[cfg(any(test, feature = "reference"))]
+mod memory;
+#[cfg(any(test, feature = "reference"))]
+pub use memory::InMemoryHistory;
+
 #[cfg(any(test, feature = "conformance"))]
 pub mod conformance;
 
