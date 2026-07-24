@@ -15,8 +15,8 @@ use super::{CanonError, Canonical};
 use crate::kernel::axiom::Knowledge;
 
 use crate::kernel::entities::{
-    Action, Agent, Commitment, EligibilityAssignment, Event, EventId, Resource, ResourceInstance,
-    Role, Statement,
+    Action, Agent, Commitment, CommitmentId, EligibilityAssignment, Event, EventId, Resource,
+    ResourceInstance, Role, Statement,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +27,8 @@ pub enum AppendOutcome {
 
 pub trait CanonicalHistory: Knowledge {
     fn head(&self) -> Option<EventId>;
+
+    fn event_of(&self, commitment: CommitmentId) -> Option<&Event>;
 
     fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome;
     fn put_agent(&mut self, agent: Canonical<Agent>) -> AppendOutcome;

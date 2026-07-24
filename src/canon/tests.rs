@@ -33,6 +33,7 @@ struct MemoryHistory {
     commitments: BTreeMap<CommitmentId, Canonical<Commitment>>,
     eligibility: BTreeMap<EligibilityAssignmentId, Canonical<EligibilityAssignment>>,
     events: BTreeMap<EventId, Canonical<Event>>,
+    events_by_commitment: BTreeMap<CommitmentId, EventId>,
     head: Option<EventId>,
 }
 impl Knowledge for MemoryHistory {
@@ -72,6 +73,13 @@ impl CanonicalHistory for MemoryHistory {
         self.head
     }
 
+    fn event_of(&self, commitment: CommitmentId) -> Option<&Event> {
+        self.events_by_commitment
+            .get(&commitment)
+            .and_then(|id| self.events.get(id))
+            .map(|e| e.assertion())
+    }
+
     fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome {
         put_if_absent(&mut self.roles, role.assertion().id(), role)
     }
@@ -91,13 +99,29 @@ impl CanonicalHistory for MemoryHistory {
         put_if_absent(&mut self.statements, statement.assertion().id(), statement)
     }
     fn put_commitment(&mut self, commitment: Canonical<Commitment>) -> AppendOutcome {
-        put_if_absent(&mut self.commitments, commitment.assertion().id(), commitment)
+        put_if_absent(
+            &mut self.commitments,
+            commitment.assertion().id(),
+            commitment,
+        )
     }
     fn put_eligibility(&mut self, eligibility: Canonical<EligibilityAssignment>) -> AppendOutcome {
-        put_if_absent(&mut self.eligibility, eligibility.assertion().id(), eligibility)
+        put_if_absent(
+            &mut self.eligibility,
+            eligibility.assertion().id(),
+            eligibility,
+        )
     }
     fn put_event(&mut self, event: Canonical<Event>) -> AppendOutcome {
-        put_if_absent(&mut self.events, event.assertion().id(), event)
+        let commitment = *event.assertion().commitment_id();
+        let id = event.assertion().id();
+        let outcome = put_if_absent(&mut self.events, id, event);
+
+        if outcome == AppendOutcome::Admitted {
+            self.events_by_commitment.insert(commitment, id);
+        }
+
+        outcome
     }
 
     fn advance_head(&mut self, expected: Option<EventId>, new: EventId) -> Result<(), CanonError> {
@@ -191,9 +215,21 @@ fn graph() -> Graph {
     let mut canon = Canon::new(MemoryHistory::default());
     let rec = date(2025, 1, 1);
 
-    let actor_role = canon.admit_role(RoleInput { label: ident("actor") }, rec).unwrap();
+    let actor_role = canon
+        .admit_role(
+            RoleInput {
+                label: ident("actor"),
+            },
+            rec,
+        )
+        .unwrap();
     let recipient_role = canon
-        .admit_role(RoleInput { label: ident("recipient") }, rec)
+        .admit_role(
+            RoleInput {
+                label: ident("recipient"),
+            },
+            rec,
+        )
         .unwrap();
 
     let accountable = canon
@@ -319,7 +355,10 @@ fn put_commitment_is_idempotent_by_id() {
         history.put_commitment(record.clone()),
         AppendOutcome::Admitted
     );
-    assert_eq!(history.put_commitment(record), AppendOutcome::AlreadyPresent);
+    assert_eq!(
+        history.put_commitment(record),
+        AppendOutcome::AlreadyPresent
+    );
 }
 
 #[test]
@@ -340,7 +379,8 @@ fn put_eligibility_is_idempotent_by_id() {
 #[test]
 fn put_event_is_idempotent_by_id() {
     let mut history = MemoryHistory::default();
-    let record = Canonical::new(event(commitment(1).id(), None, "Signed"), date(2026, 7, 1)).unwrap();
+    let record =
+        Canonical::new(event(commitment(1).id(), None, "Signed"), date(2026, 7, 1)).unwrap();
 
     assert_eq!(history.put_event(record.clone()), AppendOutcome::Admitted);
     assert_eq!(history.put_event(record), AppendOutcome::AlreadyPresent);
@@ -442,7 +482,9 @@ fn admits_a_valid_commitment_and_is_idempotent() {
     let input = commitment_input(&g);
 
     let mut canon = g.canon;
-    let first = canon.admit_commitment(input.clone(), date(2026, 2, 1)).unwrap();
+    let first = canon
+        .admit_commitment(input.clone(), date(2026, 2, 1))
+        .unwrap();
     let again = canon.admit_commitment(input, date(2026, 3, 1)).unwrap();
 
     assert_eq!(first, again);
@@ -490,11 +532,54 @@ fn admits_an_eligibility_declared_effective_in_the_future() {
 #[test]
 fn admits_events_extending_the_chain() {
     let g = graph();
+    let first_input = commitment_input(&g);
+    let second_input = CommitmentInput {
+        term: Term::new(date(2026, 2, 1), date(2027, 1, 1)).unwrap(),
+        ..commitment_input(&g)
+    };
+    let mut canon = g.canon;
+    let first_commitment = canon
+        .admit_commitment(first_input, date(2026, 2, 1))
+        .unwrap();
+    let second_commitment = canon
+        .admit_commitment(second_input, date(2026, 3, 1))
+        .unwrap();
+    assert_ne!(first_commitment, second_commitment);
+
+    assert_eq!(canon.history().head(), None);
+
+    let first = canon
+        .admit_event(
+            EventSubmission {
+                commitment_id: first_commitment,
+                observation: obs("Signed"),
+                occurred_at: date(2026, 6, 1),
+            },
+            date(2026, 6, 2),
+        )
+        .unwrap();
+    assert_eq!(canon.history().head(), Some(first));
+
+    let second = canon
+        .admit_event(
+            EventSubmission {
+                commitment_id: second_commitment,
+                observation: obs("Signed"),
+                occurred_at: date(2026, 7, 1),
+            },
+            date(2026, 7, 2),
+        )
+        .unwrap();
+    assert_eq!(canon.history().head(), Some(second));
+    assert_ne!(first, second);
+}
+
+#[test]
+fn re_admitting_the_same_event_fact_is_idempotent() {
+    let g = graph();
     let input = commitment_input(&g);
     let mut canon = g.canon;
     let commitment_id = canon.admit_commitment(input, date(2026, 2, 1)).unwrap();
-
-    assert_eq!(canon.history().head(), None);
 
     let first = canon
         .admit_event(
@@ -506,20 +591,49 @@ fn admits_events_extending_the_chain() {
             date(2026, 6, 2),
         )
         .unwrap();
+    let head_after = canon.history().head();
 
-    assert_eq!(canon.history().head(), Some(first));
-
-    let second = canon
+    let again = canon
         .admit_event(
+            EventSubmission {
+                commitment_id,
+                observation: obs("Signed"),
+                occurred_at: date(2026, 6, 1),
+            },
+            date(2026, 6, 3),
+        )
+        .unwrap();
+    assert_eq!(first, again);
+    assert_eq!(canon.history().head(), head_after);
+}
+
+#[test]
+fn rejects_a_conflicting_settlement_of_an_already_settled_commitment() {
+    let g = graph();
+    let input = commitment_input(&g);
+    let mut canon = g.canon;
+    let commitment_id = canon.admit_commitment(input, date(2026, 2, 1)).unwrap();
+
+    canon
+        .admit_event(
+            EventSubmission {
+                commitment_id,
+                observation: obs("Signed"),
+                occurred_at: date(2026, 6, 1),
+            },
+            date(2026, 6, 2),
+        )
+        .unwrap();
+
+    assert!(matches!(
+        canon.admit_event(
             EventSubmission {
                 commitment_id,
                 observation: obs("Cancelled"),
                 occurred_at: date(2026, 7, 1),
             },
             date(2026, 7, 2),
-        )
-        .unwrap();
-
-    assert_eq!(canon.history().head(), Some(second));
-    assert_ne!(first, second);
+        ),
+        Err(CanonError::CommitmentAlreadySettled(_))
+    ));
 }

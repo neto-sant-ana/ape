@@ -56,6 +56,16 @@ impl<H: CanonicalHistory> Canon<H> {
         submission: EventSubmission,
         recorded_at: Date,
     ) -> Result<EventId, CanonError> {
+        if let Some(settled) = self.history.event_of(submission.commitment_id) {
+            if settled.observation() == &submission.observation
+                && *settled.occurred_at() == submission.occurred_at
+            {
+                return Ok(settled.id());
+            }
+
+            return Err(CanonError::CommitmentAlreadySettled(submission.commitment_id));
+        }
+
         let previous = self.history.head();
 
         let event = Axiom::new(&self.history).admit_event(EventInput {

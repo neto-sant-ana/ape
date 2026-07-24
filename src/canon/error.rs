@@ -2,7 +2,7 @@
 
 use crate::kernel::axiom::AxiomError;
 
-use crate::kernel::entities::EventId;
+use crate::kernel::entities::{CommitmentId, EventId};
 
 use crate::kernel::value_objects::Date;
 
@@ -16,6 +16,9 @@ pub enum CanonError {
         expected: Option<EventId>,
         found: Option<EventId>,
     },
+
+    #[error("commitment {0} is already settled by an event")]
+    CommitmentAlreadySettled(CommitmentId),
 
     #[error("recorded_at {recorded_at:?} precedes the assertion's factual instant {fact:?}")]
     RecordedBeforeFact { fact: Date, recorded_at: Date },
