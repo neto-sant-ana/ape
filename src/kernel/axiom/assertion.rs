@@ -58,21 +58,6 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
             self.require_eligible(*beneficiary, stmt.participants().recipients(), committed_at)?;
         }
 
-        if let Some(superseded_id) = input.supersedes {
-            let superseded = self
-                .knowledge
-                .commitment(superseded_id)
-                .ok_or(AxiomError::UnknownCommitment(superseded_id))?;
-
-            if *superseded.statement() != input.statement {
-                return Err(AxiomError::SupersedeStatementMismatch);
-            }
-
-            if *superseded.resource() != input.resource {
-                return Err(AxiomError::SupersedeResourceInstanceMismatch);
-            }
-        }
-
         for dependency in &input.dependencies {
             if self.knowledge.commitment(*dependency).is_none() {
                 return Err(AxiomError::UnknownCommitment(*dependency));

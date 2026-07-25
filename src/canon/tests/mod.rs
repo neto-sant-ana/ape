@@ -47,7 +47,6 @@ fn commitment(tag: u8) -> Commitment {
         statement: StatementId::from([tag; 32]),
         resource: ResourceInstanceId::from([tag; 32]),
         term: Term::new(date(2026, 1, 1), date(2026, 12, 31)).unwrap(),
-        supersedes: None,
         action_value: ActionValue::none(),
         dependencies: BTreeSet::new(),
     })
@@ -223,7 +222,6 @@ fn commitment_input(s: &Seeded) -> CommitmentInput {
         statement: s.statement,
         resource: s.instance,
         term: Term::new(date(2026, 1, 1), date(2026, 12, 31)).unwrap(),
-        supersedes: None,
         action_value: ActionValue::none(),
         dependencies: BTreeSet::new(),
     }

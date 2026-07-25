@@ -1,9 +1,8 @@
 //! Assertions admitted as knowledge about operational coordination.
 //!
 //! A `Commitment` is a proposed execution of a statement, completed with an
-//! `assignment`, a `term` (when it was committed and when it is due), an
-//! optional commitment it `supersedes`, its `action_value`, and the other
-//! commitments it depends on (`dependencies`). Its
+//! `assignment`, a `term` (when it was committed and when it is due), its
+//! `action_value`, and the other commitments it depends on (`dependencies`). Its
 //! state is not stored but derived from those relations and the events:
 //!
 //! - `Open` — valid, on schedule, not blocked by a dependency.
@@ -11,7 +10,6 @@
 //! - `Blocked` — valid, blocked by a dependency's execution.
 //! - `Fulfilled` — valid, all of its scope completed.
 //! - `Cancelled` — valid, cancelled by an event.
-//! - `Superseded` — invalid, replaced by a newer valid commitment.
 //! - `Invalid` — invalidated by a dependency or a system constraint.
 //!
 //! An `Event` is a factual execution of coordination relevance; it settles or
@@ -38,7 +36,6 @@ define_entity! {
         statement: StatementId,
         resource: ResourceInstanceId,
         term: Term,
-        supersedes: Option<CommitmentId>,
         action_value: ActionValue,
         dependencies: BTreeSet<CommitmentId>,
     }

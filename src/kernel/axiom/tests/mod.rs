@@ -128,11 +128,9 @@ fn date(y: i32, m: u8, dd: u8) -> Date {
 struct Fixture {
     store: Store,
     actor_role: RoleId,
-    recipient_role: RoleId,
     accountable: AgentId,
     executor: AgentId,
     beneficiary: AgentId,
-    resource: ResourceId,
     instance: ResourceInstanceId,
     statement: StatementId,
 }
@@ -217,11 +215,9 @@ fn discrete_graph() -> Fixture {
     Fixture {
         store,
         actor_role,
-        recipient_role,
         accountable,
         executor,
         beneficiary,
-        resource,
         instance,
         statement,
     }
@@ -232,7 +228,6 @@ fn commitment_input(f: &Fixture) -> CommitmentInput {
         statement: f.statement,
         resource: f.instance,
         term: Term::new(date(2026, 1, 1), date(2026, 12, 31)).unwrap(),
-        supersedes: None,
         action_value: ActionValue::none(),
         dependencies: BTreeSet::new(),
     }

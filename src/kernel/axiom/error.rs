@@ -49,12 +49,6 @@ pub enum AxiomError {
     #[error("agent {0} is not eligible for any role required of it by the statement")]
     AgentNotEligibleForRole(AgentId),
 
-    #[error("a superseding commitment must reference the same statement as the one it supersedes")]
-    SupersedeStatementMismatch,
-
-    #[error("a superseding commitment must target the same resource instance as the one it supersedes")]
-    SupersedeResourceInstanceMismatch,
-
     #[error("observation is not recognized by the commitment's statement settlement")]
     ObservationNotSettling,
 }
