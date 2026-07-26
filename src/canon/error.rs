@@ -29,4 +29,14 @@ pub enum CanonError {
         "recorded_at {recorded_at:?} precedes {earliest:?}, the earliest this assertion could be recorded"
     )]
     RecordedTooEarly { earliest: Date, recorded_at: Date },
+
+    /// The assertion would be back-dated into knowledge already admitted, which would
+    /// change what a past interpretation reads.
+    #[error(
+        "recorded_at {recorded_at:?} precedes {recorded_through:?}, through which history is already recorded"
+    )]
+    RecordedOutOfOrder {
+        recorded_at: Date,
+        recorded_through: Date,
+    },
 }

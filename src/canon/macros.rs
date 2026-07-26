@@ -29,7 +29,7 @@ macro_rules! canonical_admission {
                 let assertion = $crate::kernel::axiom::Axiom::new(&self.history).$axiom(input)?;
                 let id = assertion.id();
 
-                self.history.$put($crate::canon::Canonical::new(assertion, recorded_at)?);
+                self.history.$put($crate::canon::Canonical::new(assertion, recorded_at)?)?;
 
                 Ok(id)
             }

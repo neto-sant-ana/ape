@@ -71,7 +71,7 @@ impl<H: CanonicalHistory> Canon<H> {
         let eligibility = Axiom::new(&self.history).admit_eligibility_assignment(input)?;
         let id = eligibility.id();
         self.history
-            .put_eligibility(Canonical::new(eligibility, recorded_at)?);
+            .put_eligibility(Canonical::new(eligibility, recorded_at)?)?;
         Ok(id)
     }
 
@@ -80,23 +80,6 @@ impl<H: CanonicalHistory> Canon<H> {
     /// Reads the head first, then enforces settle-once: if the commitment already
     /// has an event, an identical fact is idempotent and a different one is refused.
     /// The event is stamped with that head and appended under a compare-and-append.
-    ///
-    /// The order is load-bearing under concurrency. The head is monotonic — each
-    /// append extends it with a fresh content-addressed id, never reused — so a
-    /// successful append proves the head did not move between the stamp and the
-    /// append, and thus that no event was admitted in that window. Reading the head
-    /// *before* the settle-once check binds the check to that window: were the head
-    /// read last, a racing settlement could land between the check and the stamp,
-    /// leaving the check stale while the stamp adopts the already-settled head — the
-    /// append would then extend the chain linearly and settle the commitment twice,
-    /// with no [`CanonError::UnexpectedHead`] to trigger recovery.
-    ///
-    /// If the head does move between the stamp and the append, the append is refused
-    /// with [`CanonError::UnexpectedHead`], which propagates from here. Recovery is
-    /// to call `admit_event` **again** — a fresh admission that re-reads the head and
-    /// re-runs the settle-once check against the new state. The caller must not
-    /// rebuild the event and hand it to the history directly: only re-admission
-    /// re-applies the semantic checks, so settle-once holds under concurrency.
     pub fn admit_event(
         &mut self,
         submission: EventSubmission,

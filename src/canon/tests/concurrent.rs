@@ -9,7 +9,7 @@ use crate::canon::{CanonError, EventSubmission, InMemoryHistory};
 #[test]
 fn the_in_memory_history_conforms() {
     crate::canon::conformance::verify(InMemoryHistory::default);
-    crate::canon::conformance::verify_thread_safe(InMemoryHistory::default());
+    crate::canon::conformance::verify_thread_safe(InMemoryHistory::default);
 }
 
 /// Two threads race to settle the same commitment with different, mutually

@@ -21,6 +21,8 @@ use crate::kernel::entities::{
     ResourceInstanceId, Role, RoleId, Statement, StatementId,
 };
 
+use crate::kernel::value_objects::Date;
+
 #[derive(Default)]
 struct Shelf {
     roles: BTreeMap<RoleId, Canonical<Role>>,
@@ -34,6 +36,25 @@ struct Shelf {
     events: BTreeMap<EventId, Canonical<Event>>,
     events_by_commitment: BTreeMap<CommitmentId, EventId>,
     head: Option<EventId>,
+    recorded_through: Option<Date>,
+}
+impl Shelf {
+    /// Checking and advancing the watermark are separate on purpose: an admission may
+    /// still be refused after this passes (a stale head), and a refusal must leave no
+    /// trace — a watermark moved by a write that never happened is a trace.
+    fn check_recording(&self, recorded_at: Date) -> Result<(), CanonError> {
+        match self.recorded_through {
+            Some(through) if !through.up_to(&recorded_at) => Err(CanonError::RecordedOutOfOrder {
+                recorded_at,
+                recorded_through: through,
+            }),
+            _ => Ok(()),
+        }
+    }
+
+    fn advance_recording(&mut self, recorded_at: Date) {
+        self.recorded_through = Some(recorded_at);
+    }
 }
 
 #[derive(Clone, Default)]
@@ -122,6 +143,10 @@ impl CanonicalHistory for InMemoryHistory {
         self.shelf.lock().unwrap().head
     }
 
+    fn recorded_through(&self) -> Option<Date> {
+        self.shelf.lock().unwrap().recorded_through
+    }
+
     fn event_of(&self, commitment: CommitmentId) -> Option<Event> {
         let shelf = self.shelf.lock().unwrap();
         shelf
@@ -138,37 +163,49 @@ impl CanonicalHistory for InMemoryHistory {
         self.shelf.lock().unwrap().events.get(&id).cloned()
     }
 
-    fn put_role(&mut self, role: Canonical<Role>) -> AppendOutcome {
+    fn put_role(&mut self, role: Canonical<Role>) -> Result<AppendOutcome, CanonError> {
         let id = role.assertion().id();
-        put_if_absent(&mut self.shelf.lock().unwrap().roles, id, role)
+        self.put(|shelf| &mut shelf.roles, id, role)
     }
-    fn put_agent(&mut self, agent: Canonical<Agent>) -> AppendOutcome {
+    fn put_agent(&mut self, agent: Canonical<Agent>) -> Result<AppendOutcome, CanonError> {
         let id = agent.assertion().id();
-        put_if_absent(&mut self.shelf.lock().unwrap().agents, id, agent)
+        self.put(|shelf| &mut shelf.agents, id, agent)
     }
-    fn put_resource(&mut self, resource: Canonical<Resource>) -> AppendOutcome {
+    fn put_resource(&mut self, resource: Canonical<Resource>) -> Result<AppendOutcome, CanonError> {
         let id = resource.assertion().id();
-        put_if_absent(&mut self.shelf.lock().unwrap().resources, id, resource)
+        self.put(|shelf| &mut shelf.resources, id, resource)
     }
-    fn put_resource_instance(&mut self, instance: Canonical<ResourceInstance>) -> AppendOutcome {
+    fn put_resource_instance(
+        &mut self,
+        instance: Canonical<ResourceInstance>,
+    ) -> Result<AppendOutcome, CanonError> {
         let id = instance.assertion().id();
-        put_if_absent(&mut self.shelf.lock().unwrap().instances, id, instance)
+        self.put(|shelf| &mut shelf.instances, id, instance)
     }
-    fn put_action(&mut self, action: Canonical<Action>) -> AppendOutcome {
+    fn put_action(&mut self, action: Canonical<Action>) -> Result<AppendOutcome, CanonError> {
         let id = action.assertion().id();
-        put_if_absent(&mut self.shelf.lock().unwrap().actions, id, action)
+        self.put(|shelf| &mut shelf.actions, id, action)
     }
-    fn put_statement(&mut self, statement: Canonical<Statement>) -> AppendOutcome {
+    fn put_statement(
+        &mut self,
+        statement: Canonical<Statement>,
+    ) -> Result<AppendOutcome, CanonError> {
         let id = statement.assertion().id();
-        put_if_absent(&mut self.shelf.lock().unwrap().statements, id, statement)
+        self.put(|shelf| &mut shelf.statements, id, statement)
     }
-    fn put_commitment(&mut self, commitment: Canonical<Commitment>) -> AppendOutcome {
+    fn put_commitment(
+        &mut self,
+        commitment: Canonical<Commitment>,
+    ) -> Result<AppendOutcome, CanonError> {
         let id = commitment.assertion().id();
-        put_if_absent(&mut self.shelf.lock().unwrap().commitments, id, commitment)
+        self.put(|shelf| &mut shelf.commitments, id, commitment)
     }
-    fn put_eligibility(&mut self, eligibility: Canonical<EligibilityAssignment>) -> AppendOutcome {
+    fn put_eligibility(
+        &mut self,
+        eligibility: Canonical<EligibilityAssignment>,
+    ) -> Result<AppendOutcome, CanonError> {
         let id = eligibility.assertion().id();
-        put_if_absent(&mut self.shelf.lock().unwrap().eligibility, id, eligibility)
+        self.put(|shelf| &mut shelf.eligibility, id, eligibility)
     }
 
     fn append_event(&mut self, event: Canonical<Event>) -> Result<AppendOutcome, CanonError> {
@@ -179,6 +216,8 @@ impl CanonicalHistory for InMemoryHistory {
             return Ok(AppendOutcome::AlreadyPresent);
         }
 
+        shelf.check_recording(*event.recorded_at())?;
+
         let expected = *event.assertion().previous_event();
         if shelf.head != expected {
             return Err(CanonError::UnexpectedHead {
@@ -188,22 +227,35 @@ impl CanonicalHistory for InMemoryHistory {
         }
 
         let commitment = *event.assertion().commitment_id();
+        let recorded_at = *event.recorded_at();
         shelf.events.insert(id, event);
         shelf.events_by_commitment.insert(commitment, id);
         shelf.head = Some(id);
+        shelf.advance_recording(recorded_at);
 
         Ok(AppendOutcome::Admitted)
     }
 }
+impl InMemoryHistory {
+    /// Put-if-absent under the lock, guarded by the recording watermark.
+    fn put<Id: Ord, T>(
+        &mut self,
+        shelf: impl Fn(&mut Shelf) -> &mut BTreeMap<Id, Canonical<T>>,
+        id: Id,
+        record: Canonical<T>,
+    ) -> Result<AppendOutcome, CanonError> {
+        let mut guard = self.shelf.lock().unwrap();
 
-fn put_if_absent<K: Ord, V>(map: &mut BTreeMap<K, V>, key: K, value: V) -> AppendOutcome {
-    use std::collections::btree_map::Entry;
-
-    match map.entry(key) {
-        Entry::Vacant(slot) => {
-            slot.insert(value);
-            AppendOutcome::Admitted
+        if shelf(&mut guard).contains_key(&id) {
+            return Ok(AppendOutcome::AlreadyPresent);
         }
-        Entry::Occupied(_) => AppendOutcome::AlreadyPresent,
+
+        let recorded_at = *record.recorded_at();
+        guard.check_recording(recorded_at)?;
+
+        shelf(&mut guard).insert(id, record);
+        guard.advance_recording(recorded_at);
+
+        Ok(AppendOutcome::Admitted)
     }
 }

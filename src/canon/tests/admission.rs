@@ -36,6 +36,56 @@ fn propagates_a_structural_rejection_from_the_axiom() {
 }
 
 #[test]
+fn refuses_knowledge_back_dated_into_an_instant_already_recorded() {
+    let g = graph();
+    let first = commitment_input(&g.seeded);
+
+    let second = CommitmentInput {
+        term: Term::new(date(2026, 1, 1), date(2027, 1, 1)).unwrap(),
+        ..commitment_input(&g.seeded)
+    };
+    let mut canon = g.canon;
+
+    canon.admit_commitment(first, date(2026, 2, 1)).unwrap();
+
+    assert!(matches!(
+        canon.admit_commitment(second, date(2026, 1, 15)),
+        Err(CanonError::RecordedOutOfOrder { .. })
+    ));
+}
+
+#[test]
+fn refuses_a_back_dated_eligibility_declaration() {
+    let g = graph();
+    let agent = g.seeded.accountable;
+    let role = g.seeded.actor_role;
+    let mut canon = g.canon;
+
+    canon
+        .admit_eligibility(
+            EligibilityAssignmentInput {
+                agent,
+                roles: BTreeSet::from([role]),
+                effective_from: date(2026, 1, 1),
+            },
+            date(2026, 2, 1),
+        )
+        .unwrap();
+
+    assert!(matches!(
+        canon.admit_eligibility(
+            EligibilityAssignmentInput {
+                agent,
+                roles: BTreeSet::new(),
+                effective_from: date(2027, 1, 1),
+            },
+            date(2026, 1, 15),
+        ),
+        Err(CanonError::RecordedOutOfOrder { .. })
+    ));
+}
+
+#[test]
 fn admits_an_eligibility_declared_effective_in_the_future() {
     let g = graph();
     let agent = g.seeded.accountable;
