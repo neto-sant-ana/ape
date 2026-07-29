@@ -23,18 +23,26 @@
 
 use std::collections::BTreeMap;
 
-use super::{Condition, Dependencies, Outcome, Projection, ProjectionError};
+use super::{Condition, Conflict, Dependencies, Hypothesis, Outcome, Projection, ProjectionError};
 
 use crate::kernel::axiom::Knowledge;
 
-use crate::kernel::entities::{Commitment, CommitmentId, Event};
+use crate::kernel::entities::{Commitment, CommitmentId, Event, ResourceInstanceId};
 
-use crate::kernel::value_objects::Date;
+use crate::kernel::value_objects::{ActionKind, Constraint, Date, Effect, ResourceKind};
+
+#[derive(Debug, Clone)]
+struct Movement {
+    instance: ResourceInstanceId,
+    magnitude: f64,
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct Accumulation {
     selected: BTreeMap<CommitmentId, Commitment>,
     settled: BTreeMap<CommitmentId, Outcome>,
+    movements: BTreeMap<CommitmentId, Movement>,
+    constraints: BTreeMap<ResourceInstanceId, Constraint>,
 }
 impl Accumulation {
     pub fn absorb<K: Knowledge>(
@@ -47,6 +55,10 @@ impl Accumulation {
             let commitment = knowledge
                 .commitment(*id)
                 .ok_or(ProjectionError::UnknownCommitment(*id))?;
+
+            if let Some(movement) = self.resolve_movement(knowledge, &commitment)? {
+                self.movements.insert(*id, movement);
+            }
 
             self.selected.insert(*id, commitment);
         }
@@ -113,6 +125,121 @@ impl Accumulation {
         }
 
         Ok(Projection::new(conditions))
+    }
+
+    /// The conflicts the selected graph carries under `hypothesis`, empty when none was
+    /// found.
+    ///
+    /// A commitment still open behind a dependency that can never be fulfilled is reported
+    /// first, and on its own. Its presence means no completion exists at all, so assuming
+    /// every unsettled commitment is realized is not an assumption that can hold.
+    pub fn conflicts(&self, hypothesis: Hypothesis) -> Result<Vec<Conflict>, ProjectionError> {
+        let mut resolved = BTreeMap::new();
+        let mut doomed = Vec::new();
+
+        for id in self.selected.keys() {
+            if self.outcome_of(id) == Outcome::Unsettled
+                && self.unfulfillable(*id, &mut resolved)?
+            {
+                doomed.push(Conflict::Unrealizable(*id));
+            }
+        }
+
+        if !doomed.is_empty() {
+            return Ok(doomed);
+        }
+
+        Ok(match hypothesis {
+            Hypothesis::FinalState => self.out_of_bounds(self.levels_once_every_movement_lands()),
+        })
+    }
+
+    fn levels_once_every_movement_lands(&self) -> BTreeMap<ResourceInstanceId, f64> {
+        let mut levels = BTreeMap::new();
+
+        for (id, movement) in &self.movements {
+            if self.outcome_of(id) == Outcome::Cancelled {
+                continue;
+            }
+
+            *levels.entry(movement.instance).or_insert(0.0) += movement.magnitude;
+        }
+
+        levels
+    }
+
+    fn out_of_bounds(&self, levels: BTreeMap<ResourceInstanceId, f64>) -> Vec<Conflict> {
+        levels
+            .into_iter()
+            .filter(|(instance, level)| {
+                self.constraints
+                    .get(instance)
+                    .is_some_and(|constraint| !constraint.check(*level))
+            })
+            .map(|(instance, level)| Conflict::OutOfBounds { instance, level })
+            .collect()
+    }
+
+    fn resolve_movement<K: Knowledge>(
+        &mut self,
+        knowledge: &K,
+        commitment: &Commitment,
+    ) -> Result<Option<Movement>, ProjectionError> {
+        let statement_id = *commitment.statement();
+        let statement =
+            knowledge
+                .statement(statement_id)
+                .ok_or(ProjectionError::UnknownStatement {
+                    commitment: commitment.id(),
+                    statement: statement_id,
+                })?;
+
+        let action_id = *statement.action();
+        let action = knowledge
+            .action(action_id)
+            .ok_or(ProjectionError::UnknownAction {
+                statement: statement_id,
+                action: action_id,
+            })?;
+
+        let effect = match (action.kind(), commitment.action_value().as_value()) {
+            (ActionKind::Discrete, None) => return Ok(None),
+            (ActionKind::Quantifiable(effect), Some(magnitude)) => (effect, magnitude),
+            _ => return Err(ProjectionError::ActionValueMismatch(commitment.id())),
+        };
+
+        let instance_id = *commitment.resource();
+        let instance = knowledge.resource_instance(instance_id).ok_or(
+            ProjectionError::UnknownResourceInstance {
+                commitment: commitment.id(),
+                instance: instance_id,
+            },
+        )?;
+
+        let resource_id = *instance.resource();
+        let resource =
+            knowledge
+                .resource(resource_id)
+                .ok_or(ProjectionError::UnknownResource {
+                    instance: instance_id,
+                    resource: resource_id,
+                })?;
+
+        let ResourceKind::Quantifiable(constraint) = resource.kind() else {
+            return Err(ProjectionError::ActionResourceKindMismatch(commitment.id()));
+        };
+
+        self.constraints.insert(instance_id, constraint.clone());
+
+        let (effect, magnitude) = effect;
+
+        Ok(Some(Movement {
+            instance: instance_id,
+            magnitude: match effect {
+                Effect::Increase => magnitude,
+                Effect::Decrease => -magnitude,
+            },
+        }))
     }
 
     fn unfulfillable(

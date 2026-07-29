@@ -9,11 +9,14 @@
 //! as a selection root, as a dependency, or as what an event settles — is the single
 //! `UnknownCommitment`.
 //!
-//! `ObservationNotSettling` and `SettledMoreThanOnce` describe states the Canon already
-//! prevents. They are kept because the code has to branch somewhere, and a named refusal
-//! beats a silently wrong answer.
+//! `ObservationNotSettling`, `SettledMoreThanOnce`, `ActionValueMismatch` and
+//! `ActionResourceKindMismatch` describe states the Axiom and the Canon already prevent. They
+//! are kept because the code has to branch somewhere, and a named refusal beats a silently
+//! wrong answer.
 
-use crate::kernel::entities::{CommitmentId, EventId, StatementId};
+use crate::kernel::entities::{
+    ActionId, CommitmentId, EventId, ResourceId, ResourceInstanceId, StatementId,
+};
 
 #[derive(Debug, ::thiserror::Error)]
 pub enum ProjectionError {
@@ -25,6 +28,30 @@ pub enum ProjectionError {
         commitment: CommitmentId,
         statement: StatementId,
     },
+
+    #[error("statement {statement} names action {action}, which is absent")]
+    UnknownAction {
+        statement: StatementId,
+        action: ActionId,
+    },
+
+    #[error("commitment {commitment} names resource instance {instance}, which is absent")]
+    UnknownResourceInstance {
+        commitment: CommitmentId,
+        instance: ResourceInstanceId,
+    },
+
+    #[error("resource instance {instance} names resource {resource}, which is absent")]
+    UnknownResource {
+        instance: ResourceInstanceId,
+        resource: ResourceId,
+    },
+
+    #[error("commitment {0} carries a value its action's kind does not admit")]
+    ActionValueMismatch(CommitmentId),
+
+    #[error("commitment {0} moves a level on a resource that declares no bounds")]
+    ActionResourceKindMismatch(CommitmentId),
 
     #[error(
         "event {event} carries an observation its commitment's statement neither fulfills nor cancels"
