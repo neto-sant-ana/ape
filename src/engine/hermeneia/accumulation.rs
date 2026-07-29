@@ -44,6 +44,14 @@ struct Movement {
 /// Beyond this many, the group is refused rather than approximated.
 const SIMULTANEOUS_LIMIT: usize = 16;
 
+/// What to judge of the movements a single instant carries: only the level they leave behind, or
+/// every level their arrangements can pass through on the way.
+#[derive(Debug, Clone, Copy)]
+enum Within {
+    Net,
+    AnyOrder,
+}
+
 /// Every level the `simultaneous` movements can produce from `level`, in any order.
 fn reachable_levels(level: f64, simultaneous: &[f64]) -> Vec<f64> {
     (1..(1u32 << simultaneous.len()))
@@ -186,11 +194,17 @@ impl Accumulation {
             Hypothesis::FinalState => {
                 Ok(self.out_of_bounds(self.levels_once_every_movement_lands()))
             }
-            Hypothesis::OnDueDate => self.breaches_along_the_punctual_sequence(),
+            Hypothesis::OnDueDateNet => self.breaches_along_the_punctual_sequence(Within::Net),
+            Hypothesis::OnDueDateInAnyOrder => {
+                self.breaches_along_the_punctual_sequence(Within::AnyOrder)
+            }
         }
     }
 
-    fn breaches_along_the_punctual_sequence(&self) -> Result<Vec<Conflict>, ProjectionError> {
+    fn breaches_along_the_punctual_sequence(
+        &self,
+        within: Within,
+    ) -> Result<Vec<Conflict>, ProjectionError> {
         let mut conflicts = Vec::new();
 
         for (instance, sequence) in self.punctual_sequence() {
@@ -201,15 +215,24 @@ impl Accumulation {
             let mut level = 0.0;
 
             for (position, simultaneous) in sequence {
-                if simultaneous.len() > SIMULTANEOUS_LIMIT {
-                    return Err(ProjectionError::TooManySimultaneousMovements {
-                        instance,
-                        position,
-                        count: simultaneous.len(),
-                    });
-                }
+                let net = level + simultaneous.iter().sum::<f64>();
 
-                if let Some(breach) = reachable_levels(level, &simultaneous)
+                let judged = match within {
+                    Within::Net => vec![net],
+                    Within::AnyOrder => {
+                        if simultaneous.len() > SIMULTANEOUS_LIMIT {
+                            return Err(ProjectionError::TooManySimultaneousMovements {
+                                instance,
+                                position,
+                                count: simultaneous.len(),
+                            });
+                        }
+
+                        reachable_levels(level, &simultaneous)
+                    }
+                };
+
+                if let Some(breach) = judged
                     .into_iter()
                     .find(|reachable| !constraint.check(*reachable))
                 {
@@ -220,7 +243,7 @@ impl Accumulation {
                     break;
                 }
 
-                level += simultaneous.iter().sum::<f64>();
+                level = net;
             }
         }
 
