@@ -2,6 +2,7 @@ mod error;
 pub use error::ProjectionError;
 
 mod condition;
+use condition::Dependencies;
 pub use condition::{Condition, Outcome, Timeliness};
 
 mod projection;

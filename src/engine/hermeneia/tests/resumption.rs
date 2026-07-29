@@ -17,7 +17,7 @@ fn folding_in_pieces_equals_folding_at_once() {
         .absorb(&g.knowledge, &[g.a], &[settles(g.a, "Delivered")])
         .unwrap();
     piecewise
-        .absorb(&g.knowledge, &[g.b, g.c], &[settles(g.b, "Cancelled")])
+        .absorb(&g.knowledge, &[g.b, g.c, g.d], &[settles(g.b, "Cancelled")])
         .unwrap();
     let piecewise = piecewise.view(&date(2026, 7, 1)).unwrap();
 

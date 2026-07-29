@@ -5,7 +5,7 @@
 //! projection resolves ids and derives consequences, so if it needed an admission path to
 //! be exercised, it would be reading something it has no business reading.
 //!
-//! The guide graph is a chain `a → b → c`, each depending on the one before, with
+//! The guide graph is a chain `a → b → c → d`, each depending on the one before, with
 //! staggered deadlines so timeliness can be moved independently of settlement.
 
 mod chain;
@@ -77,10 +77,11 @@ struct Guide {
     a: CommitmentId,
     b: CommitmentId,
     c: CommitmentId,
+    d: CommitmentId,
 }
 impl Guide {
     fn selection(&self) -> Vec<CommitmentId> {
-        vec![self.a, self.b, self.c]
+        vec![self.a, self.b, self.c, self.d]
     }
 
     fn accumulate(&self, events: &[Event]) -> Accumulation {
@@ -128,8 +129,15 @@ fn guide() -> Guide {
     let a = commit(date(2026, 3, 31), BTreeSet::new());
     let b = commit(date(2026, 6, 30), BTreeSet::from([a]));
     let c = commit(date(2026, 9, 30), BTreeSet::from([b]));
+    let d = commit(date(2026, 12, 31), BTreeSet::from([c]));
 
-    Guide { knowledge, a, b, c }
+    Guide {
+        knowledge,
+        a,
+        b,
+        c,
+        d,
+    }
 }
 
 fn settles(commitment: CommitmentId, observation: &str) -> Event {

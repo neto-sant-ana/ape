@@ -11,15 +11,18 @@
 //! moment the commitment is settled, so reporting it would answer a question that no
 //! longer exists.
 //!
-//! Dependencies are reported as `has_pending_dependencies` and nothing more, deliberately.
-//! What can be computed from a commitment's dependencies alone is the narrow, negative
-//! fact that none of them is still pending — a dependency settled either way, fulfilled
-//! *or* cancelled, stops the waiting. Naming that as a quality of the commitment
-//! (`Available`, `Ready`) would claim something wider than the computation supports,
-//! because a commitment can be waiting on nothing and still be impossible: a consumer
-//! reading `Available` would schedule work this layer already knows cannot be done.
-//! Whether a terminal dependency leaves its dependent realizable is feasibility's
-//! question — a different dimension, not a harder computation.
+//! A dependency is a requirement, and it answers two questions differently. A dependency
+//! settled either way, fulfilled *or* cancelled, stops the waiting; but cancellation is
+//! not fulfilment, so only one of the two leaves its dependent realizable.
+//!
+//! `unfulfillable` is the realizability half. A dependency that can never be fulfilled —
+//! cancelled, or unsettled behind one that was,  makes its dependent unrealizable, and the
+//! consequence travels the dependency path.
+//!
+//! Propagation stops at a fact. A commitment that *was* fulfilled is fulfilled whatever
+//! its own dependencies did, so nothing downstream of it inherits unfulfillability. That
+//! such a commitment has an unfulfillable dependency is not a contradiction to resolve
+//! here — it is the record of reality having outrun the plan.
 
 use crate::kernel::value_objects::{Date, Term};
 
@@ -46,15 +49,21 @@ impl Timeliness {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub(super) struct Dependencies {
+    pub pending: bool,
+    pub unfulfillable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Condition {
     outcome: Outcome,
-    pending_dependencies: bool,
+    dependencies: Dependencies,
     timeliness: Option<Timeliness>,
 }
 impl Condition {
     pub(super) fn new(
         outcome: Outcome,
-        pending_dependencies: bool,
+        dependencies: Dependencies,
         term: &Term,
         at: &Date,
     ) -> Self {
@@ -65,7 +74,7 @@ impl Condition {
 
         Self {
             outcome,
-            pending_dependencies,
+            dependencies,
             timeliness,
         }
     }
@@ -75,7 +84,11 @@ impl Condition {
     }
 
     pub fn has_pending_dependencies(&self) -> bool {
-        self.pending_dependencies
+        self.dependencies.pending
+    }
+
+    pub fn has_unfulfillable_dependencies(&self) -> bool {
+        self.dependencies.unfulfillable
     }
 
     pub fn timeliness(&self) -> Option<&Timeliness> {

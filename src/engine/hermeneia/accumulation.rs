@@ -23,7 +23,7 @@
 
 use std::collections::BTreeMap;
 
-use super::{Condition, Outcome, Projection, ProjectionError};
+use super::{Condition, Dependencies, Outcome, Projection, ProjectionError};
 
 use crate::kernel::axiom::Knowledge;
 
@@ -86,26 +86,26 @@ impl Accumulation {
     /// legitimately arrive in a later `absorb`, but a commitment whose dependency is
     /// missing cannot be told apart from one whose dependency is merely pending.
     pub fn view(&self, at: &Date) -> Result<Projection, ProjectionError> {
+        let mut resolved = BTreeMap::new();
         let mut conditions = BTreeMap::new();
 
         for (id, commitment) in &self.selected {
-            let mut pending_dependencies = false;
+            let mut pending = false;
+            let mut unfulfillable = false;
 
             for dependency in commitment.dependencies() {
-                if !self.selected.contains_key(dependency) {
-                    return Err(ProjectionError::UnknownCommitment(*dependency));
-                }
-
-                if self.outcome_of(dependency) == Outcome::Unsettled {
-                    pending_dependencies = true;
-                }
+                pending |= self.outcome_of(dependency) == Outcome::Unsettled;
+                unfulfillable |= self.unfulfillable(*dependency, &mut resolved)?;
             }
 
             conditions.insert(
                 *id,
                 Condition::new(
                     self.outcome_of(id),
-                    pending_dependencies,
+                    Dependencies {
+                        pending,
+                        unfulfillable,
+                    },
                     commitment.term(),
                     at,
                 ),
@@ -113,6 +113,37 @@ impl Accumulation {
         }
 
         Ok(Projection::new(conditions))
+    }
+
+    fn unfulfillable(
+        &self,
+        id: CommitmentId,
+        resolved: &mut BTreeMap<CommitmentId, bool>,
+    ) -> Result<bool, ProjectionError> {
+        if let Some(known) = resolved.get(&id) {
+            return Ok(*known);
+        }
+
+        let commitment = self
+            .selected
+            .get(&id)
+            .ok_or(ProjectionError::UnknownCommitment(id))?;
+
+        let verdict = match self.outcome_of(&id) {
+            Outcome::Fulfilled => false,
+            Outcome::Cancelled => true,
+            Outcome::Unsettled => {
+                let mut behind = false;
+                for dependency in commitment.dependencies() {
+                    behind |= self.unfulfillable(*dependency, resolved)?;
+                }
+                behind
+            }
+        };
+
+        resolved.insert(id, verdict);
+
+        Ok(verdict)
     }
 
     /// Only settled commitments are recorded, so absence from `settled` is what makes a

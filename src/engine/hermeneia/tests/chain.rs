@@ -1,4 +1,4 @@
-//! The three axes over the guide chain `a → b → c`.
+//! The conditions derived over the guide chain `a → b → c → d`.
 
 use super::*;
 use crate::engine::hermeneia::{Outcome, ProjectionError, Timeliness};
@@ -171,4 +171,70 @@ fn one_commitment_cannot_be_settled_twice() {
         refused,
         Err(ProjectionError::SettledMoreThanOnce(twice)) if twice == g.a
     ));
+}
+
+#[test]
+fn a_cancelled_dependency_makes_the_path_below_it_unrealizable() {
+    let g = guide();
+    let p = g
+        .accumulate(&[settles(g.a, "Cancelled")])
+        .view(&date(2026, 2, 1))
+        .unwrap();
+
+    assert!(
+        !p.condition(g.a).unwrap().has_unfulfillable_dependencies(),
+        "a depends on nothing; that a is itself unfulfillable is a different statement",
+    );
+    assert!(p.condition(g.b).unwrap().has_unfulfillable_dependencies());
+    assert!(
+        p.condition(g.c).unwrap().has_unfulfillable_dependencies(),
+        "c sits behind an unsettled b that can never be fulfilled",
+    );
+    assert!(
+        p.condition(g.d).unwrap().has_unfulfillable_dependencies(),
+        "d is far enough down the path that only a genuinely transitive rule reaches it",
+    );
+}
+
+#[test]
+fn a_fulfilled_dependency_leaves_the_path_realizable() {
+    let g = guide();
+    let p = g
+        .accumulate(&[settles(g.a, "Delivered")])
+        .view(&date(2026, 2, 1))
+        .unwrap();
+
+    for id in g.selection() {
+        assert!(!p.condition(id).unwrap().has_unfulfillable_dependencies());
+    }
+}
+
+/// Propagation stops at an accomplished fact.
+///
+/// The Canon admits an event fulfilling `b` even though `a` was cancelled — it checks
+/// settle-once, the observation and the chain, never the dependencies, and refusing an
+/// observation would be refusing what happened. So `b` is fulfilled, and `c`, which
+/// required `b`, has its requirement met: nothing downstream inherits the contradiction.
+///
+/// That `b` is fulfilled *and* carries an unfulfillable dependency is the record of
+/// reality having outrun the plan. It is read here, never repaired.
+#[test]
+fn unrealizability_does_not_travel_past_a_fulfilled_commitment() {
+    let g = guide();
+    let p = g
+        .accumulate(&[settles(g.a, "Cancelled"), settles(g.b, "Delivered")])
+        .view(&date(2026, 2, 1))
+        .unwrap();
+
+    let b = p.condition(g.b).unwrap();
+    assert_eq!(b.outcome(), &Outcome::Fulfilled);
+    assert!(
+        b.has_unfulfillable_dependencies(),
+        "the violation stays legible on b",
+    );
+
+    assert!(
+        !p.condition(g.c).unwrap().has_unfulfillable_dependencies(),
+        "c required b, and b was fulfilled — whatever a did",
+    );
 }
