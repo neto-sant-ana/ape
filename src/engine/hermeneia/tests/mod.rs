@@ -11,6 +11,13 @@
 mod chain;
 mod levels;
 mod resumption;
+mod sequence;
+
+struct Ledger {
+    credit: StatementId,
+    debit: StatementId,
+    instance: ResourceInstanceId,
+}
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -132,6 +139,48 @@ impl Fixture {
         self.actions.insert(action.id(), action);
 
         (statement, instance_id)
+    }
+
+    /// One bounded level reachable through two actions, one raising it and one lowering it, so
+    /// a sequence over the same instance can move in both directions.
+    fn ledger(&mut self, constraint: Constraint) -> Ledger {
+        let resource = Resource::create(ResourceInput {
+            label: ident("account"),
+            kind: ResourceKind::Quantifiable(constraint),
+        })
+        .unwrap();
+        let instance = ResourceInstance::create(ResourceInstanceInput {
+            label: ident("balance"),
+            resource: resource.id(),
+        })
+        .unwrap();
+
+        let mut action = |verb: &str, effect: Effect| {
+            let action = Action::create(ActionInput {
+                verb: ident(verb),
+                kind: ActionKind::Quantifiable(effect),
+                resource: resource.id(),
+            })
+            .unwrap();
+
+            let id = action.id();
+            self.actions.insert(id, action);
+
+            self.statement(id)
+        };
+
+        let credit = action("credit", Effect::Increase);
+        let debit = action("debit", Effect::Decrease);
+        let instance_id = instance.id();
+
+        self.resources.insert(resource.id(), resource);
+        self.instances.insert(instance_id, instance);
+
+        Ledger {
+            credit,
+            debit,
+            instance: instance_id,
+        }
     }
 
     fn statement(&mut self, action: ActionId) -> StatementId {

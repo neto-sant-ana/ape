@@ -37,10 +37,38 @@ struct Movement {
     magnitude: f64,
 }
 
+/// How many movements may share one instant on one resource before the levels their
+/// arrangements can produce stop being worth enumerating.
+/// Deciding a group means asking whether *every* arrangement of it stays within bounds, and the
+/// levels reachable within a group are the sums of its subsets.
+/// Beyond this many, the group is refused rather than approximated.
+const SIMULTANEOUS_LIMIT: usize = 16;
+
+/// Every level the `simultaneous` movements can produce from `level`, in any order.
+fn reachable_levels(level: f64, simultaneous: &[f64]) -> Vec<f64> {
+    (1..(1u32 << simultaneous.len()))
+        .map(|landed| {
+            level
+                + simultaneous
+                    .iter()
+                    .enumerate()
+                    .filter(|(slot, _)| landed & (1 << slot) != 0)
+                    .map(|(_, magnitude)| magnitude)
+                    .sum::<f64>()
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone)]
+struct Settled {
+    outcome: Outcome,
+    occurred_at: Date,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Accumulation {
     selected: BTreeMap<CommitmentId, Commitment>,
-    settled: BTreeMap<CommitmentId, Outcome>,
+    settled: BTreeMap<CommitmentId, Settled>,
     movements: BTreeMap<CommitmentId, Movement>,
     constraints: BTreeMap<ResourceInstanceId, Constraint>,
 }
@@ -86,7 +114,12 @@ impl Accumulation {
                 return Err(ProjectionError::ObservationNotSettling { event: event.id() });
             };
 
-            if self.settled.insert(commitment_id, outcome).is_some() {
+            let settled = Settled {
+                outcome,
+                occurred_at: *event.occurred_at(),
+            };
+
+            if self.settled.insert(commitment_id, settled).is_some() {
                 return Err(ProjectionError::SettledMoreThanOnce(commitment_id));
             }
         }
@@ -149,9 +182,74 @@ impl Accumulation {
             return Ok(doomed);
         }
 
-        Ok(match hypothesis {
-            Hypothesis::FinalState => self.out_of_bounds(self.levels_once_every_movement_lands()),
-        })
+        match hypothesis {
+            Hypothesis::FinalState => {
+                Ok(self.out_of_bounds(self.levels_once_every_movement_lands()))
+            }
+            Hypothesis::OnDueDate => self.breaches_along_the_punctual_sequence(),
+        }
+    }
+
+    fn breaches_along_the_punctual_sequence(&self) -> Result<Vec<Conflict>, ProjectionError> {
+        let mut conflicts = Vec::new();
+
+        for (instance, sequence) in self.punctual_sequence() {
+            let Some(constraint) = self.constraints.get(&instance) else {
+                continue;
+            };
+
+            let mut level = 0.0;
+
+            for (position, simultaneous) in sequence {
+                if simultaneous.len() > SIMULTANEOUS_LIMIT {
+                    return Err(ProjectionError::TooManySimultaneousMovements {
+                        instance,
+                        position,
+                        count: simultaneous.len(),
+                    });
+                }
+
+                if let Some(breach) = reachable_levels(level, &simultaneous)
+                    .into_iter()
+                    .find(|reachable| !constraint.check(*reachable))
+                {
+                    conflicts.push(Conflict::OutOfBounds {
+                        instance,
+                        level: breach,
+                    });
+                    break;
+                }
+
+                level += simultaneous.iter().sum::<f64>();
+            }
+        }
+
+        Ok(conflicts)
+    }
+
+    fn punctual_sequence(&self) -> BTreeMap<ResourceInstanceId, BTreeMap<Date, Vec<f64>>> {
+        let mut sequence: BTreeMap<ResourceInstanceId, BTreeMap<Date, Vec<f64>>> = BTreeMap::new();
+
+        for (id, commitment) in &self.selected {
+            let Some(movement) = self.movements.get(id) else {
+                continue;
+            };
+
+            let position = match self.settled.get(id) {
+                Some(settled) if settled.outcome == Outcome::Cancelled => continue,
+                Some(settled) => settled.occurred_at,
+                None => *commitment.term().due_date(),
+            };
+
+            sequence
+                .entry(movement.instance)
+                .or_default()
+                .entry(position)
+                .or_default()
+                .push(movement.magnitude);
+        }
+
+        sequence
     }
 
     fn levels_once_every_movement_lands(&self) -> BTreeMap<ResourceInstanceId, f64> {
@@ -278,7 +376,7 @@ impl Accumulation {
     fn outcome_of(&self, commitment: &CommitmentId) -> Outcome {
         self.settled
             .get(commitment)
-            .cloned()
+            .map(|settled| settled.outcome.clone())
             .unwrap_or(Outcome::Unsettled)
     }
 }

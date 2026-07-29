@@ -18,6 +18,8 @@ use crate::kernel::entities::{
     ActionId, CommitmentId, EventId, ResourceId, ResourceInstanceId, StatementId,
 };
 
+use crate::kernel::value_objects::Date;
+
 #[derive(Debug, ::thiserror::Error)]
 pub enum ProjectionError {
     #[error("commitment {0} is named but not in the selection")]
@@ -52,6 +54,15 @@ pub enum ProjectionError {
 
     #[error("commitment {0} moves a level on a resource that declares no bounds")]
     ActionResourceKindMismatch(CommitmentId),
+
+    #[error(
+        "{count} movements share {position:?} on resource instance {instance}, too many to decide every arrangement of"
+    )]
+    TooManySimultaneousMovements {
+        instance: ResourceInstanceId,
+        position: Date,
+        count: usize,
+    },
 
     #[error(
         "event {event} carries an observation its commitment's statement neither fulfills nor cancels"

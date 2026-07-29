@@ -11,6 +11,15 @@
 //! It asks only whether the accumulated resource levels land within their constraints once
 //! every commitment has contributed.
 //!
+//! `OnDueDate`- Every unsettled commitment is realized exactly on the day it is due, while a
+//! settled one lands when it was observed. It asks whether every level along that realization
+//! stays within bounds, not only the one it ends at — which is why the two can disagree.
+//!
+//! What it does not establish is impossibility: `OnDueDate` tests the latest punctual realization,
+//! not every realization, and a commitment fulfilled ahead of its deadline can rescue a graph this
+//! hypothesis rejects. Its verdict is that the punctual plan does not hold — actionable as replanning,
+//! not as impossibility.
+//!
 //! Findings are reported rather than a verdict named. There is no `Feasible` — an empty list
 //! means nothing was found under the hypothesis asked, which for `FinalState` is not the same
 //! as the graph being realizable. What is reported instead identifies *what* conflicts, so an
@@ -25,6 +34,7 @@ use crate::kernel::entities::{CommitmentId, ResourceInstanceId};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hypothesis {
     FinalState,
+    OnDueDate,
 }
 
 #[derive(Debug, Clone, PartialEq)]
