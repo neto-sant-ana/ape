@@ -5,7 +5,7 @@
 //! derived results, not errors.
 //!
 //! The selection is the world. A commitment outside it does not exist for this
-//! projection, whether it was never admitted or a Scenario left it out, so naming one —
+//! projection, whether it was never admitted or a Thesis left it out, so naming one —
 //! as a selection root, as a dependency, or as what an event settles — is the single
 //! `UnknownCommitment`.
 //!

@@ -71,6 +71,14 @@ Resources and Constraints are therefore not separate projection inputs.
 
 They are part of the operational knowledge reachable through the Commitment graph.
 
+### Where the first two inputs come from
+
+The selected graph and the knowledge cut are not independent inputs. A Thesis supplies both: it names its Commitments and recognizes exactly one Event Head, and a Projection is derived only against the head its Thesis recognizes.
+
+A knowledge instant therefore does not address a Projection directly. It is how an application resolves a head — and, through recording time, which Commitments were available to be selected — while constructing or advancing a Thesis.
+
+Once selected, membership is explicit. Nothing is filtered by recording time at projection time, because the selection is the world.
+
 ---
 
 ## Knowledge Time
@@ -455,25 +463,21 @@ As new Events are admitted, the known settlements change. A previously feasible 
 
 ---
 
-## Scenarios
+## Theses
 
 A Projection operates over a *selected* Commitment graph. It does not decide how that selection is formed.
 
-```text
-Projection = the graph a Scenario selects + Event history
-```
+Every Thesis projects identically, and none is privileged by these semantics.
 
-Every Scenario projects identically, and no Scenario is privileged by these semantics.
+Projection does establish one boundary, because it follows from the ontology rather than from any selection policy: **the Event history is always factual.** A Thesis reasons about intentions. It cannot introduce an observation, and it cannot retract one.
 
-Projection does establish one boundary, because it follows from the ontology rather than from any Scenario policy: **the Event history is always factual.** A Scenario reasons about intentions. It cannot introduce an observation, and it cannot retract one.
-
-How a Scenario composes its graph — which Commitments it may introduce, omit or replace, and what a dependency on an omitted Commitment implies — is defined by the Scenario layer.
+Which Commitments a Thesis may introduce, omit or replace, and what its selection must already contain to be interpretable at all, is defined by the Thesis layer.
 
 ---
 
 ## Merge
 
-Merging a Scenario into canonical history asks whether the intentions it introduces can join the canonical graph without producing an unrealizable operational future.
+Merging a Thesis into canonical history asks whether the intentions it introduces can join the canonical graph without producing an unrealizable operational future.
 
 Projection supplies the material for that judgment: a feasibility verdict over the combined graph, labelled with the hypothesis that produced it.
 
@@ -533,12 +537,12 @@ Projection is **not** responsible for:
 - Modifying canonical knowledge.
 - Creating hypothetical Events.
 - Persisting projected state as canonical truth.
-- Composing the Commitment graph a Scenario selects.
+- Composing the Commitment graph a Thesis selects.
 - Deciding which feasibility hypothesis a merge must satisfy.
-- Resolving how conflicting Scenarios are merged.
+- Resolving how conflicting Theses are merged.
 - Orchestrating application workflows.
 
-Those responsibilities belong to the Axiom, Canon, Scenario, Merge, Engine or application layers.
+Those responsibilities belong to the Axiom, Canon, Thesis, Merge, Engine or application layers.
 
 > _Projection does not interpret the business. It derives the consequences of the operational model defined by the application._
 

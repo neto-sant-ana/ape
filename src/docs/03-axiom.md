@@ -45,7 +45,7 @@ The Axiom is **not** responsible for:
 * Executing business logic.
 * Producing projections.
 * Evaluating operational consequences.
-* Resolving conflicts between scenarios.
+* Resolving conflicts between Theses.
 * Performing merges.
 * Persisting data.
 
@@ -59,7 +59,7 @@ The Axiom validates the consistency of Assertions themselves.
 
 It does **not** validate whether an Assertion produces a desirable or consistent projection.
 
-An Assertion may be structurally valid while leading to conflicting interpretations in a particular scenario.
+An Assertion may be structurally valid while leading to conflicting interpretations within a particular Thesis.
 
 Such conflicts are resolved by the Engine, never by the Kernel.
 
@@ -71,7 +71,7 @@ Only Assertions accepted by the Axiom become part of the operational knowledge.
 
 Once admitted, they are immutable.
 
-The context in which an Assertion is used (such as a main timeline or a scenario) is defined by higher layers.
+The context in which an Assertion is used (the Thesis that selects it, whichever one an application treats as main) is defined by higher layers.
 
 Knowledge evolves exclusively through the addition of new Assertions.
 
