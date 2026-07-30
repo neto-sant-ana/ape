@@ -1,4 +1,4 @@
-//! Declarative macros for defining domain entities and their identities.
+//! Declarative macros for defining immutable objects and their identities.
 //!
 //! - `define_id` — defines a newtype over `[u8; 32]` for a strongly-typed id,
 //!   giving each entity a distinct id type so foreign references can't be mixed up.
@@ -75,7 +75,7 @@ macro_rules! define_entity {
         }
 
         impl $name {
-            pub(crate) fn create(input: $input) -> Result<Self, $crate::kernel::entities::identification::IdentityError> {
+            pub(crate) fn create(input: $input) -> Result<Self, $crate::kernel::entities::IdentityError> {
                 let $input { $($field_name),* } = input;
 
                 let mut hasher = <::sha2::Sha256 as ::sha2::Digest>::new();
@@ -84,7 +84,7 @@ macro_rules! define_entity {
                     ::sha2::Digest::update(
                         &mut hasher,
                         &::postcard::to_allocvec(&$field_name).map_err(
-                            |_| $crate::kernel::entities::identification::IdentityError::Serialization,
+                            |_| $crate::kernel::entities::IdentityError::Serialization,
                         )?,
                     );
                 )*
