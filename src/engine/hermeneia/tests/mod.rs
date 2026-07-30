@@ -9,7 +9,10 @@
 //! staggered deadlines so timeliness can be moved independently of settlement.
 
 mod chain;
+mod continuity;
 mod levels;
+mod punctuality;
+mod refusal;
 mod resumption;
 mod sequence;
 
@@ -332,6 +335,28 @@ fn basket(effect: Effect, constraint: Constraint) -> Basket {
     }
 }
 
+fn chain<'a>(settlements: impl IntoIterator<Item = (CommitmentId, &'a str)>) -> Vec<Event> {
+    let mut previous = None;
+
+    settlements
+        .into_iter()
+        .map(|(commitment, observation)| {
+            let event = Event::create(EventInput {
+                commitment_id: commitment,
+                observation: obs(observation),
+                previous_event: previous,
+                occurred_at: date(2026, 2, 1),
+            })
+            .unwrap();
+
+            previous = Some(event.id());
+
+            event
+        })
+        .collect()
+}
+
+/// One settling event, opening a chain of its own.
 fn settles(commitment: CommitmentId, observation: &str) -> Event {
     Event::create(EventInput {
         commitment_id: commitment,

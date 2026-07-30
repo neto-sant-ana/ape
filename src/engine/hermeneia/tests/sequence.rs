@@ -18,7 +18,11 @@ impl Ledgered {
     }
 
     fn under(&self, hypothesis: Hypothesis, events: &[Event]) -> Vec<Conflict> {
-        self.accumulate(events).conflicts(hypothesis).unwrap()
+        self.accumulate(events)
+            .feasibility_under(hypothesis)
+            .unwrap()
+            .conflicts()
+            .to_vec()
     }
 }
 
@@ -101,6 +105,67 @@ fn a_settled_movement_lands_where_it_was_observed() {
     );
 }
 
+fn same_day_pair(debit_waits_on_credit: bool) -> Ledgered {
+    let due = date(2026, 3, 31);
+    let mut knowledge = Fixture::default();
+    let ledger = knowledge.ledger(Constraint::between(0.0, 100.0).unwrap());
+
+    let credit = commit(
+        &mut knowledge,
+        ledger.credit,
+        ledger.instance,
+        ActionValue::value(10.0).unwrap(),
+        due,
+        BTreeSet::new(),
+    );
+    let debit = commit(
+        &mut knowledge,
+        ledger.debit,
+        ledger.instance,
+        ActionValue::value(10.0).unwrap(),
+        due,
+        if debit_waits_on_credit {
+            BTreeSet::from([credit])
+        } else {
+            BTreeSet::new()
+        },
+    );
+
+    Ledgered {
+        knowledge,
+        ledger,
+        ids: vec![credit, debit],
+    }
+}
+
+/// The debit waits on the credit, so the only arrangement of the day is credit then debit: the level
+/// goes 0 → 10 → 0 and never leaves its bounds.
+#[test]
+fn a_same_day_dependency_excludes_the_arrangements_it_forbids() {
+    let waiting = same_day_pair(true);
+
+    assert!(
+        waiting
+            .under(Hypothesis::OnDueDateInAnyOrder, &[])
+            .is_empty(),
+        "credit then debit is the only order, and it holds throughout",
+    );
+}
+
+#[test]
+fn without_the_dependency_the_same_two_movements_do_breach() {
+    let free = same_day_pair(false);
+
+    assert_eq!(
+        free.under(Hypothesis::OnDueDateInAnyOrder, &[]),
+        vec![Conflict::OutOfBounds {
+            instance: free.ledger.instance,
+            level: -10.0,
+        }],
+        "nothing orders them, so debit first is admissible and takes the level below the floor",
+    );
+}
+
 /// Movements sharing an instant are unordered among themselves, so the verdict must hold for
 /// every arrangement of them.
 #[test]
@@ -157,7 +222,8 @@ fn a_group_too_large_to_decide_is_refused_rather_than_approximated() {
     let l = ledgered(1000.0, &moves);
 
     assert!(matches!(
-        l.accumulate(&[]).conflicts(Hypothesis::OnDueDateInAnyOrder),
+        l.accumulate(&[])
+            .feasibility_under(Hypothesis::OnDueDateInAnyOrder),
         Err(ProjectionError::TooManySimultaneousMovements { count: 17, .. })
     ));
 }

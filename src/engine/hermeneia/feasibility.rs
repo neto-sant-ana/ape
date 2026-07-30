@@ -20,9 +20,12 @@
 //! is reported identifies *what* conflicts:
 //!
 //! - `Unrealizable` — the commitment can never be fulfilled, so no completion can include it.
+//! - `PunctualDependencyViolation` — the hypothesis places a commitment before the dependency it
+//!   requires, so the realization it describes cannot happen. The commitment remains realizable;
+//!   it is the punctual realization of it that does not.
 //! - `OutOfBounds` — the resource's level leaves the bounds its constraint declares.
 
-use crate::kernel::entities::{CommitmentId, ResourceInstanceId};
+use crate::kernel::entities::{CommitmentId, EventId, ResourceInstanceId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hypothesis {
@@ -31,9 +34,48 @@ pub enum Hypothesis {
     OnDueDateInAnyOrder,
 }
 
+/// What was found, and what it was found under.
+///
+/// A report carries the hypothesis that produced it and the point on the chain it was produced from
+#[derive(Debug, Clone, PartialEq)]
+pub struct FeasibilityReport {
+    hypothesis: Hypothesis,
+    event_head: Option<EventId>,
+    conflicts: Vec<Conflict>,
+}
+impl FeasibilityReport {
+    pub(super) fn new(
+        hypothesis: Hypothesis,
+        event_head: Option<EventId>,
+        conflicts: Vec<Conflict>,
+    ) -> Self {
+        Self {
+            hypothesis,
+            event_head,
+            conflicts,
+        }
+    }
+
+    pub fn hypothesis(&self) -> Hypothesis {
+        self.hypothesis
+    }
+
+    pub fn event_head(&self) -> Option<EventId> {
+        self.event_head
+    }
+
+    pub fn conflicts(&self) -> &[Conflict] {
+        &self.conflicts
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Conflict {
     Unrealizable(CommitmentId),
+    PunctualDependencyViolation {
+        dependency: CommitmentId,
+        dependent: CommitmentId,
+    },
     OutOfBounds {
         instance: ResourceInstanceId,
         level: f64,

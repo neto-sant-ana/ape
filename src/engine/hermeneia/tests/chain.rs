@@ -1,12 +1,12 @@
 //! The conditions derived over the guide chain `a → b → c → d`.
 
 use super::*;
-use crate::engine::hermeneia::{Outcome, ProjectionError, Timeliness};
+use crate::engine::hermeneia::{Hypothesis, Outcome, ProjectionError, Timeliness};
 
 #[test]
 fn an_unsettled_dependency_is_pending_for_its_dependent() {
     let g = guide();
-    let p = g.accumulate(&[]).view(&date(2026, 2, 1)).unwrap();
+    let p = g.accumulate(&[]).conditions_at(&date(2026, 2, 1)).unwrap();
 
     assert!(
         !p.condition(g.a).unwrap().has_pending_dependencies(),
@@ -25,7 +25,7 @@ fn fulfilling_a_dependency_clears_it_for_its_dependent_but_not_the_next() {
     let g = guide();
     let p = g
         .accumulate(&[settles(g.a, "Delivered")])
-        .view(&date(2026, 2, 1))
+        .conditions_at(&date(2026, 2, 1))
         .unwrap();
 
     assert_eq!(p.condition(g.a).unwrap().outcome(), &Outcome::Fulfilled);
@@ -47,7 +47,7 @@ fn cancelling_a_dependency_also_clears_it_for_its_dependent() {
     let g = guide();
     let p = g
         .accumulate(&[settles(g.a, "Cancelled")])
-        .view(&date(2026, 2, 1))
+        .conditions_at(&date(2026, 2, 1))
         .unwrap();
 
     assert_eq!(p.condition(g.a).unwrap().outcome(), &Outcome::Cancelled);
@@ -63,14 +63,14 @@ fn a_deadline_is_breached_only_once_it_has_elapsed() {
     let g = guide();
     let accumulation = g.accumulate(&[]);
 
-    let on_the_due_date = accumulation.view(&date(2026, 3, 31)).unwrap();
+    let on_the_due_date = accumulation.conditions_at(&date(2026, 3, 31)).unwrap();
     assert_eq!(
         on_the_due_date.condition(g.a).unwrap().timeliness(),
         Some(&Timeliness::WithinDeadline),
         "the due date itself is still within the deadline, not past it",
     );
 
-    let the_day_after = accumulation.view(&date(2026, 4, 1)).unwrap();
+    let the_day_after = accumulation.conditions_at(&date(2026, 4, 1)).unwrap();
     assert_eq!(
         the_day_after.condition(g.a).unwrap().timeliness(),
         Some(&Timeliness::Breached),
@@ -88,7 +88,7 @@ fn settling_ends_the_timeliness_question() {
     let g = guide();
     let p = g
         .accumulate(&[settles(g.a, "Delivered")])
-        .view(&date(2027, 1, 1))
+        .conditions_at(&date(2027, 1, 1))
         .unwrap();
 
     assert_eq!(
@@ -110,8 +110,8 @@ fn the_same_knowledge_at_two_instants_differs_only_in_timeliness() {
     let g = guide();
     let accumulation = g.accumulate(&[settles(g.a, "Delivered")]);
 
-    let early = accumulation.view(&date(2026, 2, 1)).unwrap();
-    let late = accumulation.view(&date(2026, 7, 1)).unwrap();
+    let early = accumulation.conditions_at(&date(2026, 2, 1)).unwrap();
+    let late = accumulation.conditions_at(&date(2026, 7, 1)).unwrap();
 
     for id in g.selection() {
         let (early, late) = (early.condition(id).unwrap(), late.condition(id).unwrap());
@@ -129,18 +129,35 @@ fn the_same_knowledge_at_two_instants_differs_only_in_timeliness() {
     );
 }
 
+/// Folding is incremental, so a dependency may legitimately arrive in a later `absorb`. While it
+/// is missing, nothing can be said about its dependent, so both interpretations refuse rather than
+/// answer.
 #[test]
 fn a_selection_missing_a_dependency_cannot_be_interpreted() {
     let g = guide();
     let mut accumulation = Accumulation::default();
-    accumulation.absorb(&g.knowledge, &[g.b, g.c], &[]).unwrap();
 
-    let refused = accumulation.view(&date(2026, 2, 1));
+    assert!(
+        accumulation.absorb(&g.knowledge, &[g.b, g.c], &[]).is_ok(),
+        "absorbing an incomplete selection is not itself an error",
+    );
 
     assert!(matches!(
-        refused,
+        accumulation.conditions_at(&date(2026, 2, 1)),
         Err(ProjectionError::UnknownCommitment(missing)) if missing == g.a
     ));
+
+    assert!(matches!(
+        accumulation.feasibility_under(Hypothesis::FinalState),
+        Err(ProjectionError::UnknownCommitment(missing)) if missing == g.a
+    ));
+
+    accumulation.absorb(&g.knowledge, &[g.a], &[]).unwrap();
+
+    assert!(
+        accumulation.conditions_at(&date(2026, 2, 1)).is_ok(),
+        "the dependency arriving later closes the selection",
+    );
 }
 
 #[test]
@@ -164,7 +181,7 @@ fn one_commitment_cannot_be_settled_twice() {
     let refused = accumulation.absorb(
         &g.knowledge,
         &g.selection(),
-        &[settles(g.a, "Delivered"), settles(g.a, "Cancelled")],
+        &chain([(g.a, "Delivered"), (g.a, "Cancelled")]),
     );
 
     assert!(matches!(
@@ -178,7 +195,7 @@ fn a_cancelled_dependency_makes_the_path_below_it_unrealizable() {
     let g = guide();
     let p = g
         .accumulate(&[settles(g.a, "Cancelled")])
-        .view(&date(2026, 2, 1))
+        .conditions_at(&date(2026, 2, 1))
         .unwrap();
 
     assert!(
@@ -201,12 +218,28 @@ fn a_fulfilled_dependency_leaves_the_path_realizable() {
     let g = guide();
     let p = g
         .accumulate(&[settles(g.a, "Delivered")])
-        .view(&date(2026, 2, 1))
+        .conditions_at(&date(2026, 2, 1))
         .unwrap();
 
     for id in g.selection() {
         assert!(!p.condition(id).unwrap().has_unfulfillable_dependencies());
     }
+}
+
+#[test]
+fn a_commitment_fulfilled_despite_a_cancelled_dependency_is_not_doomed() {
+    let g = guide();
+    let report = g
+        .accumulate(&chain([(g.a, "Cancelled"), (g.b, "Delivered")]))
+        .feasibility_under(Hypothesis::FinalState)
+        .unwrap();
+
+    assert!(
+        report.conflicts().is_empty(),
+        "b happened, so c and d still have a fulfilled requirement and nothing is unrealizable; \
+         found {:?}",
+        report.conflicts(),
+    );
 }
 
 /// Propagation stops at an accomplished fact.
@@ -222,8 +255,8 @@ fn a_fulfilled_dependency_leaves_the_path_realizable() {
 fn unrealizability_does_not_travel_past_a_fulfilled_commitment() {
     let g = guide();
     let p = g
-        .accumulate(&[settles(g.a, "Cancelled"), settles(g.b, "Delivered")])
-        .view(&date(2026, 2, 1))
+        .accumulate(&chain([(g.a, "Cancelled"), (g.b, "Delivered")]))
+        .conditions_at(&date(2026, 2, 1))
         .unwrap();
 
     let b = p.condition(g.b).unwrap();

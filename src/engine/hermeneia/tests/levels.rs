@@ -4,7 +4,11 @@ use super::*;
 use crate::engine::hermeneia::{Conflict, Hypothesis};
 
 fn conflicts(accumulation: &Accumulation) -> Vec<Conflict> {
-    accumulation.conflicts(Hypothesis::FinalState).unwrap()
+    accumulation
+        .feasibility_under(Hypothesis::FinalState)
+        .unwrap()
+        .conflicts()
+        .to_vec()
 }
 
 fn bounded(ceiling: f64) -> Constraint {

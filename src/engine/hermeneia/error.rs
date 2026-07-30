@@ -9,6 +9,11 @@
 //! as a selection root, as a dependency, or as what an event settles — is the single
 //! `UnknownCommitment`.
 //!
+//! `DisjointEventChain` is what keeps resumption a guarantee rather than a convention.
+//! `previous_event` is part of an event's hashed identity, so a batch of events proves its own
+//! contiguity and where it attaches: an accumulation can refuse a batch that belongs to another
+//! history, or that skips events, without consulting anything outside what it was handed.
+//!
 //! `ObservationNotSettling`, `SettledMoreThanOnce`, `ActionValueMismatch` and
 //! `ActionResourceKindMismatch` describe states the Axiom and the Canon already prevent. They
 //! are kept because the code has to branch somewhere, and a named refusal beats a silently
@@ -71,4 +76,13 @@ pub enum ProjectionError {
 
     #[error("commitment {0} is settled by more than one event")]
     SettledMoreThanOnce(CommitmentId),
+
+    #[error(
+        "event {event} extends {carried:?} but the chain absorbed so far ends at {absorbed:?}"
+    )]
+    DisjointEventChain {
+        event: EventId,
+        absorbed: Option<EventId>,
+        carried: Option<EventId>,
+    },
 }

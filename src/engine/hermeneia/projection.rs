@@ -1,23 +1,47 @@
-//! `Projection` — the interpreted result: what each selected commitment's condition is,
-//! as of the knowledge and the effective time it was derived from.
+//! `ProjectedConditions` — what each selected commitment's condition is, and the context that made
+//! it so.
 //!
-//! It is a value, not a view onto anything. Nothing it holds can change after it is
-//! produced, so it stays attributable to the context that produced it: a later
-//! projection is a new result rather than an update to this one.
+//! Interpreting knowledge yields two kind of answer, each asked for separately: this one covers the
+//! conditions of individual commitments as of an effective time, and [`super::FeasibilityReport`]
+//! covers whether the graph still admits a completion.
+//!
+//! Both are values rather than views onto anything, and both carry the coordinates that produced
+//! them. What varies between the two is exactly which coordinates apply: conditions answer to an
+//! effective time, feasibility does not.
 
 use std::collections::BTreeMap;
 
 use super::Condition;
 
-use crate::kernel::entities::CommitmentId;
+use crate::kernel::entities::{CommitmentId, EventId};
+
+use crate::kernel::value_objects::Date;
 
 #[derive(Debug, Clone)]
-pub struct Projection {
+pub struct ProjectedConditions {
+    event_head: Option<EventId>,
+    effective_at: Date,
     conditions: BTreeMap<CommitmentId, Condition>,
 }
-impl Projection {
-    pub(super) fn new(conditions: BTreeMap<CommitmentId, Condition>) -> Self {
-        Self { conditions }
+impl ProjectedConditions {
+    pub(super) fn new(
+        event_head: Option<EventId>,
+        effective_at: Date,
+        conditions: BTreeMap<CommitmentId, Condition>,
+    ) -> Self {
+        Self {
+            event_head,
+            effective_at,
+            conditions,
+        }
+    }
+
+    pub fn event_head(&self) -> Option<EventId> {
+        self.event_head
+    }
+
+    pub fn effective_at(&self) -> &Date {
+        &self.effective_at
     }
 
     pub fn condition(&self, commitment: CommitmentId) -> Option<&Condition> {
