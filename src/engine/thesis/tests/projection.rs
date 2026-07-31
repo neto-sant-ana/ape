@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use super::{Fixture, ForkInput, d1, d2, ids, introducing};
 
-use crate::engine::hermeneia::{Accumulation, Outcome, ProjectionError};
+use crate::engine::hermeneia::{Accumulation, HermeneiaError, Outcome};
 use crate::engine::thesis::Interpretation;
 
 use crate::kernel::value_objects::Date;
@@ -160,7 +160,7 @@ fn an_event_beyond_the_recognized_head_is_refused() {
 
     assert!(matches!(
         refusal,
-        Err(ProjectionError::EventBeyondRecognizedHead { event, recognized })
+        Err(HermeneiaError::EventBeyondRecognizedHead { event, recognized })
             if event == head && recognized.is_none()
     ));
 }
@@ -186,7 +186,7 @@ fn a_chain_of_another_reach_of_history_interprets_nothing() {
 
     assert!(matches!(
         accumulation.conditions_at(&at(4, 1)),
-        Err(ProjectionError::RecognizedChainIncomplete { reached, recognized: expected })
+        Err(HermeneiaError::RecognizedChainIncomplete { reached, recognized: expected })
             if reached == Some(foreign) && expected == Some(recognized)
     ));
 }
@@ -212,7 +212,7 @@ fn a_chain_short_of_the_recognized_head_interprets_nothing() {
 
     assert!(matches!(
         accumulation.conditions_at(&at(4, 1)),
-        Err(ProjectionError::RecognizedChainIncomplete { reached: stopped, recognized: expected })
+        Err(HermeneiaError::RecognizedChainIncomplete { reached: stopped, recognized: expected })
             if stopped == Some(reached) && expected == Some(recognized)
     ));
 }

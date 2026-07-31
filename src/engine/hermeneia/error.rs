@@ -26,7 +26,7 @@ use crate::kernel::entities::{
 use crate::kernel::value_objects::Date;
 
 #[derive(Debug, ::thiserror::Error)]
-pub enum ProjectionError {
+pub enum HermeneiaError {
     #[error("commitment {0} is named but not in the selection")]
     UnknownCommitment(CommitmentId),
 

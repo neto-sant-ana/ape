@@ -4,7 +4,7 @@
 //! operational judgment. A continuation that contradicts what history imposed is not
 //! refused here.
 //!
-//! `Projection` carries what Hermeneia refused while folding a recognized chain. Deriving and
+//! `Hermeneia` carries what it refused while folding a recognized chain. Deriving and
 //! interpreting share one error because one operation does both: an interpretation resolves
 //! the chain its cut recognizes and then folds it, and either half may refuse.
 //!
@@ -33,7 +33,7 @@
 //! what is selected or in what is recognized, and an edge that carries neither would record a
 //! decision the model cannot read back.
 
-use crate::engine::hermeneia::ProjectionError;
+use crate::engine::hermeneia::HermeneiaError;
 
 use crate::kernel::entities::{CommitmentId, EventId, IdentityError};
 
@@ -118,5 +118,5 @@ pub enum ThesisError {
     Identity(#[from] IdentityError),
 
     #[error(transparent)]
-    Projection(#[from] ProjectionError),
+    Hermeneia(#[from] HermeneiaError),
 }

@@ -3,7 +3,7 @@
 //! Resolution reads and can fail; recording only writes.
 
 use super::*;
-use crate::engine::hermeneia::{Outcome, ProjectionError};
+use crate::engine::hermeneia::{HermeneiaError, Outcome};
 
 #[test]
 fn a_failed_absorption_does_not_change_the_accumulation() {
@@ -25,7 +25,7 @@ fn a_failed_absorption_does_not_change_the_accumulation() {
 
     assert!(matches!(
         refused,
-        Err(ProjectionError::ObservationNotSettling { .. })
+        Err(HermeneiaError::ObservationNotSettling { .. })
     ));
 
     assert_eq!(
@@ -49,7 +49,7 @@ fn a_duplicate_settlement_does_not_replace_the_original() {
 
     assert!(matches!(
         refused,
-        Err(ProjectionError::SettledMoreThanOnce(twice)) if twice == g.a
+        Err(HermeneiaError::SettledMoreThanOnce(twice)) if twice == g.a
     ));
 
     assert_eq!(
@@ -74,7 +74,7 @@ fn an_invalid_event_leaves_no_new_selection_behind() {
 
     assert!(matches!(
         refused,
-        Err(ProjectionError::UnknownCommitment(missing)) if missing == g.c
+        Err(HermeneiaError::UnknownCommitment(missing)) if missing == g.c
     ));
 
     let projection = accumulation.conditions_at(&date(2026, 2, 1)).unwrap();

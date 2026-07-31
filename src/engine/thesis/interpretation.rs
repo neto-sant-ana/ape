@@ -26,7 +26,7 @@ use super::{Thesis, ThesisError};
 use crate::canon::CanonicalKnowledge;
 
 use crate::engine::hermeneia::{
-    Accumulation, FeasibilityReport, Hypothesis, ProjectedConditions, ProjectionError,
+    Accumulation, FeasibilityReport, HermeneiaError, Hypothesis, ProjectedConditions,
 };
 
 use crate::kernel::axiom::Knowledge;
@@ -57,14 +57,14 @@ impl Interpretation {
         Ok(Self { accumulation })
     }
 
-    pub fn conditions_at(&self, at: &Date) -> Result<ProjectedConditions, ProjectionError> {
+    pub fn conditions_at(&self, at: &Date) -> Result<ProjectedConditions, HermeneiaError> {
         self.accumulation.conditions_at(at)
     }
 
     pub fn feasibility_under(
         &self,
         hypothesis: Hypothesis,
-    ) -> Result<FeasibilityReport, ProjectionError> {
+    ) -> Result<FeasibilityReport, HermeneiaError> {
         self.accumulation.feasibility_under(hypothesis)
     }
 }

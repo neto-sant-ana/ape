@@ -26,8 +26,8 @@
 use std::collections::BTreeMap;
 
 use super::{
-    Condition, Conflict, Dependencies, FeasibilityReport, Hypothesis, Outcome, ProjectedConditions,
-    ProjectionError,
+    Condition, Conflict, Dependencies, FeasibilityReport, HermeneiaError, Hypothesis, Outcome,
+    ProjectedConditions,
 };
 
 use crate::kernel::axiom::Knowledge;
@@ -142,7 +142,7 @@ impl Accumulation {
         knowledge: &K,
         selection: &[CommitmentId],
         events: &[Event],
-    ) -> Result<(), ProjectionError> {
+    ) -> Result<(), HermeneiaError> {
         let resolved = self.resolve(knowledge, selection, events)?;
 
         self.selected.extend(resolved.selected);
@@ -163,7 +163,7 @@ impl Accumulation {
         knowledge: &K,
         selection: &[CommitmentId],
         events: &[Event],
-    ) -> Result<Resolved, ProjectionError> {
+    ) -> Result<Resolved, HermeneiaError> {
         let mut resolved = Resolved {
             event_head: self.event_head,
             ..Resolved::default()
@@ -172,7 +172,7 @@ impl Accumulation {
         for id in selection {
             let commitment = knowledge
                 .commitment(*id)
-                .ok_or(ProjectionError::UnknownCommitment(*id))?;
+                .ok_or(HermeneiaError::UnknownCommitment(*id))?;
 
             if let Some((movement, constraint)) = resolve_movement(knowledge, &commitment)? {
                 resolved.constraints.insert(movement.instance, constraint);
@@ -186,14 +186,14 @@ impl Accumulation {
             if let Recognition::Bound(recognized) = self.recognition
                 && recognized == resolved.event_head
             {
-                return Err(ProjectionError::EventBeyondRecognizedHead {
+                return Err(HermeneiaError::EventBeyondRecognizedHead {
                     event: event.id(),
                     recognized,
                 });
             }
 
             if *event.previous_event() != resolved.event_head {
-                return Err(ProjectionError::DisjointEventChain {
+                return Err(HermeneiaError::DisjointEventChain {
                     event: event.id(),
                     absorbed: resolved.event_head,
                     carried: *event.previous_event(),
@@ -207,10 +207,10 @@ impl Accumulation {
                 .selected
                 .get(&commitment_id)
                 .or_else(|| self.selected.get(&commitment_id))
-                .ok_or(ProjectionError::UnknownCommitment(commitment_id))?;
+                .ok_or(HermeneiaError::UnknownCommitment(commitment_id))?;
 
             let statement = knowledge.statement(*commitment.statement()).ok_or(
-                ProjectionError::UnknownStatement {
+                HermeneiaError::UnknownStatement {
                     commitment: commitment_id,
                     statement: *commitment.statement(),
                 },
@@ -221,13 +221,13 @@ impl Accumulation {
             } else if statement.settlement().can_cancel(event.observation()) {
                 Outcome::Cancelled
             } else {
-                return Err(ProjectionError::ObservationNotSettling { event: event.id() });
+                return Err(HermeneiaError::ObservationNotSettling { event: event.id() });
             };
 
             if self.settled.contains_key(&commitment_id)
                 || resolved.settled.contains_key(&commitment_id)
             {
-                return Err(ProjectionError::SettledMoreThanOnce(commitment_id));
+                return Err(HermeneiaError::SettledMoreThanOnce(commitment_id));
             }
 
             resolved.settled.insert(
@@ -245,7 +245,7 @@ impl Accumulation {
     /// The dependency closure is only required here, not while folding: a dependency may
     /// legitimately arrive in a later `absorb`, but a commitment whose dependency is
     /// missing cannot be told apart from one whose dependency is merely pending.
-    pub fn conditions_at(&self, at: &Date) -> Result<ProjectedConditions, ProjectionError> {
+    pub fn conditions_at(&self, at: &Date) -> Result<ProjectedConditions, HermeneiaError> {
         self.ensure_recognized()?;
 
         let mut resolved = BTreeMap::new();
@@ -290,7 +290,7 @@ impl Accumulation {
     pub fn feasibility_under(
         &self,
         hypothesis: Hypothesis,
-    ) -> Result<FeasibilityReport, ProjectionError> {
+    ) -> Result<FeasibilityReport, HermeneiaError> {
         self.ensure_recognized()?;
 
         let conflicts = self.conflicts_under(hypothesis)?;
@@ -302,7 +302,7 @@ impl Accumulation {
         ))
     }
 
-    fn conflicts_under(&self, hypothesis: Hypothesis) -> Result<Vec<Conflict>, ProjectionError> {
+    fn conflicts_under(&self, hypothesis: Hypothesis) -> Result<Vec<Conflict>, HermeneiaError> {
         let mut resolved = BTreeMap::new();
         let mut doomed = Vec::new();
 
@@ -341,7 +341,7 @@ impl Accumulation {
     /// Only a commitment still unsettled is judged. Its punctuality is the part that remains
     /// hypothetical; one already settled is a fact, and a fact is not declared impossible however
     /// its dependencies were ordered.
-    fn punctual_dependency_violations(&self) -> Result<Vec<Conflict>, ProjectionError> {
+    fn punctual_dependency_violations(&self) -> Result<Vec<Conflict>, HermeneiaError> {
         let mut violations = Vec::new();
 
         for (id, commitment) in &self.selected {
@@ -355,7 +355,7 @@ impl Accumulation {
                 let required = self
                     .selected
                     .get(dependency)
-                    .ok_or(ProjectionError::UnknownCommitment(*dependency))?;
+                    .ok_or(HermeneiaError::UnknownCommitment(*dependency))?;
 
                 let Some(dependency_at) = self.punctual_position(dependency, required) else {
                     continue;
@@ -385,7 +385,7 @@ impl Accumulation {
     fn breaches_along_the_punctual_sequence(
         &self,
         within: Within,
-    ) -> Result<Vec<Conflict>, ProjectionError> {
+    ) -> Result<Vec<Conflict>, HermeneiaError> {
         let mut conflicts = Vec::new();
 
         for (instance, sequence) in self.punctual_sequence() {
@@ -406,7 +406,7 @@ impl Accumulation {
                     Within::Net => vec![net],
                     Within::AnyOrder => {
                         if simultaneous.len() > SIMULTANEOUS_LIMIT {
-                            return Err(ProjectionError::TooManySimultaneousMovements {
+                            return Err(HermeneiaError::TooManySimultaneousMovements {
                                 instance,
                                 position,
                                 count: simultaneous.len(),
@@ -524,7 +524,7 @@ impl Accumulation {
         &self,
         id: CommitmentId,
         resolved: &mut BTreeMap<CommitmentId, bool>,
-    ) -> Result<bool, ProjectionError> {
+    ) -> Result<bool, HermeneiaError> {
         if let Some(known) = resolved.get(&id) {
             return Ok(*known);
         }
@@ -532,7 +532,7 @@ impl Accumulation {
         let commitment = self
             .selected
             .get(&id)
-            .ok_or(ProjectionError::UnknownCommitment(id))?;
+            .ok_or(HermeneiaError::UnknownCommitment(id))?;
 
         let verdict = match self.outcome_of(&id) {
             Outcome::Fulfilled => false,
@@ -556,11 +556,11 @@ impl Accumulation {
     /// This is the half of the boundary `absorb` cannot enforce: an event past the head is
     /// visible the moment it is offered, while a chain that simply stops short looks complete
     /// from the inside. Only the question being asked reveals it.
-    fn ensure_recognized(&self) -> Result<(), ProjectionError> {
+    fn ensure_recognized(&self) -> Result<(), HermeneiaError> {
         if let Recognition::Bound(recognized) = self.recognition
             && recognized != self.event_head
         {
-            return Err(ProjectionError::RecognizedChainIncomplete {
+            return Err(HermeneiaError::RecognizedChainIncomplete {
                 reached: self.event_head,
                 recognized,
             });
@@ -581,12 +581,12 @@ impl Accumulation {
 fn resolve_movement<K: Knowledge>(
     knowledge: &K,
     commitment: &Commitment,
-) -> Result<Option<(Movement, Constraint)>, ProjectionError> {
+) -> Result<Option<(Movement, Constraint)>, HermeneiaError> {
         let statement_id = *commitment.statement();
         let statement =
             knowledge
                 .statement(statement_id)
-                .ok_or(ProjectionError::UnknownStatement {
+                .ok_or(HermeneiaError::UnknownStatement {
                     commitment: commitment.id(),
                     statement: statement_id,
                 })?;
@@ -594,7 +594,7 @@ fn resolve_movement<K: Knowledge>(
         let action_id = *statement.action();
         let action = knowledge
             .action(action_id)
-            .ok_or(ProjectionError::UnknownAction {
+            .ok_or(HermeneiaError::UnknownAction {
                 statement: statement_id,
                 action: action_id,
             })?;
@@ -602,12 +602,12 @@ fn resolve_movement<K: Knowledge>(
         let effect = match (action.kind(), commitment.action_value().as_value()) {
             (ActionKind::Discrete, None) => return Ok(None),
             (ActionKind::Quantifiable(effect), Some(magnitude)) => (effect, magnitude),
-            _ => return Err(ProjectionError::ActionValueMismatch(commitment.id())),
+            _ => return Err(HermeneiaError::ActionValueMismatch(commitment.id())),
         };
 
         let instance_id = *commitment.resource();
         let instance = knowledge.resource_instance(instance_id).ok_or(
-            ProjectionError::UnknownResourceInstance {
+            HermeneiaError::UnknownResourceInstance {
                 commitment: commitment.id(),
                 instance: instance_id,
             },
@@ -617,13 +617,13 @@ fn resolve_movement<K: Knowledge>(
         let resource =
             knowledge
                 .resource(resource_id)
-                .ok_or(ProjectionError::UnknownResource {
+                .ok_or(HermeneiaError::UnknownResource {
                     instance: instance_id,
                     resource: resource_id,
                 })?;
 
         let ResourceKind::Quantifiable(constraint) = resource.kind() else {
-            return Err(ProjectionError::ActionResourceKindMismatch(commitment.id()));
+            return Err(HermeneiaError::ActionResourceKindMismatch(commitment.id()));
         };
 
         let (effect, magnitude) = effect;

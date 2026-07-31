@@ -5,7 +5,7 @@
 //! history, or that skips events.
 
 use super::*;
-use crate::engine::hermeneia::{Hypothesis, ProjectionError};
+use crate::engine::hermeneia::{HermeneiaError, Hypothesis};
 
 #[test]
 fn absorbing_a_segment_advances_the_accumulations_coordinate() {
@@ -88,7 +88,7 @@ fn a_segment_from_another_history_is_refused() {
 
     assert!(matches!(
         refused,
-        Err(ProjectionError::DisjointEventChain { carried: None, .. }),
+        Err(HermeneiaError::DisjointEventChain { carried: None, .. }),
     ));
     assert_eq!(
         accumulation.event_head(),
@@ -111,7 +111,7 @@ fn a_segment_that_skips_an_event_is_refused() {
 
     assert!(matches!(
         refused,
-        Err(ProjectionError::DisjointEventChain { .. })
+        Err(HermeneiaError::DisjointEventChain { .. })
     ));
 }
 
@@ -125,7 +125,7 @@ fn a_fresh_accumulation_cannot_begin_mid_chain() {
 
     assert!(matches!(
         refused,
-        Err(ProjectionError::DisjointEventChain { absorbed: None, .. }),
+        Err(HermeneiaError::DisjointEventChain { absorbed: None, .. }),
     ));
 }
 
@@ -141,6 +141,6 @@ fn a_segment_already_absorbed_cannot_be_absorbed_again() {
 
     assert!(matches!(
         accumulation.absorb(&g.knowledge, &[], &events),
-        Err(ProjectionError::DisjointEventChain { .. })
+        Err(HermeneiaError::DisjointEventChain { .. })
     ));
 }

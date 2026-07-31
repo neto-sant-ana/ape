@@ -20,7 +20,7 @@ Its responsibility is to derive the operational consequences of immutable Commit
 
 ## Purpose
 
-A Projection transforms accumulated operational knowledge into an interpretable operational view.
+Hermeneia transforms accumulated operational knowledge into an interpretable operational view.
 
 Commitments describe intended reality.
 
@@ -30,9 +30,9 @@ Dependencies describe the relationships between intentions.
 
 Constraints define the boundaries within which their combined effects remain feasible.
 
-Projection evaluates these elements together and derives their operational consequences.
+Hermeneia evaluates these elements together and derives their operational consequences.
 
-Conditions such as Unsettled, Fulfilled, Cancelled, Breached, or waiting on a dependency exist only within a Projection.
+Conditions such as Unsettled, Fulfilled, Cancelled, Breached, or waiting on a dependency exist only within a projection.
 
 They are never stored as canonical knowledge.
 
@@ -40,9 +40,9 @@ They are never stored as canonical knowledge.
 
 ## Vocabulary
 
-A Commitment within a Projection is **Settled** or **Unsettled**, according to whether an Event in the history has already settled it. This is the Settlement axis described below.
+A Commitment within a projection is **Settled** or **Unsettled**, according to whether an Event in the history has already settled it. This is the Settlement axis described below.
 
-Nothing further qualifies it. A Projection reads one selection of Commitments, and within that selection every Commitment carries the same standing.
+Nothing further qualifies it. Hermeneia reads one selection of Commitments, and within that selection every Commitment carries the same standing.
 
 Events are never qualified either, for a different reason. An Event is a fact, so there is no hypothetical Event and no Event needs to be called canonical.
 
@@ -52,14 +52,14 @@ _Canonical_ retains the single meaning established by the Canon: admitted into c
 
 ## Inputs
 
-A Projection is derived from:
+A projection is derived from:
 
 - A selected Commitment graph.
 - Knowledge as known at an instant.
 - An effective time.
 
 ```text
-Projection =
+projection =
     Selected Commitment Graph
     + Knowledge as known at K
     + Effective Time T
@@ -73,9 +73,9 @@ They are part of the operational knowledge reachable through the Commitment grap
 
 ### Where the first two inputs come from
 
-The selected graph and the knowledge cut are not independent inputs. A Thesis supplies both: it names its Commitments and recognizes exactly one Event Head, and a Projection is derived only against the head its Thesis recognizes.
+The selected graph and the knowledge cut are not independent inputs. A Thesis supplies both: it names its Commitments and recognizes exactly one Event Head, and a projection is derived only against the head its Thesis recognizes.
 
-A knowledge instant therefore does not address a Projection directly. It is how an application resolves a head — and, through recording time, which Commitments were available to be selected — while constructing or advancing a Thesis.
+A knowledge instant therefore does not address a projection directly. It is how an application resolves a head — and, through recording time, which Commitments were available to be selected — while constructing or advancing a Thesis.
 
 Once selected, membership is explicit. Nothing is filtered by recording time at projection time, because the selection is the world.
 
@@ -139,10 +139,10 @@ Operational time
 
 An unsettled Commitment may remain within its deadline at one effective time and become Breached at another, even when no new Assertion has been admitted.
 
-Projection is therefore a function of both accumulated knowledge and time.
+A projection is therefore a function of both accumulated knowledge and time.
 
 ```text
-Projection = f(Knowledge as known at K, Effective Time T)
+projection = f(Knowledge as known at K, Effective Time T)
 ```
 
 Unlike knowledge time, operational time addresses the past and the future alike.
@@ -172,9 +172,9 @@ No projected result about the future is produced without the hypothesis that pro
 
 ## Determinism
 
-A Projection must be determined exclusively by its inputs.
+A projection must be determined exclusively by its inputs.
 
-Given the same Commitment graph, knowledge and effective time, the same Projection must always be produced.
+Given the same Commitment graph, knowledge and effective time, the same projection must always be produced.
 
 ```text
 project(C, K, T) = P
@@ -185,21 +185,21 @@ Where:
 - `C` is the selected Commitment graph;
 - `K` is the knowledge instant;
 - `T` is the effective time;
-- `P` is the resulting Projection.
+- `P` is the resulting projection.
 
-Projection is determined by admitted knowledge, not by the order in which applications presented it.
+A projection is determined by admitted knowledge, not by the order in which applications presented it.
 
 The Canon, by contrast, is order-sensitive by design: references must exist before the Assertions naming them, and a Commitment is settled by the first Event admitted against it. Which submissions are admitted therefore does depend on their order. Determinism belongs to the interpretation of what *was* admitted, and does not extend to admission itself.
 
 Admission preserves facts.
 
-Projection derives their operational consequences.
+Hermeneia derives their operational consequences.
 
 ---
 
 ## Accumulation and Interpretation
 
-A Projection is not required to read the whole history from the first Event.
+Hermeneia is not required to read the whole history from the first Event.
 
 It separates what accumulates over knowledge from what is interpreted at the end.
 
@@ -253,7 +253,7 @@ Operational state is never canonical.
 
 It emerges from the interaction between Commitments, Events, dependencies, Constraints and time.
 
-A Projection derives complementary operational conditions for individual Commitments and identifies feasibility conflicts over the Commitment graph.
+Hermeneia derives complementary operational conditions for individual Commitments and identifies feasibility conflicts over the Commitment graph.
 
 Commitment conditions may be evaluated along several independent axes, such as:
 
@@ -297,7 +297,7 @@ Applicable Event
 
 The Canon guarantees that a Commitment cannot be settled more than once in canonical history.
 
-Projection interprets the admitted settlement.
+Hermeneia derives a condition from the admitted settlement.
 
 It does not enforce settlement admission.
 
@@ -318,7 +318,7 @@ This is why the dependency axis reports only the waiting and leaves realizabilit
 
 Infeasibility travels along the graph. A Commitment made infeasible by a cancelled dependency can never be fulfilled, so anything depending on *it* cannot be realized either, and the consequence follows the dependency path to its end. Reaching the immediate conclusion needs only the neighbouring edge; carrying it downstream is what needs the graph.
 
-Projection does not alter dependency relationships.
+Hermeneia does not alter dependency relationships.
 
 It derives their operational effects.
 
@@ -330,7 +330,7 @@ Constraints define the operational boundaries within which Resources may evolve.
 
 A quantifiable Resource is affected by the Action of each Commitment reaching it: the Effect gives the direction and the Commitment's value gives the magnitude.
 
-Projection accumulates the factual movements into a level and evaluates that level, together with the hypothetical movements a feasibility hypothesis introduces, against the Constraint.
+Hermeneia accumulates the factual movements into a level and evaluates that level, together with the hypothetical movements a feasibility hypothesis introduces, against the Constraint.
 
 ### Where a level begins
 
@@ -352,7 +352,7 @@ Feasibility is derived by `view`. It evaluates whether the selected Commitment g
 feasible(C, H(K), hypothesis)
 ```
 
-Feasibility uses K only to resolve the settlements known at that instant; unlike the full Projection, it does not use an effective time.
+Feasibility uses K only to resolve the settlements known at that instant; unlike the full projection, it does not use an effective time.
 
 Violating a deadline is a breach, not an infeasibility: a Commitment past its deadline remains realizable, only late. No judgment about deadlines therefore enters feasibility, and the instant being consulted drops out of its inputs.
 
@@ -443,7 +443,7 @@ The two can disagree: a Commitment may depend on another whose due date is later
 
 Such a graph is not invalid, and the knowledge describing it is admitted like any other. It remains realizable, because a dependency may be fulfilled well before its deadline. What it can never be is realized *punctually*: no arrangement satisfies either `on_due_date` reading while respecting the dependency.
 
-Projection reports the hypothesis as unrealizable over that dependency path.
+Hermeneia reports the hypothesis as unrealizable over that dependency path.
 
 The plan is named as defective where it is interpreted, without refusing the knowledge that describes it.
 
@@ -451,7 +451,7 @@ The plan is named as defective where it is interpreted, without refusing the kno
 
 Feasibility may depend on the combined consequences of several Commitments.
 
-A Projection may therefore identify an infeasible set, dependency path or affected Resource without attributing the conflict to a single Assertion.
+Hermeneia may therefore identify an infeasible set, dependency path or affected Resource without attributing the conflict to a single Assertion.
 
 Projected infeasibility does not mean that any Assertion should not have been constructed or admitted.
 
@@ -465,11 +465,11 @@ As new Events are admitted, the known settlements change. A previously feasible 
 
 ## Theses
 
-A Projection operates over a *selected* Commitment graph. It does not decide how that selection is formed.
+Hermeneia operates over a *selected* Commitment graph. It does not decide how that selection is formed.
 
 Every Thesis projects identically, and none is privileged by these semantics.
 
-Projection does establish one boundary, because it follows from the ontology rather than from any selection policy: **the Event history is always factual.** A Thesis reasons about intentions. It cannot introduce an observation, and it cannot retract one.
+Hermeneia does establish one boundary, because it follows from the ontology rather than from any selection policy: **the Event history is always factual.** A Thesis reasons about intentions. It cannot introduce an observation, and it cannot retract one.
 
 Which Commitments a Thesis may introduce, omit or replace, and what its selection must already contain to be interpretable at all, is defined by the Thesis layer.
 
@@ -479,7 +479,7 @@ Which Commitments a Thesis may introduce, omit or replace, and what its selectio
 
 Merging a Thesis into canonical history asks whether the intentions it introduces can join the canonical graph without producing an unrealizable operational future.
 
-Projection supplies the material for that judgment: a feasibility verdict over the combined graph, labelled with the hypothesis that produced it.
+Hermeneia supplies the material for that judgment: a feasibility verdict over the combined graph, labelled with the hypothesis that produced it.
 
 It does not decide which hypothesis a merge must ask, nor what a failing verdict should prevent. Those are policy, and they belong to the Merge layer.
 
@@ -487,13 +487,13 @@ It does not decide which hypothesis a merge must ask, nor what a failing verdict
 
 ## Non-Retroactive Knowledge
 
-Every Projection is valid only relative to the knowledge from which it was produced, following the head-relative validity the Canon establishes for any reader of the history.
+Every projection is valid only relative to the knowledge from which it was produced, following the head-relative validity the Canon establishes for any reader of the history.
 
 Newly admitted knowledge may change the current interpretation of previous Assertions. It does not change what was known earlier.
 
 ```text
-Knowledge at K1 → Projection P1
-Knowledge at K2 → Projection P2
+Knowledge at K1 → projection P1
+Knowledge at K2 → projection P2
 ```
 
 `P1` remains a valid interpretation of the knowledge available at `K1`. It is not a valid representation of the knowledge available at `K2`.
@@ -509,19 +509,19 @@ New projections may derive different consequences without revising canonical his
 
 ## Immutability
 
-A Projection is an immutable result.
+A projection is an immutable result.
 
 It does not mutate Commitments, Events, Resources, Constraints or canonical history.
 
-When any input changes, a new Projection is produced.
+When any input changes, a new projection is produced.
 
 ```text
-Knowledge K1 + Time T1 → Projection P1
-Knowledge K2 + Time T1 → Projection P2
-Knowledge K2 + Time T2 → Projection P3
+Knowledge K1 + Time T1 → projection P1
+Knowledge K2 + Time T1 → projection P2
+Knowledge K2 + Time T2 → projection P3
 ```
 
-No Projection updates another Projection.
+No projection updates another projection.
 
 Each result remains attributable to the context from which it was derived.
 
@@ -529,7 +529,7 @@ Each result remains attributable to the context from which it was derived.
 
 ## Non-Responsibilities
 
-Projection is **not** responsible for:
+Hermeneia is **not** responsible for:
 
 - Constructing Kernel entities.
 - Validating Assertion structure.
@@ -544,7 +544,7 @@ Projection is **not** responsible for:
 
 Those responsibilities belong to the Axiom, Canon, Thesis, Merge, Engine or application layers.
 
-> _Projection does not interpret the business. It derives the consequences of the operational model defined by the application._
+> _Hermeneia does not interpret the business. It derives the consequences of the operational model defined by the application._
 
 ---
 
@@ -563,7 +563,7 @@ Selected Commitment Graph
     Event history as known at K
                     │
                     ▼
-               Projection
+                Hermeneia
                     │
                     ▼
        Derived Operational View
@@ -577,11 +577,11 @@ None of these derived values become canonical Assertions.
 
 ## Principles
 
-Projection follows a small number of principles.
+Hermeneia follows a small number of principles.
 
 - State is derived, never stored.
-- Projection is determined by admitted knowledge, not by submission order.
-- Projection validity is relative to the knowledge it was produced from.
+- A projection is determined by admitted knowledge, not by submission order.
+- A projection's validity is relative to the knowledge it was produced from.
 - Knowledge time and operational time are distinct.
 - Accumulation is factual and resumable; interpretation is not accumulated.
 - Every statement about the future is labelled by the hypothesis that produced it.

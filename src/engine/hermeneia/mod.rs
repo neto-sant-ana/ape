@@ -1,5 +1,5 @@
 mod error;
-pub use error::ProjectionError;
+pub use error::HermeneiaError;
 
 mod condition;
 use condition::Dependencies;

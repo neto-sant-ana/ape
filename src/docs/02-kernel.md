@@ -102,7 +102,7 @@ Constraints define the operational boundaries within which that evolution remain
 
 The kernel treats Constraints as part of operational reality rather than projection logic.
 
-Projection evaluates them.
+A projection evaluates them.
 
 It does not define them.
 
@@ -154,6 +154,6 @@ The implementation of the kernel follows a small number of architectural princip
 * Knowledge over state.
 * Atomic Actions over composite operations.
 * Validation at construction time.
-* Projection derives meaning rather than storing it.
+* Meaning is derived rather than stored.
 
 These principles guide the evolution of the kernel and should remain stable independently of programming language or implementation details.

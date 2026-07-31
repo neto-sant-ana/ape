@@ -1,7 +1,7 @@
 //! The conditions derived over the guide chain `a → b → c → d`.
 
 use super::*;
-use crate::engine::hermeneia::{Hypothesis, Outcome, ProjectionError, Timeliness};
+use crate::engine::hermeneia::{HermeneiaError, Hypothesis, Outcome, Timeliness};
 
 #[test]
 fn an_unsettled_dependency_is_pending_for_its_dependent() {
@@ -144,12 +144,12 @@ fn a_selection_missing_a_dependency_cannot_be_interpreted() {
 
     assert!(matches!(
         accumulation.conditions_at(&date(2026, 2, 1)),
-        Err(ProjectionError::UnknownCommitment(missing)) if missing == g.a
+        Err(HermeneiaError::UnknownCommitment(missing)) if missing == g.a
     ));
 
     assert!(matches!(
         accumulation.feasibility_under(Hypothesis::FinalState),
-        Err(ProjectionError::UnknownCommitment(missing)) if missing == g.a
+        Err(HermeneiaError::UnknownCommitment(missing)) if missing == g.a
     ));
 
     accumulation.absorb(&g.knowledge, &[g.a], &[]).unwrap();
@@ -169,7 +169,7 @@ fn an_event_settling_an_unselected_commitment_is_refused() {
 
     assert!(matches!(
         refused,
-        Err(ProjectionError::UnknownCommitment(missing)) if missing == g.a
+        Err(HermeneiaError::UnknownCommitment(missing)) if missing == g.a
     ));
 }
 
@@ -186,7 +186,7 @@ fn one_commitment_cannot_be_settled_twice() {
 
     assert!(matches!(
         refused,
-        Err(ProjectionError::SettledMoreThanOnce(twice)) if twice == g.a
+        Err(HermeneiaError::SettledMoreThanOnce(twice)) if twice == g.a
     ));
 }
 

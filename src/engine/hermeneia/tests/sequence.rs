@@ -1,7 +1,7 @@
 //! The `OnDueDate` readings: what each checks of the punctual realization.
 
 use super::*;
-use crate::engine::hermeneia::{Conflict, Hypothesis, ProjectionError};
+use crate::engine::hermeneia::{Conflict, HermeneiaError, Hypothesis};
 
 struct Ledgered {
     knowledge: Fixture,
@@ -224,7 +224,7 @@ fn a_group_too_large_to_decide_is_refused_rather_than_approximated() {
     assert!(matches!(
         l.accumulate(&[])
             .feasibility_under(Hypothesis::OnDueDateInAnyOrder),
-        Err(ProjectionError::TooManySimultaneousMovements { count: 17, .. })
+        Err(HermeneiaError::TooManySimultaneousMovements { count: 17, .. })
     ));
 }
 
