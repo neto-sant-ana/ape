@@ -1,10 +1,9 @@
-//!    Civil date in `YYYY-MM-DD` (ISO 8601 calendar date) form.
+//! Civil date in `YYYY-MM-DD` (ISO 8601 calendar date) form.
 //!
-//!    The wrapper exists to control the *serialized* form:
-//!    `Serialize` always emits the canonical `YYYY-MM-DD` string,
-//!    in both human-readable and binary formats, so the bytes
-//!    fed into an entity's content-addressed id stay stable and independent of
-//!    `time`'s internal encoding.
+//! The wrapper exists to control the *serialized* form: `Serialize` always emits the
+//! zero-padded `YYYY-MM-DD` string, in both human-readable and binary formats, so the
+//! bytes fed into an entity's content-addressed id stay stable and independent of
+//! `time`'s internal encoding.
 
 use serde::{Serialize, Serializer};
 use time::{Date as CivilDate, Month};
@@ -77,7 +76,7 @@ mod tests {
     use super::Date;
 
     #[test]
-    fn serializes_to_canonical_iso() {
+    fn serializes_to_padded_iso() {
         assert_eq!(Date::from_ymd(2026, 7, 21).unwrap().to_iso(), "2026-07-21");
     }
 
