@@ -145,6 +145,26 @@ impl CanonicalKnowledge for InMemoryHistory {
     fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>> {
         self.shelf.lock().unwrap().events.get(&id).cloned()
     }
+
+    /// Walked backwards from the current head, which is sound because recording never decreases
+    /// along the chain: the first Event recorded no later than `at` is the latest one. A durable
+    /// adapter with an index on `recorded_at` may answer without walking.
+    fn head_as_of(&self, at: &Date) -> Option<EventId> {
+        let shelf = self.shelf.lock().unwrap();
+        let mut cursor = shelf.head;
+
+        while let Some(id) = cursor {
+            let record = shelf.events.get(&id)?;
+
+            if record.recorded_at().up_to(at) {
+                return Some(id);
+            }
+
+            cursor = *record.assertion().previous_event();
+        }
+
+        None
+    }
 }
 impl CanonicalHistory for InMemoryHistory {
     fn head(&self) -> Option<EventId> {

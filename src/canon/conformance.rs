@@ -42,6 +42,69 @@ pub fn verify<H: CanonicalHistory>(instance: impl Fn() -> H) {
     recording_is_monotonic(instance());
     append_event_refuses_a_back_dated_record(instance());
     recording_is_shared_across_families(instance());
+    head_as_of_resolves_the_cut(instance());
+}
+
+/// The head an instant addresses, which an adapter may answer however it stores the chain.
+///
+/// This is the one read whose answer is a *rule* rather than a lookup, so it is the one an
+/// adapter can implement plausibly and wrongly. Four questions pin it: before anything was
+/// recorded there is no head; at an instant, the head is the last Event recorded by it; after
+/// everything, it is the last Event of all; and where several Events share the instant, it is the
+/// last of them in chain order rather than the first.
+pub fn head_as_of_resolves_the_cut<H: CanonicalHistory>(mut history: H) {
+    let before = date(2026, 6, 30);
+    let first_day = date(2026, 7, 1);
+    let second_day = date(2026, 7, 2);
+    let after = date(2026, 7, 3);
+
+    assert_eq!(
+        history.head_as_of(&after),
+        None,
+        "an empty history has no head at any instant"
+    );
+
+    let genesis = sample_event(CommitmentId::from([1; 32]), None, "Signed");
+    let genesis_id = genesis.assertion().id();
+    history.append_event(genesis).unwrap();
+
+    // Sharing the recording instant of the event before it: the cut resolves to the later one.
+    let same_day = sample_event(CommitmentId::from([2; 32]), Some(genesis_id), "Signed");
+    let same_day_id = same_day.assertion().id();
+    history.append_event(same_day).unwrap();
+
+    let later = rerecorded(
+        &sample_event(CommitmentId::from([3; 32]), Some(same_day_id), "Signed"),
+        second_day,
+    );
+    let later_id = later.assertion().id();
+    history.append_event(later).unwrap();
+
+    assert_eq!(
+        history.head_as_of(&before),
+        None,
+        "no Event was recorded by an instant preceding every record"
+    );
+    assert_eq!(
+        history.head_as_of(&first_day),
+        Some(same_day_id),
+        "an instant shared by several Events resolves to the last of them in chain order"
+    );
+    assert_eq!(
+        history.head_as_of(&second_day),
+        Some(later_id),
+        "the head at an instant is the last Event recorded by it"
+    );
+    assert_eq!(
+        history.head_as_of(&after),
+        Some(later_id),
+        "an instant later than every record resolves to the whole chain"
+    );
+    assert_eq!(
+        history.head_as_of(&after),
+        history.head(),
+        "and agrees with the current head"
+    );
 }
 
 /// One watermark governs every family, the chain included.
