@@ -35,6 +35,22 @@ pub enum AppendOutcome {
 pub trait CanonicalKnowledge {
     fn canonical_commitment(&self, id: CommitmentId) -> Option<Canonical<Commitment>>;
     fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>>;
+
+    /// The head as of `at`: the latest Event recorded no later than that instant, or `None`
+    /// while none had been.
+    ///
+    /// This is what lets a reader address a whole knowledge cut — the Commitments recorded by an
+    /// instant *and* the chain that was current at it — without asking what is current now. A
+    /// reader names an instant it already holds and learns nothing of an Event admitted after it,
+    /// which is the difference between a Thesis that fell behind and one that set aside facts it
+    /// knew.
+    ///
+    /// The answer is well defined because recording is monotonic across admission: `recorded_at`
+    /// never decreases along the chain, so the Events recorded no later than `at` are a prefix of
+    /// it and this is that prefix's last. Where several share the instant, it is the last of them
+    /// in chain order — the coarser cut an instant addresses, which naming a head directly
+    /// refines.
+    fn head_as_of(&self, at: &Date) -> Option<EventId>;
 }
 
 pub trait CanonicalHistory: Knowledge + CanonicalKnowledge {
