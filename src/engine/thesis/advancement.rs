@@ -34,7 +34,13 @@ impl Advancement {
         self.thesis
     }
 
-    pub fn imposed(&self) -> &BTreeSet<CommitmentId> {
-        &self.imposed
+    /// The commitments canonical history required, absent from the parent's selection.
+    pub fn imposed(&self) -> impl Iterator<Item = CommitmentId> + '_ {
+        self.imposed.iter().copied()
+    }
+
+    /// How many, for a caller that only asks whether history imposed anything at all.
+    pub fn imposed_count(&self) -> usize {
+        self.imposed.len()
     }
 }

@@ -30,7 +30,7 @@ mod projection;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::{ForkInput, GenesisInput, KnowledgeCut, Thesis};
+use super::{Advancement, ForkInput, GenesisInput, KnowledgeCut, Thesis};
 
 use crate::canon::{Canonical, CanonicalKnowledge};
 
@@ -276,7 +276,16 @@ fn ids(commitments: &[CommitmentId]) -> BTreeSet<CommitmentId> {
     commitments.iter().copied().collect()
 }
 
-/// The same commitments in the shape [`Thesis::selection`] returns them.
-fn selected(commitments: &[CommitmentId]) -> Vec<CommitmentId> {
-    ids(commitments).into_iter().collect()
+/// The halves of a selection, gathered so a test can state them as sets.
+fn frozen_of(thesis: &Thesis) -> BTreeSet<CommitmentId> {
+    thesis.selection().frozen().collect()
+}
+fn open_of(thesis: &Thesis) -> BTreeSet<CommitmentId> {
+    thesis.selection().open().collect()
+}
+fn resolved_of(thesis: &Thesis) -> BTreeSet<CommitmentId> {
+    thesis.selection().resolved().collect()
+}
+fn imposed_of(advancement: &Advancement) -> BTreeSet<CommitmentId> {
+    advancement.imposed().collect()
 }

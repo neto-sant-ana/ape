@@ -37,11 +37,12 @@
 //!
 //! The selection is held as the frozen/open partition rather than as one set. That split is a
 //! function of the cut, so it is derived exactly once and inherited unchanged by every fork.
+//! [`Selection`] owns it, together with what representing it costs.
 
 use std::collections::BTreeSet;
 
 use super::frozen::{ensure_selectable, settled_at, settled_between, with_ancestors};
-use super::{Advancement, KnowledgeCut, ThesisError};
+use super::{Advancement, KnowledgeCut, Selection, ThesisError};
 
 use crate::canon::CanonicalKnowledge;
 
@@ -52,8 +53,7 @@ define_entity! {
     pub struct Thesis(ThesisId) via ThesisInput {
         parent: Option<ThesisId>,
         cut: KnowledgeCut,
-        frozen: BTreeSet<CommitmentId>,
-        open: BTreeSet<CommitmentId>,
+        selection: Selection,
     }
 }
 
@@ -77,22 +77,20 @@ impl Thesis {
         input: GenesisInput,
     ) -> Result<Self, ThesisError> {
         let frozen = with_ancestors(knowledge, settled_at(knowledge, input.cut.event_head())?)?;
-        let open = input.selection.difference(&frozen).copied().collect();
 
         Self::assemble(
             knowledge,
             ThesisInput {
                 parent: None,
                 cut: input.cut,
-                frozen,
-                open,
+                selection: Selection::partitioned(frozen, input.selection),
             },
         )
     }
 
-    /// An introduced commitment that is already frozen is dropped rather than added, which
-    /// keeps the two halves of the partition disjoint; selecting what history already
-    /// imposed changes nothing.
+    /// An introduced commitment already frozen is kept frozen rather than added to the open
+    /// future: selecting what the cut already imposed changes nothing. Omitting one, by
+    /// contrast, is refused — the caller is asking to un-know a fact.
     pub fn fork<K: CanonicalKnowledge>(
         &self,
         knowledge: &K,
@@ -102,21 +100,27 @@ impl Thesis {
             return Err(ThesisError::OmittedAndIntroduced(*both));
         }
 
-        if let Some(unavoidable) = input.omitted.intersection(&self.frozen).next() {
+        if let Some(unavoidable) = input
+            .omitted
+            .iter()
+            .find(|id| self.selection.is_frozen(**id))
+        {
             return Err(ThesisError::FrozenPastOmitted(*unavoidable));
         }
 
-        let mut open: BTreeSet<CommitmentId> =
-            self.open.difference(&input.omitted).copied().collect();
-        open.extend(input.introduced.difference(&self.frozen).copied());
+        let open: BTreeSet<CommitmentId> = self
+            .selection
+            .open()
+            .filter(|id| !input.omitted.contains(id))
+            .chain(input.introduced.iter().copied())
+            .collect();
 
         Self::assemble(
             knowledge,
             ThesisInput {
                 parent: Some(self.id()),
                 cut: self.cut.clone(),
-                frozen: self.frozen.clone(),
-                open,
+                selection: Selection::partitioned(self.selection.frozen().collect(), open),
             },
         )
     }
@@ -149,38 +153,30 @@ impl Thesis {
             (parent, Some(head)) => settled_between(knowledge, parent, head)?,
         };
 
-        let mut frozen = self.frozen.clone();
-        frozen.extend(with_ancestors(knowledge, settled)?);
-
-        let imposed: BTreeSet<CommitmentId> = frozen
-            .difference(&self.frozen)
-            .filter(|id| !self.open.contains(id))
-            .copied()
+        let frozen: BTreeSet<CommitmentId> = self
+            .selection
+            .frozen()
+            .chain(with_ancestors(knowledge, settled)?)
             .collect();
 
-        let open = self.open.difference(&frozen).copied().collect();
+        // Frozen(H') − Commitments(T): what the cut required and the parent never selected,
+        // which is why a commitment merely moving from open to frozen is not imposed.
+        let imposed: BTreeSet<CommitmentId> = frozen
+            .iter()
+            .filter(|id| !self.selection.contains(**id))
+            .copied()
+            .collect();
 
         let thesis = Self::assemble(
             knowledge,
             ThesisInput {
                 parent: Some(self.id()),
                 cut: target,
-                frozen,
-                open,
+                selection: Selection::partitioned(frozen, self.selection.open().collect()),
             },
         )?;
 
         Ok(Advancement::new(thesis, imposed))
-    }
-
-    /// The complete selected graph, in the shape Hermeneia absorbs it.
-    ///
-    /// Deliberately not public. A selection handed out on its own can be folded against any
-    /// chain, and the whole point of a recognized cut is that it cannot: interpretation goes
-    /// through [`super::Interpretation`]. What a Thesis *selects* is public through `frozen`
-    /// and `open`, which is what inspection needs and what projection cannot misuse.
-    pub(super) fn selection(&self) -> Vec<CommitmentId> {
-        self.frozen.union(&self.open).copied().collect()
     }
 
     /// `ThesisInput` doubles as the request: the fields the identity is derived from are the
@@ -190,8 +186,7 @@ impl Thesis {
         knowledge: &K,
         input: ThesisInput,
     ) -> Result<Self, ThesisError> {
-        let selection = input.frozen.union(&input.open).copied().collect();
-        ensure_selectable(knowledge, &selection, &input.cut)?;
+        ensure_selectable(knowledge, &input.selection, &input.cut)?;
 
         Ok(Self::create(input)?)
     }

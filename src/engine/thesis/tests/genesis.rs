@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use super::{Fixture, GenesisInput, Thesis, d1, d2, d3, ids};
+use super::{Fixture, GenesisInput, Thesis, d1, d2, d3, frozen_of, ids, open_of};
 
 use crate::engine::thesis::ThesisError;
 
@@ -16,8 +16,8 @@ fn an_empty_history_freezes_nothing() {
 
     let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[a, b]);
 
-    assert!(thesis.frozen().is_empty());
-    assert_eq!(thesis.open(), &ids(&[a, b]));
+    assert!(frozen_of(&thesis).is_empty());
+    assert_eq!(open_of(&thesis), ids(&[a, b]));
     assert_eq!(thesis.cut().known_at(), &d1());
     assert_eq!(thesis.parent(), &None);
 }
@@ -31,8 +31,8 @@ fn a_genesis_at_an_advanced_head_absorbs_what_history_settled() {
 
     let thesis = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[intended]);
 
-    assert_eq!(thesis.frozen(), &ids(&[settled]));
-    assert_eq!(thesis.open(), &ids(&[intended]));
+    assert_eq!(frozen_of(&thesis), ids(&[settled]));
+    assert_eq!(open_of(&thesis), ids(&[intended]));
 }
 
 #[test]
@@ -44,8 +44,8 @@ fn the_ancestors_of_a_settled_commitment_are_frozen_with_it() {
 
     let thesis = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[]);
 
-    assert_eq!(thesis.frozen(), &ids(&[root, settled]));
-    assert!(thesis.open().is_empty());
+    assert_eq!(frozen_of(&thesis), ids(&[root, settled]));
+    assert!(open_of(&thesis).is_empty());
 }
 
 #[test]

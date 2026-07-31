@@ -2,7 +2,10 @@
 
 use std::collections::BTreeSet;
 
-use super::{Fixture, ForkInput, d1, d2, d3, ids, introducing, omitting, selected};
+use super::{
+    Fixture, ForkInput, d1, d2, d3, frozen_of, ids, imposed_of, introducing, omitting, open_of,
+    resolved_of,
+};
 
 use crate::engine::thesis::ThesisError;
 
@@ -75,12 +78,12 @@ fn advancing_the_head_reads_the_new_segment_only() {
         .unwrap();
     let advanced = advancement.thesis();
 
-    assert_eq!(advancement.imposed(), &ids(&[second, third]));
-    assert_eq!(advanced.frozen(), &ids(&[first, second, third]));
-    assert_eq!(advanced.open(), &ids(&[kept]));
+    assert_eq!(imposed_of(&advancement), ids(&[second, third]));
+    assert_eq!(frozen_of(advanced), ids(&[first, second, third]));
+    assert_eq!(open_of(advanced), ids(&[kept]));
 
     let recomputed = knowledge.genesis(knowledge.cut(d3(), Some(head)), &[kept]);
-    assert_eq!(advanced.frozen(), recomputed.frozen());
+    assert_eq!(frozen_of(advanced), frozen_of(&recomputed));
 }
 
 #[test]
@@ -149,10 +152,10 @@ fn knowledge_may_advance_while_the_head_holds() {
         .unwrap();
     let advanced = advancement.thesis();
 
-    assert!(advancement.imposed().is_empty());
-    assert_eq!(advanced.frozen(), parent.frozen());
-    assert_eq!(advanced.open(), parent.open());
-    assert_eq!(advanced.selection(), parent.selection());
+    assert_eq!(advancement.imposed_count(), 0);
+    assert_eq!(frozen_of(advanced), frozen_of(&parent));
+    assert_eq!(open_of(advanced), open_of(&parent));
+    assert_eq!(resolved_of(advanced), resolved_of(&parent));
     assert_eq!(advanced.cut().event_head(), Some(head));
     assert_eq!(advanced.cut().known_at(), &d3());
     assert_ne!(advanced.id(), parent.id());
@@ -170,9 +173,10 @@ fn a_selected_commitment_moves_from_the_open_future_into_the_frozen_past() {
         .unwrap();
     let advanced = advancement.thesis();
 
-    assert!(advancement.imposed().is_empty());
-    assert_eq!(advanced.frozen(), &ids(&[intended]));
-    assert!(advanced.open().is_empty());
+    assert_eq!(advancement.imposed_count(), 0);
+    assert_eq!(frozen_of(advanced), ids(&[intended]));
+    assert!(open_of(advanced).is_empty());
+    assert_eq!(advanced.selection().len(), thesis.selection().len());
 }
 
 #[test]
@@ -197,9 +201,9 @@ fn what_history_settled_outside_the_parent_is_reported_as_imposed() {
         .advance(&knowledge, knowledge.cut(d2(), Some(head)))
         .unwrap();
 
-    assert_eq!(advancement.imposed(), &ids(&[replaced]));
-    assert_eq!(advancement.thesis().frozen(), &ids(&[replaced]));
-    assert_eq!(advancement.thesis().open(), &ids(&[replacement]));
+    assert_eq!(imposed_of(&advancement), ids(&[replaced]));
+    assert_eq!(frozen_of(advancement.thesis()), ids(&[replaced]));
+    assert_eq!(open_of(advancement.thesis()), ids(&[replacement]));
 }
 
 #[test]
@@ -214,7 +218,7 @@ fn an_imposed_commitment_arrives_with_its_ancestors() {
         .advance(&knowledge, knowledge.cut(d2(), Some(head)))
         .unwrap();
 
-    assert_eq!(advancement.imposed(), &ids(&[root, settled]));
+    assert_eq!(imposed_of(&advancement), ids(&[root, settled]));
 }
 
 #[test]
@@ -233,7 +237,7 @@ fn advancement_spans_every_event_of_the_segment() {
         .advance(&knowledge, knowledge.cut(d2(), Some(head)))
         .unwrap();
 
-    assert_eq!(advancement.imposed(), &ids(&[first, second, third]));
+    assert_eq!(imposed_of(&advancement), ids(&[first, second, third]));
 }
 
 #[test]
@@ -273,13 +277,13 @@ fn a_commitment_admitted_between_cuts_enters_by_decision_and_not_by_advancement(
         .unwrap()
         .into_thesis();
 
-    assert_eq!(advanced.selection(), selected(&[intended]));
+    assert_eq!(resolved_of(&advanced), ids(&[intended]));
 
     let decided = advanced
         .fork(&knowledge, introducing(&[admitted_later]))
         .unwrap();
 
-    assert_eq!(decided.selection(), selected(&[intended, admitted_later]));
+    assert_eq!(resolved_of(&decided), ids(&[intended, admitted_later]));
 
     // Which is why the advancement was needed: the same decision under the earlier cut claims
     // an intention that could not yet have been formed.
@@ -313,6 +317,6 @@ fn knowledge_grows_then_intention_changes() {
     assert_eq!(second.cut().known_at(), &d2());
     assert_eq!(third.cut(), second.cut());
 
-    assert_eq!(third.frozen(), &ids(&[settled]));
-    assert!(third.open().is_empty());
+    assert_eq!(frozen_of(&third), ids(&[settled]));
+    assert!(open_of(&third).is_empty());
 }

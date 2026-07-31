@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use super::{Fixture, KnowledgeCut, d1, d2, d3};
+use super::{Fixture, KnowledgeCut, d1, d2, d3, frozen_of, ids, open_of};
 
 use crate::engine::thesis::ThesisError;
 
@@ -45,7 +45,7 @@ fn a_cut_may_recognize_no_head_while_events_exist() {
     let cut = KnowledgeCut::declare(&knowledge, d3(), None).unwrap();
     let thesis = knowledge.genesis(cut, &[intended]);
 
-    assert!(thesis.frozen().is_empty());
+    assert!(frozen_of(&thesis).is_empty());
     assert_eq!(thesis.cut().event_head(), None);
 }
 
@@ -60,8 +60,8 @@ fn the_instant_alone_changes_identity() {
     let later = knowledge.genesis(knowledge.cut(d3(), None), &[selection]);
 
     assert_eq!(earlier.parent(), later.parent());
-    assert_eq!(earlier.frozen(), later.frozen());
-    assert_eq!(earlier.open(), later.open());
+    assert_eq!(frozen_of(&earlier), frozen_of(&later));
+    assert_eq!(open_of(&earlier), open_of(&later));
     assert_ne!(earlier.id(), later.id());
 }
 
@@ -78,6 +78,6 @@ fn a_cut_may_recognize_a_head_earlier_than_the_latest_recorded() {
     let cut = KnowledgeCut::declare(&knowledge, d3(), Some(earlier)).unwrap();
     let thesis = knowledge.genesis(cut, &[]);
 
-    assert_eq!(thesis.frozen(), &super::ids(&[first]));
+    assert_eq!(frozen_of(&thesis), ids(&[first]));
     assert_eq!(thesis.cut().event_head(), Some(earlier));
 }

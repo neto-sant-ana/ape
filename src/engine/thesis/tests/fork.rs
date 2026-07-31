@@ -2,7 +2,9 @@
 
 use std::collections::BTreeSet;
 
-use super::{Fixture, ForkInput, d1, d2, d3, ids, introducing, omitting, selected};
+use super::{
+    Fixture, ForkInput, d1, d2, d3, frozen_of, ids, introducing, omitting, open_of, resolved_of,
+};
 
 use crate::engine::thesis::ThesisError;
 
@@ -15,8 +17,8 @@ fn an_open_commitment_may_be_omitted() {
 
     let fork = parent.fork(&knowledge, omitting(&[dropped])).unwrap();
 
-    assert_eq!(fork.open(), &ids(&[kept]));
-    assert_eq!(fork.selection(), selected(&[kept]));
+    assert_eq!(open_of(&fork), ids(&[kept]));
+    assert_eq!(resolved_of(&fork), ids(&[kept]));
 }
 
 #[test]
@@ -67,7 +69,7 @@ fn a_replacement_omits_and_introduces_together() {
         )
         .unwrap();
 
-    assert_eq!(fork.open(), &ids(&[replacement]));
+    assert_eq!(open_of(&fork), ids(&[replacement]));
 }
 
 #[test]
@@ -134,7 +136,7 @@ fn a_fork_inherits_the_cut_and_the_frozen_region() {
     let fork = parent.fork(&knowledge, omitting(&[open])).unwrap();
 
     assert_eq!(fork.cut(), parent.cut());
-    assert_eq!(fork.frozen(), parent.frozen());
+    assert_eq!(frozen_of(&fork), frozen_of(&parent));
     assert_eq!(fork.parent(), &Some(parent.id()));
 }
 
@@ -147,9 +149,12 @@ fn introducing_an_already_frozen_commitment_leaves_the_partition_disjoint() {
 
     let fork = parent.fork(&knowledge, introducing(&[settled])).unwrap();
 
-    assert_eq!(fork.frozen(), &ids(&[settled]));
-    assert!(fork.open().is_empty());
-    assert_eq!(fork.selection(), selected(&[settled]));
+    assert_eq!(frozen_of(&fork), ids(&[settled]));
+    assert!(open_of(&fork).is_empty());
+    assert_eq!(resolved_of(&fork), ids(&[settled]));
+
+    // Counted once, which only holds while the halves stay disjoint.
+    assert_eq!(fork.selection().len(), 1);
 }
 
 #[test]
@@ -179,6 +184,6 @@ fn a_different_parent_yields_a_different_identity() {
     let from_parent = parent.fork(&knowledge, omitting(&[])).unwrap();
     let from_sibling = sibling.fork(&knowledge, introducing(&[selection])).unwrap();
 
-    assert_eq!(from_parent.selection(), from_sibling.selection());
+    assert_eq!(resolved_of(&from_parent), resolved_of(&from_sibling));
     assert_ne!(from_parent.id(), from_sibling.id());
 }

@@ -49,8 +49,10 @@ impl Interpretation {
         let head = thesis.cut().event_head();
         let chain = recognized_chain(knowledge, head)?;
 
+        let selection: Vec<_> = thesis.selection().resolved().collect();
+
         let mut accumulation = Accumulation::recognizing(head);
-        accumulation.absorb(knowledge, &thesis.selection(), &chain)?;
+        accumulation.absorb(knowledge, &selection, &chain)?;
 
         Ok(Self { accumulation })
     }

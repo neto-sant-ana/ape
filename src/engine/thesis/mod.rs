@@ -6,6 +6,9 @@ mod frozen;
 mod cut;
 pub use cut::KnowledgeCut;
 
+mod selection;
+pub use selection::Selection;
+
 mod advancement;
 pub use advancement::Advancement;
 

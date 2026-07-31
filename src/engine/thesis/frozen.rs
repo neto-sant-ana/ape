@@ -10,7 +10,7 @@
 
 use std::collections::BTreeSet;
 
-use super::{KnowledgeCut, ThesisError};
+use super::{KnowledgeCut, Selection, ThesisError};
 
 use crate::canon::CanonicalKnowledge;
 
@@ -120,26 +120,26 @@ pub(super) fn with_ancestors<K: CanonicalKnowledge>(
 /// compensate.
 pub(super) fn ensure_selectable<K: CanonicalKnowledge>(
     knowledge: &K,
-    selection: &BTreeSet<CommitmentId>,
+    selection: &Selection,
     cut: &KnowledgeCut,
 ) -> Result<(), ThesisError> {
-    for id in selection {
+    for id in selection.resolved() {
         let record = knowledge
-            .canonical_commitment(*id)
-            .ok_or(ThesisError::UnknownCommitment(*id))?;
+            .canonical_commitment(id)
+            .ok_or(ThesisError::UnknownCommitment(id))?;
 
         if !record.recorded_at().up_to(cut.known_at()) {
             return Err(ThesisError::CommitmentNotKnownAtCut {
-                commitment: *id,
+                commitment: id,
                 recorded_at: *record.recorded_at(),
                 known_at: *cut.known_at(),
             });
         }
 
         for dependency in record.assertion().dependencies() {
-            if !selection.contains(dependency) {
+            if !selection.contains(*dependency) {
                 return Err(ThesisError::DanglingDependency {
-                    dependent: *id,
+                    dependent: id,
                     dependency: *dependency,
                 });
             }
