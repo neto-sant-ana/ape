@@ -25,8 +25,11 @@
 //! Report a reference canonical history does not hold, and each is a single refusal
 //! whether the assertion was never admitted or the reference is simply wrong.
 //!
-//! `OmittedAndIntroduced`
-//! Is the one refusal of a request that is merely incoherent.
+//! `OmittedAndIntroduced` and `SelectionUnchanged`
+//! Answer a request that states nothing: one both drops and selects the same commitment, the
+//! other leaves the world exactly as its parent had it. A Thesis is produced by a change in
+//! what is selected or in what is recognized, and an edge that carries neither would record a
+//! decision the model cannot read back.
 
 use crate::engine::hermeneia::ProjectionError;
 
@@ -53,6 +56,9 @@ pub enum ThesisError {
 
     #[error("commitment {0} is both omitted and introduced")]
     OmittedAndIntroduced(CommitmentId),
+
+    #[error("the fork selects exactly what its parent selects; nothing would distinguish them")]
+    SelectionUnchanged,
 
     #[error("event {target} does not descend from the recognized head {parent:?}")]
     HeadDoesNotDescend {

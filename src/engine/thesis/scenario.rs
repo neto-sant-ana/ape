@@ -88,9 +88,18 @@ impl Thesis {
         )
     }
 
-    /// An introduced commitment already frozen is kept frozen rather than added to the open
-    /// future: selecting what the cut already imposed changes nothing. Omitting one, by
-    /// contrast, is refused — the caller is asking to un-know a fact.
+    /// A fork must change what is selected.
+    ///
+    /// Its cut is its parent's by construction, so a fork that selects the same graph would be
+    /// an ancestry edge carrying neither a decision nor an observation — and a Thesis is what a
+    /// change in selection or in recognized cut produces. Pinning a world under a name is what
+    /// a reference is for, and a reference costs no Thesis.
+    ///
+    /// Redundancy within the request is tolerated, because omission and introduction state an
+    /// outcome rather than a transition. Omitting what the parent never selected is silence: the
+    /// outcome asked for already holds. Introducing what is already selected is the same. What
+    /// is refused is an outcome that *cannot* hold — omitting a frozen commitment — and a
+    /// request whose outcome is the parent itself.
     pub fn fork<K: CanonicalKnowledge>(
         &self,
         knowledge: &K,
@@ -115,12 +124,18 @@ impl Thesis {
             .chain(input.introduced.iter().copied())
             .collect();
 
+        let selection = Selection::partitioned(self.selection.frozen().collect(), open);
+
+        if selection == self.selection {
+            return Err(ThesisError::SelectionUnchanged);
+        }
+
         Self::assemble(
             knowledge,
             ThesisInput {
                 parent: Some(self.id()),
                 cut: self.cut.clone(),
-                selection: Selection::partitioned(self.selection.frozen().collect(), open),
+                selection,
             },
         )
     }
