@@ -8,8 +8,8 @@
 //!
 //! ```text
 //! KnowledgeCut
-//! ├── known_at    → the instant through which knowledge is recognized
-//! └── event_head  → the chain recognized within it
+//! ├── known_at    → the latest recording instant a Commitment may be selected from
+//! └── event_head  → the factual chain the Thesis interprets
 //! ```
 //!
 //! The pair must agree, and agreeing is the type's own invariant: the recognized head must
@@ -18,10 +18,17 @@
 //! through the reader rather than assembled from two fields. A `KnowledgeCut` in hand is a
 //! coherent cut, and nothing downstream re-establishes it.
 //!
-//! Coherence is not maximality. A cut may recognize a head earlier than the latest Event
-//! recorded by `known_at`, including no head at all while Events exist — a plan drawn before
-//! anything was observed, which is the ordinary case rather than the exception. What the cut
-//! forbids is knowledge from *after* it, never ignorance of what came before.
+//! What `declare` proves is local, and one-sided: nothing recognized here was recorded after
+//! `known_at`. It does not prove the converse — that everything recorded by `known_at` is
+//! recognized. Settling that would mean knowing the latest Event recorded no later than the
+//! instant, a question only canonical history can answer and this port cannot ask.
+//!
+//! So a cut naming a head earlier than that one remains constructible, and keeping the two
+//! coordinates describing the same moment is the application's part. The distinction matters
+//! more than it looks: a Thesis whose head is old *because the past was short when it was made*
+//! is a Thesis that fell behind, which the model names and permits, while one whose instant is
+//! current and whose head is old has set aside facts that were already known. Only the second
+//! is a retraction, and only the second is what this constructor cannot yet tell apart.
 //!
 //! Resolution is the recording instant's: `known_at` is a civil date, so a cut is a day.
 //! Anachronism is barred across days, not within one.

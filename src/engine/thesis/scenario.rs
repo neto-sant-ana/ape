@@ -14,8 +14,9 @@
 //! - **free of anachronism** — every selected commitment was recorded no later than the cut.
 //!
 //! The cut is part of what a Thesis means, not of where it came from. That is what makes
-//! projectability intrinsic: `T@K` is projectable at the head `K` recognizes, decidable from
-//! `T` alone.
+//! projectability intrinsic: `T@K` is projectable only under `K` — its factual chain fixed by
+//! `K.event_head`, its selectable Commitments bounded by `K.known_at` — and that is decidable
+//! from `T` alone.
 //!
 //! Three derivations, each moving exactly one axis:
 //!

@@ -33,10 +33,12 @@ fn a_head_recorded_after_the_instant_is_refused() {
     ));
 }
 
-/// Coherence is not maximality. A plan drawn as of an instant may recognize no Event at all,
-/// even where Events were recorded before it.
+/// What `declare` cannot yet tell apart, recorded so the limit is visible rather than implied:
+/// a cut is proved to recognize nothing recorded after its instant, and *not* proved to
+/// recognize everything recorded by it. Settling the second needs the latest Event recorded no
+/// later than the instant, which this port cannot ask for.
 #[test]
-fn a_cut_may_recognize_no_head_while_events_exist() {
+fn a_cut_is_not_proved_to_recognize_every_event_known_at_its_instant() {
     let mut knowledge = Fixture::new();
     let settled = knowledge.commit((3, 31), BTreeSet::new());
     let intended = knowledge.commit((6, 30), BTreeSet::new());

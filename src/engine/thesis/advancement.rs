@@ -7,7 +7,7 @@
 //! interpret the chain that contains it.
 //!
 //! ```text
-//! Imposed(T, H') = Frozen(H') − Commitments(T)
+//! Imposed(T, K') = Frozen(K') − Commitments(T)
 //! ```
 
 use std::collections::BTreeSet;
