@@ -20,25 +20,31 @@ fn advancing_to_the_recognized_cut_is_refused() {
 
     assert!(matches!(
         refusal,
-        Err(ThesisError::CutNotLater { parent, target }) if parent == d2() && target == d2()
+        Err(ThesisError::CutNotLater { parent, target, .. }) if parent == d2() && target == d2()
     ));
 }
 
+/// Two cuts of one instant are ordered by their heads, so a finer cut advances to the one its own
+/// group refines. Without it a Thesis born at a finer cut could never reach the instant's whole
+/// chain by ancestry, and the lineage would have to start over.
 #[test]
-fn advancing_the_head_without_advancing_the_instant_is_refused() {
+fn a_finer_cut_may_advance_within_the_same_instant() {
     let mut knowledge = Fixture::new();
     let first = knowledge.commit((3, 31), BTreeSet::new());
     let second = knowledge.commit((4, 30), BTreeSet::new());
     let earlier = knowledge.settle(first);
-    let thesis = knowledge.genesis(knowledge.cut_within(d3(), earlier), &[]);
-    knowledge.settle(second);
+    let later = knowledge.settle(second);
 
-    let refusal = thesis.advance(&knowledge, knowledge.cut(d3()));
+    let parent = knowledge.genesis(knowledge.cut_within(d3(), earlier), &[]);
+    assert_eq!(frozen_of(&parent), ids(&[first]));
 
-    assert!(matches!(
-        refusal,
-        Err(ThesisError::CutNotLater { parent, target }) if parent == d3() && target == d3()
-    ));
+    let advancement = parent.advance(&knowledge, knowledge.cut(d3())).unwrap();
+    let advanced = advancement.thesis();
+
+    assert_eq!(advanced.cut().known_at(), parent.cut().known_at());
+    assert_eq!(advanced.cut().event_head(), Some(later));
+    assert_eq!(imposed_of(&advancement), ids(&[second]));
+    assert_eq!(frozen_of(advanced), ids(&[first, second]));
 }
 
 #[test]
@@ -51,7 +57,7 @@ fn an_earlier_instant_is_refused() {
 
     assert!(matches!(
         refusal,
-        Err(ThesisError::CutNotLater { parent, target }) if parent == d3() && target == d1()
+        Err(ThesisError::CutNotLater { parent, target, .. }) if parent == d3() && target == d1()
     ));
 }
 
@@ -99,24 +105,6 @@ fn a_head_preceding_the_recognized_one_is_refused() {
         refusal,
         Err(ThesisError::HeadDoesNotDescend { parent, target })
             if parent == Some(recognized) && target == earlier
-    ));
-}
-
-#[test]
-fn advancing_to_a_head_of_another_reach_of_history_is_refused() {
-    let mut knowledge = Fixture::new();
-    let settled = knowledge.commit((3, 31), BTreeSet::new());
-    let elsewhere = knowledge.commit((6, 30), BTreeSet::new());
-    let head = knowledge.settle(settled);
-    let detached = knowledge.detached(elsewhere);
-    let thesis = knowledge.genesis(knowledge.cut(d2()), &[]);
-
-    let refusal = thesis.advance(&knowledge, knowledge.cut_within(d3(), detached));
-
-    assert!(matches!(
-        refusal,
-        Err(ThesisError::HeadDoesNotDescend { parent, target })
-            if parent == Some(head) && target == detached
     ));
 }
 

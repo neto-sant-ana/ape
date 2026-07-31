@@ -63,6 +63,26 @@ fn a_head_within_the_instants_group_is_a_finer_cut() {
     assert_eq!(thesis.cut().event_head(), Some(earlier));
 }
 
+/// Sharing the instant is not belonging to the chain. An Event of another reach of history can be
+/// recorded on the same day as the head an instant addresses, and naming it would recognize a past
+/// that never led there — refused where the cut is built, not left for a later operation to notice.
+#[test]
+fn a_detached_event_of_the_same_instant_is_not_a_valid_finer_cut() {
+    let mut knowledge = Fixture::new();
+    let settled = knowledge.commit((3, 31), BTreeSet::new());
+    let elsewhere = knowledge.commit((6, 30), BTreeSet::new());
+    let addressed = knowledge.settle(settled);
+    let detached = knowledge.detached(elsewhere);
+
+    let refusal = KnowledgeCut::within(&knowledge, d3(), detached);
+
+    assert!(matches!(
+        refusal,
+        Err(ThesisError::HeadDoesNotBelongToCut { named, addressed: cut })
+            if named == detached && cut == addressed
+    ));
+}
+
 #[test]
 fn a_head_absent_from_history_is_refused() {
     let knowledge = Fixture::new();

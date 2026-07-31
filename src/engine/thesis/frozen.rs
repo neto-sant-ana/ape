@@ -83,6 +83,28 @@ fn events_between<K: CanonicalKnowledge>(
     Ok(span)
 }
 
+/// Whether `head` lies on the chain ending at `target`, `target` itself included.
+///
+/// Sharing a recording instant with the chain is not being part of it: an Event of another reach of
+/// history can be contemporaneous with the head an instant addresses. Only the links say so.
+pub(super) fn lies_on_chain_to<K: CanonicalKnowledge>(
+    knowledge: &K,
+    head: EventId,
+    target: EventId,
+) -> Result<bool, ThesisError> {
+    let mut cursor = Some(target);
+
+    while let Some(id) = cursor {
+        if id == head {
+            return Ok(true);
+        }
+
+        cursor = *read_event(knowledge, id)?.previous_event();
+    }
+
+    Ok(false)
+}
+
 /// `seeds` closed upwards over dependencies.
 pub(super) fn with_ancestors<K: CanonicalKnowledge>(
     knowledge: &K,

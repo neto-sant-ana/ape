@@ -19,13 +19,16 @@
 //!
 //! Naming a head directly stays available, and stays a refinement rather than an escape. Several
 //! Events may share a recording instant, and an instant addresses the last of them; a finer cut
-//! names an earlier one *within that same instant*. A head recorded before the instant's group is
-//! refused, because it would leave out Events the instant recognizes.
+//! names an earlier one *within that same instant*. Two things are required of it, and neither
+//! implies the other: it must share the instant's recording date, or it would leave out Events the
+//! instant recognizes; and it must lie on the chain ending at the head that instant addresses, or
+//! it would recognize a reach of history that is merely contemporaneous.
 //!
 //! Resolution is the recording instant's: `known_at` is a civil date, so a cut is a day, and the
 //! group a day addresses is every Event recorded on it.
 
 use super::ThesisError;
+use super::frozen::lies_on_chain_to;
 
 use crate::canon::CanonicalKnowledge;
 
@@ -83,6 +86,15 @@ impl KnowledgeCut {
 
         if addressed_at != Some(*named.recorded_at()) {
             return Err(ThesisError::HeadPrecedesCut {
+                named: event_head,
+                addressed,
+            });
+        }
+
+        let addressed = addressed.expect("an instant that admits a head addresses one");
+
+        if !lies_on_chain_to(knowledge, event_head, addressed)? {
+            return Err(ThesisError::HeadDoesNotBelongToCut {
                 named: event_head,
                 addressed,
             });

@@ -74,6 +74,11 @@ pub enum ThesisError {
         addressed: Option<EventId>,
     },
 
+    #[error(
+        "head {named} shares the instant of {addressed} without lying on the chain ending there"
+    )]
+    HeadDoesNotBelongToCut { named: EventId, addressed: EventId },
+
     /// Unreachable while a cut is resolved from its instant: a later instant cannot address an
     /// earlier chain, so no target can recognize nothing where its parent recognized something.
     /// Kept because the code has to branch somewhere, and a named refusal beats a Thesis holding a
@@ -82,9 +87,14 @@ pub enum ThesisError {
     HeadWithdrawn { parent: EventId },
 
     #[error(
-        "a cut known through {target:?} recognizes no knowledge later than {parent:?}; advancement requires a strictly later instant"
+        "the cut ({target:?}, {target_head:?}) is not later than ({parent:?}, {parent_head:?}); advancement requires later knowledge"
     )]
-    CutNotLater { parent: Date, target: Date },
+    CutNotLater {
+        parent: Date,
+        parent_head: Option<EventId>,
+        target: Date,
+        target_head: Option<EventId>,
+    },
 
     #[error(
         "commitment {commitment} was not knowledge at {known_at:?}, having been recorded at {recorded_at:?}"

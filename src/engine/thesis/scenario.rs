@@ -141,25 +141,32 @@ impl Thesis {
         )
     }
 
-    /// The same intention under a strictly later cut.
+    /// The same intention under a later cut.
     ///
-    /// Strictness lives on `known_at`, not on the head. Two cuts sharing a head are a genuine
-    /// advancement — commitments were admitted and no Event was observed — while advancing to
-    /// the cut already recognized would be a fork that changed nothing but its parent, and the
-    /// ancestry edge would stop naming an axis.
+    /// Later is a property of the whole cut, not of its instant alone. Neither coordinate may
+    /// regress and at least one must advance, which admits both advancements that exist: the
+    /// instant moving while the head holds — Commitments were admitted and no Event observed — and
+    /// the head moving within one instant, where a finer cut is refined by the Events of its own
+    /// group. Advancing to the cut already recognized is refused, since it would be a fork that
+    /// changed nothing but its parent.
     ///
-    /// The head may hold or move forward. Giving it back is refused: a cut recognizing no
-    /// Event where its parent recognized one un-knows a fact, which is not a way of knowing
-    /// more.
+    /// Only the instant is compared here. That the head does not regress is proved by the walk
+    /// that resolves the segment, which refuses a target the recognized head does not reach —
+    /// there is no second comparison to keep in step with it.
     pub fn advance<K: CanonicalKnowledge>(
         &self,
         knowledge: &K,
         target: KnowledgeCut,
     ) -> Result<Advancement, ThesisError> {
-        if target.known_at().up_to(self.cut.known_at()) {
+        let same_instant = target.known_at() == self.cut.known_at();
+        let regressed = target.known_at() < self.cut.known_at();
+
+        if regressed || (same_instant && target.event_head() == self.cut.event_head()) {
             return Err(ThesisError::CutNotLater {
                 parent: *self.cut.known_at(),
+                parent_head: self.cut.event_head(),
                 target: *target.known_at(),
+                target_head: target.event_head(),
             });
         }
 
