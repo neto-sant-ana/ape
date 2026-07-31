@@ -34,7 +34,10 @@ mod tests {
     #[test]
     fn rejects_blank() {
         assert!(matches!(Identifier::new(""), Err(IdentifierError::Blank)));
-        assert!(matches!(Identifier::new("   "), Err(IdentifierError::Blank)));
+        assert!(matches!(
+            Identifier::new("   "),
+            Err(IdentifierError::Blank)
+        ));
     }
 
     #[test]

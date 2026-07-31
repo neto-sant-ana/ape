@@ -57,7 +57,10 @@ fn ledgered(ceiling: f64, moves: &[(bool, f64, Date)]) -> Ledgered {
 fn a_sequence_that_ends_within_bounds_can_still_breach_along_the_way() {
     let l = ledgered(
         50.0,
-        &[(true, 60.0, date(2026, 3, 31)), (false, 20.0, date(2026, 4, 30))],
+        &[
+            (true, 60.0, date(2026, 3, 31)),
+            (false, 20.0, date(2026, 4, 30)),
+        ],
     );
 
     assert!(
@@ -79,7 +82,10 @@ fn a_sequence_that_ends_within_bounds_can_still_breach_along_the_way() {
 fn a_settled_movement_lands_where_it_was_observed() {
     let l = ledgered(
         100.0,
-        &[(true, 60.0, date(2026, 3, 31)), (false, 20.0, date(2026, 4, 30))],
+        &[
+            (true, 60.0, date(2026, 3, 31)),
+            (false, 20.0, date(2026, 4, 30)),
+        ],
     );
 
     assert!(
@@ -192,7 +198,10 @@ fn simultaneous_movements_are_judged_by_every_arrangement() {
 fn ordering_the_same_movements_removes_the_breach() {
     let l = ledgered(
         100.0,
-        &[(true, 60.0, date(2026, 3, 30)), (false, 20.0, date(2026, 3, 31))],
+        &[
+            (true, 60.0, date(2026, 3, 30)),
+            (false, 20.0, date(2026, 3, 31)),
+        ],
     );
 
     assert!(l.under(Hypothesis::OnDueDateInAnyOrder, &[]).is_empty());
@@ -204,8 +213,11 @@ fn a_cancelled_movement_never_enters_the_sequence() {
     let l = ledgered(100.0, &[(true, 60.0, due), (false, 20.0, due)]);
 
     assert!(
-        l.under(Hypothesis::OnDueDateInAnyOrder, &[settles(l.ids[1], "Cancelled")])
-            .is_empty(),
+        l.under(
+            Hypothesis::OnDueDateInAnyOrder,
+            &[settles(l.ids[1], "Cancelled")]
+        )
+        .is_empty(),
         "with the debit cancelled the credit stands alone, and 60 is within bounds",
     );
 }
@@ -216,9 +228,7 @@ fn a_cancelled_movement_never_enters_the_sequence() {
 #[test]
 fn a_group_too_large_to_decide_is_refused_rather_than_approximated() {
     let due = date(2026, 3, 31);
-    let moves: Vec<_> = (1..=17)
-        .map(|n| (true, f64::from(n), due))
-        .collect();
+    let moves: Vec<_> = (1..=17).map(|n| (true, f64::from(n), due)).collect();
     let l = ledgered(1000.0, &moves);
 
     assert!(matches!(
@@ -267,7 +277,10 @@ fn an_excursion_inside_one_date_is_seen_by_one_reading_and_not_the_other() {
 fn a_breach_that_outlives_its_date_is_seen_by_both_readings() {
     let l = ledgered(
         50.0,
-        &[(true, 60.0, date(2026, 3, 31)), (false, 20.0, date(2026, 4, 30))],
+        &[
+            (true, 60.0, date(2026, 3, 31)),
+            (false, 20.0, date(2026, 4, 30)),
+        ],
     );
 
     let breach = vec![Conflict::OutOfBounds {

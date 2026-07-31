@@ -77,9 +77,7 @@ pub enum HermeneiaError {
     #[error("commitment {0} is settled by more than one event")]
     SettledMoreThanOnce(CommitmentId),
 
-    #[error(
-        "event {event} extends {carried:?} but the chain absorbed so far ends at {absorbed:?}"
-    )]
+    #[error("event {event} extends {carried:?} but the chain absorbed so far ends at {absorbed:?}")]
     DisjointEventChain {
         event: EventId,
         absorbed: Option<EventId>,

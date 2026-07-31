@@ -23,7 +23,10 @@ pub enum CanonError {
     CommitmentAlreadySettled(CommitmentId),
 
     #[error("agent {agent} already has a different eligibility effective from {effective_from:?}")]
-    ConflictingEligibility { agent: AgentId, effective_from: Date },
+    ConflictingEligibility {
+        agent: AgentId,
+        effective_from: Date,
+    },
 
     #[error(
         "recorded_at {recorded_at:?} precedes {earliest:?}, the earliest this assertion could be recorded"

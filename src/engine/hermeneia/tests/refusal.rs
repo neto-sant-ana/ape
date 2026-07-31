@@ -29,7 +29,10 @@ fn a_failed_absorption_does_not_change_the_accumulation() {
     ));
 
     assert_eq!(
-        attempted.conditions_at(&date(2026, 7, 1)).unwrap().conditions(),
+        attempted
+            .conditions_at(&date(2026, 7, 1))
+            .unwrap()
+            .conditions(),
         before.conditions(),
         "the settlement of b, resolved before the failure, must not have been recorded either",
     );

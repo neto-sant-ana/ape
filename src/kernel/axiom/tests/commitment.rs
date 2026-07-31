@@ -76,4 +76,3 @@ fn rejects_commitment_with_unknown_dependency() {
 
     assert!(matches!(result, Err(AxiomError::UnknownCommitment(_))));
 }
-

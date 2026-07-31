@@ -44,7 +44,11 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
             return Err(AxiomError::ActionValueMismatch);
         }
 
-        if self.knowledge.agent(input.assignment.accountable()).is_none() {
+        if self
+            .knowledge
+            .agent(input.assignment.accountable())
+            .is_none()
+        {
             return Err(AxiomError::UnknownAgent(input.assignment.accountable()));
         }
 

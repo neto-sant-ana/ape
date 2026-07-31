@@ -144,8 +144,11 @@ fn a_fulfilled_dependent_is_not_declared_unrealizable_punctually() {
     let o = ordered(date(2026, 4, 30), date(2026, 3, 31));
 
     assert!(
-        o.under(Hypothesis::OnDueDateInAnyOrder, &[settles(o.second, "Delivered")])
-            .is_empty(),
+        o.under(
+            Hypothesis::OnDueDateInAnyOrder,
+            &[settles(o.second, "Delivered")]
+        )
+        .is_empty(),
         "the dependent happened; only its still-open dependency remains, and that is punctual",
     );
 }
@@ -157,7 +160,10 @@ fn a_cancelled_dependency_is_reported_as_doom_rather_than_disorder() {
     let o = ordered(date(2026, 4, 30), date(2026, 3, 31));
 
     assert_eq!(
-        o.under(Hypothesis::OnDueDateInAnyOrder, &[settles(o.first, "Cancelled")]),
+        o.under(
+            Hypothesis::OnDueDateInAnyOrder,
+            &[settles(o.first, "Cancelled")]
+        ),
         vec![Conflict::Unrealizable(o.second)],
     );
 }

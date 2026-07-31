@@ -137,9 +137,18 @@ struct Fixture {
 fn discrete_graph() -> Fixture {
     let mut store = Store::default();
 
-    let actor_role = store.add_role(Role::create(RoleInput { label: ident("actor") }).unwrap());
-    let recipient_role =
-        store.add_role(Role::create(RoleInput { label: ident("recipient") }).unwrap());
+    let actor_role = store.add_role(
+        Role::create(RoleInput {
+            label: ident("actor"),
+        })
+        .unwrap(),
+    );
+    let recipient_role = store.add_role(
+        Role::create(RoleInput {
+            label: ident("recipient"),
+        })
+        .unwrap(),
+    );
 
     let accountable = store.add_agent(
         Agent::create(AgentInput {

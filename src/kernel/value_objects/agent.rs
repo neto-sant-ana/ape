@@ -5,7 +5,7 @@
 //!
 //! - `Participants` — the roles required to execute (`actors`) and to benefit from
 //!   (`recipients`) a statement.
-//! 
+//!
 //! - `Assignment` — the agents taking those roles: one `accountable` plus the
 //!   `executors` and `beneficiaries`.
 

@@ -5,7 +5,12 @@ use super::*;
 #[test]
 fn accepts_a_valid_eligibility_assignment() {
     let mut store = Store::default();
-    let role = store.add_role(Role::create(RoleInput { label: ident("role") }).unwrap());
+    let role = store.add_role(
+        Role::create(RoleInput {
+            label: ident("role"),
+        })
+        .unwrap(),
+    );
 
     let agent = store.add_agent(
         Agent::create(AgentInput {
@@ -31,7 +36,12 @@ fn accepts_a_valid_eligibility_assignment() {
 #[test]
 fn rejects_eligibility_assignment_for_unknown_agent() {
     let mut store = Store::default();
-    let role = store.add_role(Role::create(RoleInput { label: ident("role") }).unwrap());
+    let role = store.add_role(
+        Role::create(RoleInput {
+            label: ident("role"),
+        })
+        .unwrap(),
+    );
     let axiom = Axiom::new(&store);
 
     assert!(matches!(
@@ -236,7 +246,9 @@ fn a_tie_on_effective_from_resolves_by_id_deterministically() {
     store.add_eligibility(other);
 
     assert_eq!(
-        store.eligibility_at(agent, &date(2026, 1, 1)).map(|e| e.id()),
+        store
+            .eligibility_at(agent, &date(2026, 1, 1))
+            .map(|e| e.id()),
         Some(winner),
     );
 }
@@ -245,9 +257,12 @@ fn a_tie_on_effective_from_resolves_by_id_deterministically() {
 fn an_assignment_carrying_several_roles_satisfies_any_of_them() {
     let mut f = discrete_graph();
 
-    let extra_role = f
-        .store
-        .add_role(Role::create(RoleInput { label: ident("extra") }).unwrap());
+    let extra_role = f.store.add_role(
+        Role::create(RoleInput {
+            label: ident("extra"),
+        })
+        .unwrap(),
+    );
 
     let multi = f.store.add_agent(
         Agent::create(AgentInput {

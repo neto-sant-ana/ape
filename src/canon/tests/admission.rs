@@ -22,8 +22,12 @@ fn propagates_a_structural_rejection_from_the_axiom() {
     let g = graph();
 
     let input = CommitmentInput {
-        assignment: Assignment::new(AgentId::from([99u8; 32]), [g.seeded.executor], [g.seeded.beneficiary])
-            .unwrap(),
+        assignment: Assignment::new(
+            AgentId::from([99u8; 32]),
+            [g.seeded.executor],
+            [g.seeded.beneficiary],
+        )
+        .unwrap(),
         ..commitment_input(&g.seeded)
     };
 

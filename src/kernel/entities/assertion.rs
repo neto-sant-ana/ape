@@ -53,4 +53,3 @@ define_entity! {
         occurred_at: Date,
     }
 }
-

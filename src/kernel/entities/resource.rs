@@ -3,7 +3,7 @@
 //! - `Resource` — a kind of resource, classified by its `ResourceKind` (see the
 //!   value object for the Discrete/Quantifiable taxonomy and how each is
 //!   constrained).
-//! 
+//!
 //! - `ResourceInstance` — a concrete occurrence of a `Resource`, referenced by id.
 
 use crate::kernel::value_objects::{Identifier, ResourceKind};

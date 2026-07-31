@@ -46,7 +46,12 @@ fn rejects_action_kind_not_matching_resource_kind() {
 #[test]
 fn rejects_statement_referencing_unknown_action() {
     let mut store = Store::default();
-    let role = store.add_role(Role::create(RoleInput { label: ident("role") }).unwrap());
+    let role = store.add_role(
+        Role::create(RoleInput {
+            label: ident("role"),
+        })
+        .unwrap(),
+    );
     let axiom = Axiom::new(&store);
 
     assert!(matches!(
@@ -58,4 +63,3 @@ fn rejects_statement_referencing_unknown_action() {
         Err(AxiomError::UnknownAction(_))
     ));
 }
-

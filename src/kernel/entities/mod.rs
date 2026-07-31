@@ -9,7 +9,8 @@ pub use agent::{
 
 mod resource;
 pub use resource::{
-    Resource, ResourceId, ResourceInput, ResourceInstance, ResourceInstanceId, ResourceInstanceInput,
+    Resource, ResourceId, ResourceInput, ResourceInstance, ResourceInstanceId,
+    ResourceInstanceInput,
 };
 
 mod action;

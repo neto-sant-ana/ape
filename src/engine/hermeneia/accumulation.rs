@@ -274,11 +274,7 @@ impl Accumulation {
             );
         }
 
-        Ok(ProjectedConditions::new(
-            self.event_head,
-            *at,
-            conditions,
-        ))
+        Ok(ProjectedConditions::new(self.event_head, *at, conditions))
     }
 
     /// The conflicts the selected graph carries under `hypothesis`, empty when none was
@@ -582,61 +578,58 @@ fn resolve_movement<K: Knowledge>(
     knowledge: &K,
     commitment: &Commitment,
 ) -> Result<Option<(Movement, Constraint)>, HermeneiaError> {
-        let statement_id = *commitment.statement();
-        let statement =
-            knowledge
-                .statement(statement_id)
-                .ok_or(HermeneiaError::UnknownStatement {
-                    commitment: commitment.id(),
-                    statement: statement_id,
-                })?;
+    let statement_id = *commitment.statement();
+    let statement = knowledge
+        .statement(statement_id)
+        .ok_or(HermeneiaError::UnknownStatement {
+            commitment: commitment.id(),
+            statement: statement_id,
+        })?;
 
-        let action_id = *statement.action();
-        let action = knowledge
-            .action(action_id)
-            .ok_or(HermeneiaError::UnknownAction {
-                statement: statement_id,
-                action: action_id,
-            })?;
+    let action_id = *statement.action();
+    let action = knowledge
+        .action(action_id)
+        .ok_or(HermeneiaError::UnknownAction {
+            statement: statement_id,
+            action: action_id,
+        })?;
 
-        let effect = match (action.kind(), commitment.action_value().as_value()) {
-            (ActionKind::Discrete, None) => return Ok(None),
-            (ActionKind::Quantifiable(effect), Some(magnitude)) => (effect, magnitude),
-            _ => return Err(HermeneiaError::ActionValueMismatch(commitment.id())),
-        };
+    let effect = match (action.kind(), commitment.action_value().as_value()) {
+        (ActionKind::Discrete, None) => return Ok(None),
+        (ActionKind::Quantifiable(effect), Some(magnitude)) => (effect, magnitude),
+        _ => return Err(HermeneiaError::ActionValueMismatch(commitment.id())),
+    };
 
-        let instance_id = *commitment.resource();
-        let instance = knowledge.resource_instance(instance_id).ok_or(
-            HermeneiaError::UnknownResourceInstance {
-                commitment: commitment.id(),
-                instance: instance_id,
+    let instance_id = *commitment.resource();
+    let instance = knowledge.resource_instance(instance_id).ok_or(
+        HermeneiaError::UnknownResourceInstance {
+            commitment: commitment.id(),
+            instance: instance_id,
+        },
+    )?;
+
+    let resource_id = *instance.resource();
+    let resource = knowledge
+        .resource(resource_id)
+        .ok_or(HermeneiaError::UnknownResource {
+            instance: instance_id,
+            resource: resource_id,
+        })?;
+
+    let ResourceKind::Quantifiable(constraint) = resource.kind() else {
+        return Err(HermeneiaError::ActionResourceKindMismatch(commitment.id()));
+    };
+
+    let (effect, magnitude) = effect;
+
+    Ok(Some((
+        Movement {
+            instance: instance_id,
+            magnitude: match effect {
+                Effect::Increase => magnitude,
+                Effect::Decrease => -magnitude,
             },
-        )?;
-
-        let resource_id = *instance.resource();
-        let resource =
-            knowledge
-                .resource(resource_id)
-                .ok_or(HermeneiaError::UnknownResource {
-                    instance: instance_id,
-                    resource: resource_id,
-                })?;
-
-        let ResourceKind::Quantifiable(constraint) = resource.kind() else {
-            return Err(HermeneiaError::ActionResourceKindMismatch(commitment.id()));
-        };
-
-        let (effect, magnitude) = effect;
-
-        Ok(Some((
-            Movement {
-                instance: instance_id,
-                magnitude: match effect {
-                    Effect::Increase => magnitude,
-                    Effect::Decrease => -magnitude,
-                },
-            },
-            constraint.clone(),
-        )))
-    }
-
+        },
+        constraint.clone(),
+    )))
+}

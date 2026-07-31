@@ -119,7 +119,7 @@ mod tests {
             [
                 obs("InvoiceIssued"),
                 obs("InvoiceIssued"),
-            obs("ContractSigned"),
+                obs("ContractSigned"),
             ],
             [obs("Canceled")],
         )

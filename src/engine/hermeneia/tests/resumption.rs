@@ -10,7 +10,10 @@ fn folding_in_pieces_equals_folding_at_once() {
 
     let events = chain([(g.a, "Delivered"), (g.b, "Cancelled")]);
 
-    let at_once = g.accumulate(&events).conditions_at(&date(2026, 7, 1)).unwrap();
+    let at_once = g
+        .accumulate(&events)
+        .conditions_at(&date(2026, 7, 1))
+        .unwrap();
 
     let mut piecewise = Accumulation::default();
     piecewise
@@ -40,7 +43,10 @@ fn the_order_of_the_selection_does_not_change_the_result() {
         .unwrap();
 
     assert_eq!(
-        forwards.conditions_at(&date(2026, 7, 1)).unwrap().conditions(),
+        forwards
+            .conditions_at(&date(2026, 7, 1))
+            .unwrap()
+            .conditions(),
         backwards
             .conditions_at(&date(2026, 7, 1))
             .unwrap()
