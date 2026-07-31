@@ -105,7 +105,7 @@ The Canon therefore keeps recording **monotonic across admission**: no Assertion
 
 Without it, an Assertion admitted today carrying a recording instant from last year would silently join the knowledge of that period. Nothing in the history would have been rewritten, and yet the past it reports would have changed.
 
-The guarantee spans every family of Assertion rather than the event chain alone. A Commitment never enters the chain, so back-dating one is invisible to any guarantee the chain could offer — and it is precisely a Commitment appearing retroactively that rewrites the past without touching a single Event.
+The guarantee spans every family the Canon admits rather than the event chain alone. A Commitment never enters the chain, so back-dating one is invisible to any guarantee the chain could offer — and it is precisely a Commitment appearing retroactively that rewrites the past without touching a single Event.
 
 Spanning every family also settles the chain as a special case: an Event cannot be recorded before the Event it extends, since that one was admitted earlier.
 

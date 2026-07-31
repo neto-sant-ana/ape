@@ -2,7 +2,10 @@ mod identification;
 pub use identification::IdentityError;
 
 mod agent;
-pub use agent::{Agent, AgentId, AgentInput, Role, RoleId, RoleInput};
+pub use agent::{
+    Agent, AgentId, AgentInput, EligibilityAssignment, EligibilityAssignmentId,
+    EligibilityAssignmentInput, Role, RoleId, RoleInput,
+};
 
 mod resource;
 pub use resource::{
@@ -16,7 +19,4 @@ mod statement;
 pub use statement::{Statement, StatementId, StatementInput};
 
 mod assertion;
-pub use assertion::{
-    Commitment, CommitmentId, CommitmentInput, EligibilityAssignment, EligibilityAssignmentId,
-    EligibilityAssignmentInput, Event, EventId, EventInput,
-};
+pub use assertion::{Commitment, CommitmentId, CommitmentInput, Event, EventId, EventInput};

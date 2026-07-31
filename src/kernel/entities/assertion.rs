@@ -21,17 +21,14 @@
 //! An `Event` is a factual execution of coordination relevance; it settles or
 //! cancels a commitment per that commitment's statement, links to the
 //! `previous_event` in the chain, and records when it `occurred_at`.
-//! 
-//! An `EligibilityAssignment` declares the full set of `roles` an agent may
-//! assume, effective from `effective_from`. Unlike an `Event`, it is not an
-//! observation but a decision, so its date may lie in the future; the roles an
-//! agent may assume at a given moment are those carried by the latest assignment
-//! whose `effective_from` does not exceed that moment. An empty set withdraws the
-//! agent from every role.
+//!
+//! These two are the whole family: one asserts intended reality, the other observed
+//! reality, and both claim a factual instant. Everything else the engine records is
+//! the vocabulary they are stated in.
 
 use std::collections::BTreeSet;
 
-use crate::kernel::entities::{AgentId, ResourceInstanceId, RoleId, StatementId};
+use crate::kernel::entities::{ResourceInstanceId, StatementId};
 
 use crate::kernel::value_objects::{ActionValue, Assignment, Date, Observation, Term};
 
@@ -57,11 +54,3 @@ define_entity! {
     }
 }
 
-define_id!(EligibilityAssignmentId);
-define_entity! {
-    pub struct EligibilityAssignment(EligibilityAssignmentId) via EligibilityAssignmentInput {
-        agent: AgentId,
-        roles: BTreeSet<RoleId>,
-        effective_from: Date,
-    }
-}
