@@ -13,7 +13,7 @@ fn an_open_commitment_may_be_omitted() {
     let mut knowledge = Fixture::new();
     let kept = knowledge.commit((3, 31), BTreeSet::new());
     let dropped = knowledge.commit((6, 30), BTreeSet::new());
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[kept, dropped]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[kept, dropped]);
 
     let fork = parent.fork(&knowledge, omitting(&[dropped])).unwrap();
 
@@ -25,8 +25,8 @@ fn an_open_commitment_may_be_omitted() {
 fn the_frozen_past_may_not_be_omitted() {
     let mut knowledge = Fixture::new();
     let settled = knowledge.commit((3, 31), BTreeSet::new());
-    let head = knowledge.settle(settled);
-    let parent = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[]);
+    knowledge.settle(settled);
+    let parent = knowledge.genesis(knowledge.cut(d2()), &[]);
 
     let refusal = parent.fork(&knowledge, omitting(&[settled]));
 
@@ -41,7 +41,7 @@ fn omitting_what_a_retained_commitment_depends_on_is_refused() {
     let mut knowledge = Fixture::new();
     let required = knowledge.commit((3, 31), BTreeSet::new());
     let waiting = knowledge.commit((6, 30), ids(&[required]));
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[required, waiting]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[required, waiting]);
 
     let refusal = parent.fork(&knowledge, omitting(&[required]));
 
@@ -57,7 +57,7 @@ fn a_replacement_omits_and_introduces_together() {
     let mut knowledge = Fixture::new();
     let replaced = knowledge.commit((3, 31), BTreeSet::new());
     let replacement = knowledge.commit((4, 30), BTreeSet::new());
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[replaced]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[replaced]);
 
     let fork = parent
         .fork(
@@ -76,7 +76,7 @@ fn a_replacement_omits_and_introduces_together() {
 fn omitting_and_introducing_the_same_commitment_is_refused() {
     let mut knowledge = Fixture::new();
     let contested = knowledge.commit((3, 31), BTreeSet::new());
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[contested]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[contested]);
 
     let refusal = parent.fork(
         &knowledge,
@@ -97,7 +97,7 @@ fn introducing_a_commitment_whose_dependency_is_unselected_is_refused() {
     let mut knowledge = Fixture::new();
     let required = knowledge.commit((3, 31), BTreeSet::new());
     let introduced = knowledge.commit((6, 30), ids(&[required]));
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[]);
 
     let refusal = parent.fork(&knowledge, introducing(&[introduced]));
 
@@ -114,7 +114,7 @@ fn introducing_a_commitment_whose_dependency_is_unselected_is_refused() {
 fn introducing_a_commitment_recorded_after_the_cut_is_refused() {
     let mut knowledge = Fixture::new();
     let later = knowledge.commit_recorded_at(d3(), (6, 30), BTreeSet::new());
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[]);
 
     let refusal = parent.fork(&knowledge, introducing(&[later]));
 
@@ -130,7 +130,7 @@ fn a_fork_that_would_select_what_its_parent_selects_is_refused() {
     let mut knowledge = Fixture::new();
     let kept = knowledge.commit((3, 31), BTreeSet::new());
     let absent = knowledge.commit((6, 30), BTreeSet::new());
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[kept]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[kept]);
 
     for request in [
         ForkInput {
@@ -159,7 +159,7 @@ fn omitting_something_absent_alongside_something_open_is_a_fork() {
     let kept = knowledge.commit((3, 31), BTreeSet::new());
     let dropped = knowledge.commit((6, 30), BTreeSet::new());
     let never_selected = knowledge.commit((9, 30), BTreeSet::new());
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[kept, dropped]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[kept, dropped]);
 
     let fork = parent
         .fork(&knowledge, omitting(&[dropped, never_selected]))
@@ -173,8 +173,8 @@ fn a_fork_inherits_the_cut_and_the_frozen_region() {
     let mut knowledge = Fixture::new();
     let settled = knowledge.commit((3, 31), BTreeSet::new());
     let open = knowledge.commit((6, 30), BTreeSet::new());
-    let head = knowledge.settle(settled);
-    let parent = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[open]);
+    knowledge.settle(settled);
+    let parent = knowledge.genesis(knowledge.cut(d2()), &[open]);
 
     let fork = parent.fork(&knowledge, omitting(&[open])).unwrap();
 
@@ -191,8 +191,8 @@ fn introducing_an_already_frozen_commitment_leaves_the_partition_disjoint() {
     let mut knowledge = Fixture::new();
     let settled = knowledge.commit((3, 31), BTreeSet::new());
     let fresh = knowledge.commit((6, 30), BTreeSet::new());
-    let head = knowledge.settle(settled);
-    let parent = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[]);
+    knowledge.settle(settled);
+    let parent = knowledge.genesis(knowledge.cut(d2()), &[]);
 
     let fork = parent
         .fork(&knowledge, introducing(&[settled, fresh]))
@@ -210,7 +210,7 @@ fn identity_follows_meaning_and_not_the_order_it_was_asked_in() {
     let mut knowledge = Fixture::new();
     let first = knowledge.commit((3, 31), BTreeSet::new());
     let second = knowledge.commit((6, 30), BTreeSet::new());
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[]);
 
     let one = parent
         .fork(&knowledge, introducing(&[first, second]))
@@ -230,8 +230,8 @@ fn a_different_parent_yields_a_different_identity() {
     let inherited = knowledge.commit((3, 31), BTreeSet::new());
     let added = knowledge.commit((6, 30), BTreeSet::new());
 
-    let parent = knowledge.genesis(knowledge.cut(d1(), None), &[inherited]);
-    let sibling = knowledge.genesis(knowledge.cut(d1(), None), &[]);
+    let parent = knowledge.genesis(knowledge.cut(d1()), &[inherited]);
+    let sibling = knowledge.genesis(knowledge.cut(d1()), &[]);
 
     let from_parent = parent.fork(&knowledge, introducing(&[added])).unwrap();
     let from_sibling = sibling

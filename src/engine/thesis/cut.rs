@@ -2,36 +2,28 @@
 //!
 //! An Event Head is necessary and not sufficient. It delimits Events, and a Commitment never
 //! enters the Event chain: its recording instant is its only knowledge-time coordinate. A cut
-//! addressed by a head alone would therefore admit a Commitment recorded long after that
-//! head, and the world it selects would contain intentions that were not yet knowledge —
-//! anachronism at construction, which no rule about projection can undo afterwards.
+//! addressed by a head alone would therefore admit a Commitment recorded long after that head,
+//! and the world it selects would hold intentions that were not yet knowledge — anachronism at
+//! construction, which no rule about projection can undo afterwards.
 //!
 //! ```text
 //! KnowledgeCut
-//! ├── known_at    → the latest recording instant a Commitment may be selected from
-//! └── event_head  → the factual chain the Thesis interprets
+//! ├── known_at    → the instant the cut is taken at
+//! └── event_head  → the chain that was current at it
 //! ```
 //!
-//! The pair must agree, and agreeing is the type's own invariant: the recognized head must
-//! have been recorded no later than `known_at`. Because that invariant names the head's
-//! canonical record, it can only be settled by reading one — which is why a cut is declared
-//! through the reader rather than assembled from two fields. A `KnowledgeCut` in hand is a
-//! coherent cut, and nothing downstream re-establishes it.
+//! The instant is what an application supplies; the head is **resolved** from it. That is what
+//! makes the pair describe one moment rather than two. A cut cannot hold a current instant beside
+//! an old head, so a Thesis whose head is old is one that fell behind — never one that set aside
+//! facts it already knew. Retraction is not something a cut can express.
 //!
-//! What `declare` proves is local, and one-sided: nothing recognized here was recorded after
-//! `known_at`. It does not prove the converse — that everything recorded by `known_at` is
-//! recognized. Settling that would mean knowing the latest Event recorded no later than the
-//! instant, a question only canonical history can answer and this port cannot ask.
+//! Naming a head directly stays available, and stays a refinement rather than an escape. Several
+//! Events may share a recording instant, and an instant addresses the last of them; a finer cut
+//! names an earlier one *within that same instant*. A head recorded before the instant's group is
+//! refused, because it would leave out Events the instant recognizes.
 //!
-//! So a cut naming a head earlier than that one remains constructible, and keeping the two
-//! coordinates describing the same moment is the application's part. The distinction matters
-//! more than it looks: a Thesis whose head is old *because the past was short when it was made*
-//! is a Thesis that fell behind, which the model names and permits, while one whose instant is
-//! current and whose head is old has set aside facts that were already known. Only the second
-//! is a retraction, and only the second is what this constructor cannot yet tell apart.
-//!
-//! Resolution is the recording instant's: `known_at` is a civil date, so a cut is a day.
-//! Anachronism is barred across days, not within one.
+//! Resolution is the recording instant's: `known_at` is a civil date, so a cut is a day, and the
+//! group a day addresses is every Event recorded on it.
 
 use super::ThesisError;
 
@@ -48,30 +40,57 @@ define_value_object! {
     }
 }
 impl KnowledgeCut {
-    /// Declare the cut a Thesis recognizes, refusing a head that was not yet recorded at
-    /// `known_at`.
-    pub fn declare<K: CanonicalKnowledge>(
+    /// The cut an instant addresses: the chain that was current at `known_at`.
+    ///
+    /// Nothing can fail here. Every instant addresses exactly one cut — the last Event recorded no
+    /// later than it, or none where none had been — so a cut is not something an application can
+    /// get wrong, only something it can choose.
+    pub fn at<K: CanonicalKnowledge>(knowledge: &K, known_at: Date) -> Self {
+        Self {
+            event_head: knowledge.head_as_of(&known_at),
+            known_at,
+        }
+    }
+
+    /// A finer cut within the same instant, naming an Event of the group that instant addresses.
+    pub fn within<K: CanonicalKnowledge>(
         knowledge: &K,
         known_at: Date,
-        event_head: Option<EventId>,
+        event_head: EventId,
     ) -> Result<Self, ThesisError> {
-        if let Some(head) = event_head {
-            let record = knowledge
-                .canonical_event(head)
-                .ok_or(ThesisError::UnknownEvent(head))?;
+        let named = knowledge
+            .canonical_event(event_head)
+            .ok_or(ThesisError::UnknownEvent(event_head))?;
 
-            if !record.recorded_at().up_to(&known_at) {
-                return Err(ThesisError::EventNotKnownAtCut {
-                    event: head,
-                    recorded_at: *record.recorded_at(),
-                    known_at,
-                });
-            }
+        if !named.recorded_at().up_to(&known_at) {
+            return Err(ThesisError::EventNotKnownAtCut {
+                event: event_head,
+                recorded_at: *named.recorded_at(),
+                known_at,
+            });
+        }
+
+        let addressed = knowledge.head_as_of(&known_at);
+        let addressed_at = match addressed {
+            None => None,
+            Some(id) => Some(
+                *knowledge
+                    .canonical_event(id)
+                    .ok_or(ThesisError::UnknownEvent(id))?
+                    .recorded_at(),
+            ),
+        };
+
+        if addressed_at != Some(*named.recorded_at()) {
+            return Err(ThesisError::HeadPrecedesCut {
+                named: event_head,
+                addressed,
+            });
         }
 
         Ok(Self {
             known_at,
-            event_head,
+            event_head: Some(event_head),
         })
     }
 

@@ -1,4 +1,4 @@
-//! What a declared knowledge cut admits, and what it refuses.
+//! What a knowledge cut addresses, and what it refuses to be made of.
 
 use std::collections::BTreeSet;
 
@@ -8,12 +8,67 @@ use crate::engine::thesis::ThesisError;
 
 use crate::kernel::entities::EventId;
 
+/// The chain a cut recognizes is resolved from its instant, so the two coordinates always describe
+/// one moment. An instant with nothing recorded by it addresses no Event at all.
+#[test]
+fn an_instant_addresses_the_chain_that_was_current_at_it() {
+    let mut knowledge = Fixture::new();
+    let settled = knowledge.commit((3, 31), BTreeSet::new());
+
+    assert_eq!(KnowledgeCut::at(&knowledge, d1()).event_head(), None);
+
+    let head = knowledge.settle(settled);
+
+    assert_eq!(KnowledgeCut::at(&knowledge, d1()).event_head(), None);
+    assert_eq!(KnowledgeCut::at(&knowledge, d2()).event_head(), Some(head));
+    assert_eq!(KnowledgeCut::at(&knowledge, d3()).event_head(), Some(head));
+}
+
+/// Setting aside a fact already recorded by the instant is what a resolved cut cannot express, and
+/// naming a head directly does not become the way around it.
+#[test]
+fn a_head_preceding_the_instants_group_is_refused() {
+    let mut knowledge = Fixture::new();
+    let first = knowledge.commit((3, 31), BTreeSet::new());
+    let second = knowledge.commit((4, 30), BTreeSet::new());
+    // Recorded the day before the instant the cut is taken at, so it is not of its group.
+    let earlier = knowledge.settle_recorded_at(super::date(2026, 2, 4), first);
+    let addressed = knowledge.settle(second);
+
+    let refusal = KnowledgeCut::within(&knowledge, d2(), earlier);
+
+    assert!(matches!(
+        refusal,
+        Err(ThesisError::HeadPrecedesCut { named, addressed: cut })
+            if named == earlier && cut == Some(addressed)
+    ));
+}
+
+/// Within one instant the group is addressable, because a day is only as fine as the recording
+/// instant is. That is the finer selection, and the only one.
+#[test]
+fn a_head_within_the_instants_group_is_a_finer_cut() {
+    let mut knowledge = Fixture::new();
+    let first = knowledge.commit((3, 31), BTreeSet::new());
+    let second = knowledge.commit((4, 30), BTreeSet::new());
+    let earlier = knowledge.settle(first);
+    let later = knowledge.settle(second);
+
+    assert_eq!(KnowledgeCut::at(&knowledge, d3()).event_head(), Some(later));
+
+    let cut = knowledge.cut_within(d3(), earlier);
+    let thesis = knowledge.genesis(cut, &[]);
+
+    assert_eq!(frozen_of(&thesis), ids(&[first]));
+    assert_eq!(thesis.cut().event_head(), Some(earlier));
+}
+
 #[test]
 fn a_head_absent_from_history_is_refused() {
     let knowledge = Fixture::new();
     let absent = EventId::from([9; 32]);
 
-    let refusal = KnowledgeCut::declare(&knowledge, d2(), Some(absent));
+    let refusal = KnowledgeCut::within(&knowledge, d2(), absent);
 
     assert!(matches!(refusal, Err(ThesisError::UnknownEvent(id)) if id == absent));
 }
@@ -24,7 +79,7 @@ fn a_head_recorded_after_the_instant_is_refused() {
     let settled = knowledge.commit((3, 31), BTreeSet::new());
     let head = knowledge.settle(settled);
 
-    let refusal = KnowledgeCut::declare(&knowledge, d1(), Some(head));
+    let refusal = KnowledgeCut::within(&knowledge, d1(), head);
 
     assert!(matches!(
         refusal,
@@ -33,53 +88,19 @@ fn a_head_recorded_after_the_instant_is_refused() {
     ));
 }
 
-/// What `declare` cannot yet tell apart, recorded so the limit is visible rather than implied:
-/// a cut is proved to recognize nothing recorded after its instant, and *not* proved to
-/// recognize everything recorded by it. Settling the second needs the latest Event recorded no
-/// later than the instant, which this port cannot ask for.
-#[test]
-fn a_cut_is_not_proved_to_recognize_every_event_known_at_its_instant() {
-    let mut knowledge = Fixture::new();
-    let settled = knowledge.commit((3, 31), BTreeSet::new());
-    let intended = knowledge.commit((6, 30), BTreeSet::new());
-    knowledge.settle(settled);
-
-    let cut = KnowledgeCut::declare(&knowledge, d3(), None).unwrap();
-    let thesis = knowledge.genesis(cut, &[intended]);
-
-    assert!(frozen_of(&thesis).is_empty());
-    assert_eq!(thesis.cut().event_head(), None);
-}
-
-/// The instant is part of what a Thesis means, so it alone separates two identities. Same
-/// parent, same partition, same head, different cut: a different claim about what was knowable.
+/// The instant is part of what a Thesis means, so it alone separates two identities. Same parent,
+/// same partition, same head, different cut: a different claim about what was knowable.
 #[test]
 fn the_instant_alone_changes_identity() {
     let mut knowledge = Fixture::new();
     let selection = knowledge.commit((3, 31), BTreeSet::new());
 
-    let earlier = knowledge.genesis(knowledge.cut(d1(), None), &[selection]);
-    let later = knowledge.genesis(knowledge.cut(d3(), None), &[selection]);
+    let earlier = knowledge.genesis(knowledge.cut(d1()), &[selection]);
+    let later = knowledge.genesis(knowledge.cut(d3()), &[selection]);
 
     assert_eq!(earlier.parent(), later.parent());
+    assert_eq!(earlier.cut().event_head(), later.cut().event_head());
     assert_eq!(frozen_of(&earlier), frozen_of(&later));
     assert_eq!(open_of(&earlier), open_of(&later));
     assert_ne!(earlier.id(), later.id());
-}
-
-/// Addressing a head directly stays the finer selection: a cut may recognize an earlier head
-/// than the latest one recorded by its instant.
-#[test]
-fn a_cut_may_recognize_a_head_earlier_than_the_latest_recorded() {
-    let mut knowledge = Fixture::new();
-    let first = knowledge.commit((3, 31), BTreeSet::new());
-    let second = knowledge.commit((4, 30), BTreeSet::new());
-    let earlier = knowledge.settle(first);
-    knowledge.settle(second);
-
-    let cut = KnowledgeCut::declare(&knowledge, d3(), Some(earlier)).unwrap();
-    let thesis = knowledge.genesis(cut, &[]);
-
-    assert_eq!(frozen_of(&thesis), ids(&[first]));
-    assert_eq!(thesis.cut().event_head(), Some(earlier));
 }

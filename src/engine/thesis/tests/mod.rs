@@ -82,6 +82,24 @@ impl CanonicalKnowledge for Fixture {
     fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>> {
         self.events.get(&id).cloned()
     }
+
+    /// Walked back from the head, as the reference adapter does: recording never decreases along
+    /// the chain, so the first Event recorded no later than `at` is the latest one.
+    fn head_as_of(&self, at: &Date) -> Option<EventId> {
+        let mut cursor = self.head;
+
+        while let Some(id) = cursor {
+            let record = self.events.get(&id)?;
+
+            if record.recorded_at().up_to(at) {
+                return Some(id);
+            }
+
+            cursor = *record.assertion().previous_event();
+        }
+
+        None
+    }
 }
 impl Knowledge for Fixture {
     fn commitment(&self, id: CommitmentId) -> Option<Commitment> {
@@ -227,7 +245,7 @@ impl Fixture {
         id
     }
 
-    /// An Event whose predecessor was never admitted: a chain with a missing link.
+    /// An Event whose predecessor was never admitted: the head of a chain with a missing link.
     fn severed(&mut self, commitment: CommitmentId) -> EventId {
         let event = Event::create(EventInput {
             commitment_id: commitment,
@@ -239,6 +257,7 @@ impl Fixture {
 
         let id = event.id();
         self.events.insert(id, Canonical::new(event, d2()).unwrap());
+        self.head = Some(id);
 
         id
     }
@@ -258,8 +277,14 @@ impl Fixture {
         chain
     }
 
-    fn cut(&self, known_at: Date, event_head: Option<EventId>) -> KnowledgeCut {
-        KnowledgeCut::declare(self, known_at, event_head).unwrap()
+    /// The cut the instant addresses, resolved against whatever has been recorded so far.
+    fn cut(&self, known_at: Date) -> KnowledgeCut {
+        KnowledgeCut::at(self, known_at)
+    }
+
+    /// A finer cut, naming a head within the instant's group.
+    fn cut_within(&self, known_at: Date, event_head: EventId) -> KnowledgeCut {
+        KnowledgeCut::within(self, known_at, event_head).unwrap()
     }
 
     fn genesis(&self, cut: KnowledgeCut, selection: &[CommitmentId]) -> Thesis {

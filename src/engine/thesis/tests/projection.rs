@@ -20,7 +20,7 @@ fn every_derivation_interprets_the_chain_its_cut_recognizes() {
     let open = knowledge.commit((6, 30), BTreeSet::new());
     let introduced = knowledge.commit((9, 30), BTreeSet::new());
 
-    let genesis = knowledge.genesis(knowledge.cut(d1(), None), &[settled, open]);
+    let genesis = knowledge.genesis(knowledge.cut(d1()), &[settled, open]);
     let conditions = Interpretation::of(&genesis, &knowledge)
         .unwrap()
         .conditions_at(&at(4, 1))
@@ -37,7 +37,7 @@ fn every_derivation_interprets_the_chain_its_cut_recognizes() {
 
     let head = knowledge.settle(settled);
     let advanced = fork
-        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
+        .advance(&knowledge, knowledge.cut(d2()))
         .unwrap()
         .into_thesis();
 
@@ -59,7 +59,7 @@ fn a_thesis_interprets_a_settlement_it_never_intended() {
     let replaced = knowledge.commit((3, 31), BTreeSet::new());
     let replacement = knowledge.commit((4, 30), BTreeSet::new());
 
-    let genesis = knowledge.genesis(knowledge.cut(d1(), None), &[replaced]);
+    let genesis = knowledge.genesis(knowledge.cut(d1()), &[replaced]);
     let revised = genesis
         .fork(
             &knowledge,
@@ -70,9 +70,9 @@ fn a_thesis_interprets_a_settlement_it_never_intended() {
         )
         .unwrap();
 
-    let head = knowledge.settle(replaced);
+    knowledge.settle(replaced);
     let advanced = revised
-        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
+        .advance(&knowledge, knowledge.cut(d2()))
         .unwrap()
         .into_thesis();
 
@@ -96,10 +96,10 @@ fn the_ancestry_answers_what_was_intended_earlier() {
     let mut knowledge = Fixture::new();
     let commitment = knowledge.commit((3, 31), BTreeSet::new());
 
-    let before = knowledge.genesis(knowledge.cut(d1(), None), &[commitment]);
-    let head = knowledge.settle(commitment);
+    let before = knowledge.genesis(knowledge.cut(d1()), &[commitment]);
+    knowledge.settle(commitment);
     let after = before
-        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
+        .advance(&knowledge, knowledge.cut(d2()))
         .unwrap()
         .into_thesis();
 
@@ -129,7 +129,7 @@ fn a_thesis_recognizing_no_event_interprets_none() {
     let mut knowledge = Fixture::new();
     let commitment = knowledge.commit((3, 31), BTreeSet::new());
 
-    let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[commitment]);
+    let thesis = knowledge.genesis(knowledge.cut(d1()), &[commitment]);
     knowledge.settle(commitment);
 
     let conditions = Interpretation::of(&thesis, &knowledge)

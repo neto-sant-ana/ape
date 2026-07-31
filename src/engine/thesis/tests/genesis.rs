@@ -14,7 +14,7 @@ fn an_empty_history_freezes_nothing() {
     let a = knowledge.commit((3, 31), BTreeSet::new());
     let b = knowledge.commit((6, 30), BTreeSet::new());
 
-    let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[a, b]);
+    let thesis = knowledge.genesis(knowledge.cut(d1()), &[a, b]);
 
     assert!(frozen_of(&thesis).is_empty());
     assert_eq!(open_of(&thesis), ids(&[a, b]));
@@ -27,9 +27,9 @@ fn a_genesis_at_an_advanced_head_absorbs_what_history_settled() {
     let mut knowledge = Fixture::new();
     let settled = knowledge.commit((3, 31), BTreeSet::new());
     let intended = knowledge.commit((6, 30), BTreeSet::new());
-    let head = knowledge.settle(settled);
+    knowledge.settle(settled);
 
-    let thesis = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[intended]);
+    let thesis = knowledge.genesis(knowledge.cut(d2()), &[intended]);
 
     assert_eq!(frozen_of(&thesis), ids(&[settled]));
     assert_eq!(open_of(&thesis), ids(&[intended]));
@@ -40,9 +40,9 @@ fn the_ancestors_of_a_settled_commitment_are_frozen_with_it() {
     let mut knowledge = Fixture::new();
     let root = knowledge.commit((3, 31), BTreeSet::new());
     let settled = knowledge.commit((6, 30), ids(&[root]));
-    let head = knowledge.settle(settled);
+    knowledge.settle(settled);
 
-    let thesis = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[]);
+    let thesis = knowledge.genesis(knowledge.cut(d2()), &[]);
 
     assert_eq!(frozen_of(&thesis), ids(&[root, settled]));
     assert!(open_of(&thesis).is_empty());
@@ -57,7 +57,7 @@ fn a_selection_omitting_a_dependency_is_refused() {
     let refusal = Thesis::genesis(
         &knowledge,
         GenesisInput {
-            cut: knowledge.cut(d1(), None),
+            cut: knowledge.cut(d1()),
             selection: ids(&[waiting]),
         },
     );
@@ -77,7 +77,7 @@ fn a_commitment_recorded_after_the_cut_is_refused() {
     let refusal = Thesis::genesis(
         &knowledge,
         GenesisInput {
-            cut: knowledge.cut(d1(), None),
+            cut: knowledge.cut(d1()),
             selection: ids(&[later]),
         },
     );
@@ -95,12 +95,12 @@ fn a_commitment_recorded_after_the_cut_is_refused() {
 fn a_chain_with_a_missing_link_is_refused() {
     let mut knowledge = Fixture::new();
     let settled = knowledge.commit((3, 31), BTreeSet::new());
-    let head = knowledge.severed(settled);
+    knowledge.severed(settled);
 
     let refusal = Thesis::genesis(
         &knowledge,
         GenesisInput {
-            cut: knowledge.cut(d2(), Some(head)),
+            cut: knowledge.cut(d2()),
             selection: BTreeSet::new(),
         },
     );
@@ -116,7 +116,7 @@ fn an_unadmitted_commitment_is_refused() {
     let refusal = Thesis::genesis(
         &knowledge,
         GenesisInput {
-            cut: knowledge.cut(d1(), None),
+            cut: knowledge.cut(d1()),
             selection: ids(&[absent]),
         },
     );

@@ -17,9 +17,11 @@
 //! Answer an advancement that is not one: one that recognizes no later knowledge, one
 //! reaching a head of another reach of history, one giving a head back.
 //!
-//! `CommitmentNotKnownAtCut` and `EventNotKnownAtCut`
-//! Answer anachronism — an assertion recorded after the cut that claims to recognize it.
-//! A cut refuses the head it cannot have known; a selection refuses the commitment.
+//! `CommitmentNotKnownAtCut`, `EventNotKnownAtCut` and `HeadPrecedesCut`
+//! Answer a cut that does not describe one moment. The first two are anachronism, an
+//! assertion recorded after the instant that claims to be recognized at it. The third is its
+//! mirror: a head recorded *before* the group the instant addresses sets aside Events already
+//! recorded by it, which is retraction wearing the shape of a finer selection.
 //!
 //! `UnknownCommitment` and `UnknownEvent`
 //! Report a reference canonical history does not hold, and each is a single refusal
@@ -66,6 +68,16 @@ pub enum ThesisError {
         target: EventId,
     },
 
+    #[error("head {named} precedes the cut {addressed:?}, which its instant addresses")]
+    HeadPrecedesCut {
+        named: EventId,
+        addressed: Option<EventId>,
+    },
+
+    /// Unreachable while a cut is resolved from its instant: a later instant cannot address an
+    /// earlier chain, so no target can recognize nothing where its parent recognized something.
+    /// Kept because the code has to branch somewhere, and a named refusal beats a Thesis holding a
+    /// frozen past with no chain to have frozen it.
     #[error("the recognized head {parent} may not be given back by an advancement")]
     HeadWithdrawn { parent: EventId },
 

@@ -13,10 +13,10 @@ use crate::engine::thesis::ThesisError;
 fn advancing_to_the_recognized_cut_is_refused() {
     let mut knowledge = Fixture::new();
     let settled = knowledge.commit((3, 31), BTreeSet::new());
-    let head = knowledge.settle(settled);
-    let thesis = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[]);
+    knowledge.settle(settled);
+    let thesis = knowledge.genesis(knowledge.cut(d2()), &[]);
 
-    let refusal = thesis.advance(&knowledge, knowledge.cut(d2(), Some(head)));
+    let refusal = thesis.advance(&knowledge, knowledge.cut(d2()));
 
     assert!(matches!(
         refusal,
@@ -30,10 +30,10 @@ fn advancing_the_head_without_advancing_the_instant_is_refused() {
     let first = knowledge.commit((3, 31), BTreeSet::new());
     let second = knowledge.commit((4, 30), BTreeSet::new());
     let earlier = knowledge.settle(first);
-    let thesis = knowledge.genesis(knowledge.cut(d3(), Some(earlier)), &[]);
-    let later = knowledge.settle(second);
+    let thesis = knowledge.genesis(knowledge.cut_within(d3(), earlier), &[]);
+    knowledge.settle(second);
 
-    let refusal = thesis.advance(&knowledge, knowledge.cut(d3(), Some(later)));
+    let refusal = thesis.advance(&knowledge, knowledge.cut(d3()));
 
     assert!(matches!(
         refusal,
@@ -45,9 +45,9 @@ fn advancing_the_head_without_advancing_the_instant_is_refused() {
 fn an_earlier_instant_is_refused() {
     let mut knowledge = Fixture::new();
     let intended = knowledge.commit((3, 31), BTreeSet::new());
-    let thesis = knowledge.genesis(knowledge.cut(d3(), None), &[intended]);
+    let thesis = knowledge.genesis(knowledge.cut(d3()), &[intended]);
 
-    let refusal = thesis.advance(&knowledge, knowledge.cut(d1(), None));
+    let refusal = thesis.advance(&knowledge, knowledge.cut(d1()));
 
     assert!(matches!(
         refusal,
@@ -67,22 +67,20 @@ fn advancing_the_head_reads_the_new_segment_only() {
     let third = knowledge.commit((5, 31), BTreeSet::new());
     let kept = knowledge.commit((9, 30), BTreeSet::new());
 
-    let recognized = knowledge.settle(first);
-    let parent = knowledge.genesis(knowledge.cut(d2(), Some(recognized)), &[kept]);
+    knowledge.settle(first);
+    let parent = knowledge.genesis(knowledge.cut(d2()), &[kept]);
 
     knowledge.settle(second);
-    let head = knowledge.settle(third);
+    knowledge.settle(third);
 
-    let advancement = parent
-        .advance(&knowledge, knowledge.cut(d3(), Some(head)))
-        .unwrap();
+    let advancement = parent.advance(&knowledge, knowledge.cut(d3())).unwrap();
     let advanced = advancement.thesis();
 
     assert_eq!(imposed_of(&advancement), ids(&[second, third]));
     assert_eq!(frozen_of(advanced), ids(&[first, second, third]));
     assert_eq!(open_of(advanced), ids(&[kept]));
 
-    let recomputed = knowledge.genesis(knowledge.cut(d3(), Some(head)), &[kept]);
+    let recomputed = knowledge.genesis(knowledge.cut(d3()), &[kept]);
     assert_eq!(frozen_of(advanced), frozen_of(&recomputed));
 }
 
@@ -93,29 +91,14 @@ fn a_head_preceding_the_recognized_one_is_refused() {
     let second = knowledge.commit((4, 30), BTreeSet::new());
     let earlier = knowledge.settle(first);
     let recognized = knowledge.settle(second);
-    let thesis = knowledge.genesis(knowledge.cut(d2(), Some(recognized)), &[]);
+    let thesis = knowledge.genesis(knowledge.cut(d2()), &[]);
 
-    let refusal = thesis.advance(&knowledge, knowledge.cut(d3(), Some(earlier)));
+    let refusal = thesis.advance(&knowledge, knowledge.cut_within(d3(), earlier));
 
     assert!(matches!(
         refusal,
         Err(ThesisError::HeadDoesNotDescend { parent, target })
             if parent == Some(recognized) && target == earlier
-    ));
-}
-
-#[test]
-fn giving_the_recognized_head_back_is_refused() {
-    let mut knowledge = Fixture::new();
-    let settled = knowledge.commit((3, 31), BTreeSet::new());
-    let head = knowledge.settle(settled);
-    let thesis = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[]);
-
-    let refusal = thesis.advance(&knowledge, knowledge.cut(d3(), None));
-
-    assert!(matches!(
-        refusal,
-        Err(ThesisError::HeadWithdrawn { parent }) if parent == head
     ));
 }
 
@@ -126,9 +109,9 @@ fn advancing_to_a_head_of_another_reach_of_history_is_refused() {
     let elsewhere = knowledge.commit((6, 30), BTreeSet::new());
     let head = knowledge.settle(settled);
     let detached = knowledge.detached(elsewhere);
-    let thesis = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[]);
+    let thesis = knowledge.genesis(knowledge.cut(d2()), &[]);
 
-    let refusal = thesis.advance(&knowledge, knowledge.cut(d3(), Some(detached)));
+    let refusal = thesis.advance(&knowledge, knowledge.cut_within(d3(), detached));
 
     assert!(matches!(
         refusal,
@@ -137,19 +120,18 @@ fn advancing_to_a_head_of_another_reach_of_history_is_refused() {
     ));
 }
 
-/// The advancement in which knowledge grew without anything being observed: commitments were
-/// admitted, no Event was. The world is untouched and the Thesis is new, because the cut is.
+/// The advancement in which knowledge grew without anything being observed. The head holding is
+/// not a choice the caller made but what the later instant resolved to, which is the whole point
+/// of resolving it: a head that did not move *means* no Event was recorded in between.
 #[test]
 fn knowledge_may_advance_while_the_head_holds() {
     let mut knowledge = Fixture::new();
     let settled = knowledge.commit((3, 31), BTreeSet::new());
     let intended = knowledge.commit((6, 30), BTreeSet::new());
     let head = knowledge.settle(settled);
-    let parent = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[intended]);
+    let parent = knowledge.genesis(knowledge.cut(d2()), &[intended]);
 
-    let advancement = parent
-        .advance(&knowledge, knowledge.cut(d3(), Some(head)))
-        .unwrap();
+    let advancement = parent.advance(&knowledge, knowledge.cut(d3())).unwrap();
     let advanced = advancement.thesis();
 
     assert_eq!(advancement.imposed_count(), 0);
@@ -165,12 +147,10 @@ fn knowledge_may_advance_while_the_head_holds() {
 fn a_selected_commitment_moves_from_the_open_future_into_the_frozen_past() {
     let mut knowledge = Fixture::new();
     let intended = knowledge.commit((3, 31), BTreeSet::new());
-    let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[intended]);
-    let head = knowledge.settle(intended);
+    let thesis = knowledge.genesis(knowledge.cut(d1()), &[intended]);
+    knowledge.settle(intended);
 
-    let advancement = thesis
-        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
-        .unwrap();
+    let advancement = thesis.advance(&knowledge, knowledge.cut(d2())).unwrap();
     let advanced = advancement.thesis();
 
     assert_eq!(advancement.imposed_count(), 0);
@@ -185,7 +165,7 @@ fn what_history_settled_outside_the_parent_is_reported_as_imposed() {
     let replaced = knowledge.commit((3, 31), BTreeSet::new());
     let replacement = knowledge.commit((4, 30), BTreeSet::new());
 
-    let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[replaced]);
+    let thesis = knowledge.genesis(knowledge.cut(d1()), &[replaced]);
     let revised = thesis
         .fork(
             &knowledge,
@@ -196,10 +176,8 @@ fn what_history_settled_outside_the_parent_is_reported_as_imposed() {
         )
         .unwrap();
 
-    let head = knowledge.settle(replaced);
-    let advancement = revised
-        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
-        .unwrap();
+    knowledge.settle(replaced);
+    let advancement = revised.advance(&knowledge, knowledge.cut(d2())).unwrap();
 
     assert_eq!(imposed_of(&advancement), ids(&[replaced]));
     assert_eq!(frozen_of(advancement.thesis()), ids(&[replaced]));
@@ -211,12 +189,10 @@ fn an_imposed_commitment_arrives_with_its_ancestors() {
     let mut knowledge = Fixture::new();
     let root = knowledge.commit((3, 31), BTreeSet::new());
     let settled = knowledge.commit((6, 30), ids(&[root]));
-    let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[]);
+    let thesis = knowledge.genesis(knowledge.cut(d1()), &[]);
 
-    let head = knowledge.settle(settled);
-    let advancement = thesis
-        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
-        .unwrap();
+    knowledge.settle(settled);
+    let advancement = thesis.advance(&knowledge, knowledge.cut(d2())).unwrap();
 
     assert_eq!(imposed_of(&advancement), ids(&[root, settled]));
 }
@@ -238,18 +214,16 @@ fn imposition_is_what_the_parent_never_selected() {
     let d = knowledge.commit((5, 31), BTreeSet::new());
     let c = knowledge.commit((6, 30), ids(&[d]));
 
-    let recognized = knowledge.settle(a);
-    let parent = knowledge.genesis(knowledge.cut(d2(), Some(recognized)), &[b]);
+    knowledge.settle(a);
+    let parent = knowledge.genesis(knowledge.cut(d2()), &[b]);
 
     assert_eq!(frozen_of(&parent), ids(&[a]));
     assert_eq!(open_of(&parent), ids(&[b]));
 
     knowledge.settle(b);
-    let head = knowledge.settle(c);
+    knowledge.settle(c);
 
-    let advancement = parent
-        .advance(&knowledge, knowledge.cut(d3(), Some(head)))
-        .unwrap();
+    let advancement = parent.advance(&knowledge, knowledge.cut(d3())).unwrap();
     let advanced = advancement.thesis();
 
     assert_eq!(frozen_of(advanced), ids(&[a, b, c, d]));
@@ -263,15 +237,13 @@ fn advancement_spans_every_event_of_the_segment() {
     let first = knowledge.commit((3, 31), BTreeSet::new());
     let second = knowledge.commit((4, 30), BTreeSet::new());
     let third = knowledge.commit((5, 31), BTreeSet::new());
-    let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[]);
+    let thesis = knowledge.genesis(knowledge.cut(d1()), &[]);
 
     knowledge.settle(first);
     knowledge.settle(second);
-    let head = knowledge.settle(third);
+    knowledge.settle(third);
 
-    let advancement = thesis
-        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
-        .unwrap();
+    let advancement = thesis.advance(&knowledge, knowledge.cut(d2())).unwrap();
 
     assert_eq!(imposed_of(&advancement), ids(&[first, second, third]));
 }
@@ -280,13 +252,13 @@ fn advancement_spans_every_event_of_the_segment() {
 fn what_advancement_froze_can_no_longer_be_omitted() {
     let mut knowledge = Fixture::new();
     let intended = knowledge.commit((3, 31), BTreeSet::new());
-    let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[intended]);
+    let thesis = knowledge.genesis(knowledge.cut(d1()), &[intended]);
 
     assert!(thesis.fork(&knowledge, omitting(&[intended])).is_ok());
 
-    let head = knowledge.settle(intended);
+    knowledge.settle(intended);
     let advanced = thesis
-        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
+        .advance(&knowledge, knowledge.cut(d2()))
         .unwrap()
         .into_thesis();
 
@@ -304,12 +276,12 @@ fn what_advancement_froze_can_no_longer_be_omitted() {
 fn a_commitment_admitted_between_cuts_enters_by_decision_and_not_by_advancement() {
     let mut knowledge = Fixture::new();
     let intended = knowledge.commit((3, 31), BTreeSet::new());
-    let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[intended]);
+    let thesis = knowledge.genesis(knowledge.cut(d1()), &[intended]);
 
     let admitted_later = knowledge.commit_recorded_at(d3(), (9, 30), BTreeSet::new());
 
     let advanced = thesis
-        .advance(&knowledge, knowledge.cut(d3(), None))
+        .advance(&knowledge, knowledge.cut(d3()))
         .unwrap()
         .into_thesis();
 
@@ -337,11 +309,11 @@ fn knowledge_grows_then_intention_changes() {
     let settled = knowledge.commit((3, 31), BTreeSet::new());
     let kept = knowledge.commit((6, 30), BTreeSet::new());
 
-    let first = knowledge.genesis(knowledge.cut(d1(), None), &[settled, kept]);
-    let head = knowledge.settle(settled);
+    let first = knowledge.genesis(knowledge.cut(d1()), &[settled, kept]);
+    knowledge.settle(settled);
 
     let second = first
-        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
+        .advance(&knowledge, knowledge.cut(d2()))
         .unwrap()
         .into_thesis();
 
