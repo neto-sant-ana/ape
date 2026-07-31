@@ -35,10 +35,10 @@ fn a_finer_cut_may_advance_within_the_same_instant() {
     let earlier = knowledge.settle(first);
     let later = knowledge.settle(second);
 
-    let parent = knowledge.genesis(knowledge.cut_within(d3(), earlier), &[]);
+    let parent = knowledge.genesis(knowledge.cut_within(d2(), earlier), &[]);
     assert_eq!(frozen_of(&parent), ids(&[first]));
 
-    let advancement = parent.advance(&knowledge, knowledge.cut(d3())).unwrap();
+    let advancement = parent.advance(&knowledge, knowledge.cut(d2())).unwrap();
     let advanced = advancement.thesis();
 
     assert_eq!(advanced.cut().known_at(), parent.cut().known_at());
@@ -99,7 +99,7 @@ fn a_head_preceding_the_recognized_one_is_refused() {
     let recognized = knowledge.settle(second);
     let thesis = knowledge.genesis(knowledge.cut(d2()), &[]);
 
-    let refusal = thesis.advance(&knowledge, knowledge.cut_within(d3(), earlier));
+    let refusal = thesis.advance(&knowledge, knowledge.cut_within(d2(), earlier));
 
     assert!(matches!(
         refusal,

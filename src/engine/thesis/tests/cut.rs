@@ -54,13 +54,39 @@ fn a_head_within_the_instants_group_is_a_finer_cut() {
     let earlier = knowledge.settle(first);
     let later = knowledge.settle(second);
 
-    assert_eq!(KnowledgeCut::at(&knowledge, d3()).event_head(), Some(later));
+    assert_eq!(KnowledgeCut::at(&knowledge, d2()).event_head(), Some(later));
 
-    let cut = knowledge.cut_within(d3(), earlier);
+    let cut = knowledge.cut_within(d2(), earlier);
     let thesis = knowledge.genesis(cut, &[]);
 
     assert_eq!(frozen_of(&thesis), ids(&[first]));
     assert_eq!(thesis.cut().event_head(), Some(earlier));
+}
+
+/// A finer cut refines the group of its own instant, and an instant with nothing recorded at it has
+/// none. Refining the last group *before* it would combine intentions known at the instant with a
+/// factual history that omits Events recorded before them — retraction, reached by naming a head
+/// that is legitimately of the group the instant resolves to.
+#[test]
+fn a_finer_cut_cannot_reopen_an_event_group_from_an_earlier_instant() {
+    let mut knowledge = Fixture::new();
+    let first = knowledge.commit((3, 31), BTreeSet::new());
+    let second = knowledge.commit((4, 30), BTreeSet::new());
+
+    let earlier = knowledge.settle(first);
+    let addressed = knowledge.settle(second);
+
+    // Nothing is recorded at d3, so it resolves to the group of d2 — which is already the past.
+    let refusal = KnowledgeCut::within(&knowledge, d3(), earlier);
+
+    assert!(
+        matches!(
+            refusal,
+            Err(ThesisError::NoEventGroupAtCut { known_at, addressed: cut, addressed_at })
+                if known_at == d3() && cut == Some(addressed) && addressed_at == Some(d2())
+        ),
+        "d3 addresses no group of its own, so there is nothing to refine within it",
+    );
 }
 
 /// Sharing the instant is not belonging to the chain. An Event of another reach of history can be
@@ -74,7 +100,7 @@ fn a_detached_event_of_the_same_instant_is_not_a_valid_finer_cut() {
     let addressed = knowledge.settle(settled);
     let detached = knowledge.detached(elsewhere);
 
-    let refusal = KnowledgeCut::within(&knowledge, d3(), detached);
+    let refusal = KnowledgeCut::within(&knowledge, d2(), detached);
 
     assert!(matches!(
         refusal,

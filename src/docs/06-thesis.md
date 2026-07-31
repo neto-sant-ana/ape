@@ -166,22 +166,29 @@ K3 = (D, E3)
 
 A named Event is a valid finer cut only when:
 
-1. it has the same `recorded_at` as the head addressed by the instant;
-2. it lies on the canonical chain ending at that addressed head.
+1. the instant addresses a group of its own, that is, some Event was recorded at it;
+2. it has the same `recorded_at` as the head addressed by the instant;
+3. it lies on the canonical chain ending at that addressed head.
 
 ```text
 valid_within(D, E) iff
 
-recorded_at(E) = recorded_at(head_as_of(D))
+recorded_at(head_as_of(D)) = D
+
+and
+
+recorded_at(E) = D
 
 and
 
 E lies on the chain to head_as_of(D)
 ```
 
-The first condition ensures that the finer cut remains within the same addressable instant.
+The first condition keeps the refinement inside the instant being refined. Where nothing was recorded at `D`, the instant resolves to an earlier group, and from `D` that group is settled past: naming a head within it would combine Commitments known at `D` with a factual history omitting Events recorded before them. Without this condition, `within` does not mean *within the instant* — it means *within the last group preceding it*.
 
-The second ensures that the Event is a real prefix of that historical cut rather than a merely contemporaneous Event from another reach.
+The second ensures that the finer cut remains within the same addressable instant.
+
+The third ensures that the Event is a real prefix of that historical cut rather than a merely contemporaneous Event from another reach.
 
 An incoherent Knowledge Cut is not constructed.
 

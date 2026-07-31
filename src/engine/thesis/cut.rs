@@ -19,10 +19,18 @@
 //!
 //! Naming a head directly stays available, and stays a refinement rather than an escape. Several
 //! Events may share a recording instant, and an instant addresses the last of them; a finer cut
-//! names an earlier one *within that same instant*. Two things are required of it, and neither
-//! implies the other: it must share the instant's recording date, or it would leave out Events the
+//! names an earlier one *within that same instant*. Three things are required of it, and none
+//! implies another: the instant must have a group of its own, or there is nothing for a finer cut
+//! to be finer than; the named Event must share that instant, or the cut would leave out Events the
 //! instant recognizes; and it must lie on the chain ending at the head that instant addresses, or
 //! it would recognize a reach of history that is merely contemporaneous.
+//!
+//! The first is what keeps the tolerance where it belongs. A day is only as fine as the recording
+//! instant, so within one day the chain order distinguishes what the date cannot — but seen from a
+//! later instant that day is settled past, and refining into it would combine intentions known at
+//! the later instant with a history omitting Events recorded before them. That is retraction, and
+//! it arrives by naming a head that legitimately belongs to the group an eventless instant
+//! resolves to.
 //!
 //! Resolution is the recording instant's: `known_at` is a civil date, so a cut is a day, and the
 //! group a day addresses is every Event recorded on it.
@@ -83,6 +91,14 @@ impl KnowledgeCut {
                     .recorded_at(),
             ),
         };
+
+        if addressed_at != Some(known_at) {
+            return Err(ThesisError::NoEventGroupAtCut {
+                known_at,
+                addressed,
+                addressed_at,
+            });
+        }
 
         if addressed_at != Some(*named.recorded_at()) {
             return Err(ThesisError::HeadPrecedesCut {

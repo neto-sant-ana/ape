@@ -17,11 +17,14 @@
 //! Answer an advancement that is not one: one that recognizes no later knowledge, one
 //! reaching a head of another reach of history, one giving a head back.
 //!
-//! `CommitmentNotKnownAtCut`, `EventNotKnownAtCut` and `HeadPrecedesCut`
+//! `CommitmentNotKnownAtCut`, `EventNotKnownAtCut`, `NoEventGroupAtCut` and `HeadPrecedesCut`
 //! Answer a cut that does not describe one moment. The first two are anachronism, an
-//! assertion recorded after the instant that claims to be recognized at it. The third is its
-//! mirror: a head recorded *before* the group the instant addresses sets aside Events already
-//! recorded by it, which is retraction wearing the shape of a finer selection.
+//! assertion recorded after the instant that claims to be recognized at it. The last two are
+//! its mirror, retraction wearing the shape of a finer selection, and they refuse it one step
+//! apart: a finer cut refines the group of *its own* instant, so `NoEventGroupAtCut` answers an
+//! instant that has no group to refine, and `HeadPrecedesCut` answers a head belonging to a
+//! group earlier than the one its instant addresses. Either way the cut would set aside Events
+//! it already knew.
 //!
 //! `UnknownCommitment` and `UnknownEvent`
 //! Report a reference canonical history does not hold, and each is a single refusal
@@ -66,6 +69,15 @@ pub enum ThesisError {
     HeadDoesNotDescend {
         parent: Option<EventId>,
         target: EventId,
+    },
+
+    #[error(
+        "no event was recorded at {known_at:?}, so it addresses no group to refine; it resolves to the group of {addressed_at:?}, ending at {addressed:?}"
+    )]
+    NoEventGroupAtCut {
+        known_at: Date,
+        addressed: Option<EventId>,
+        addressed_at: Option<Date>,
     },
 
     #[error("head {named} precedes the cut {addressed:?}, which its instant addresses")]
