@@ -193,7 +193,7 @@ The precision of a Knowledge Cut is limited by the canonical recording-time type
 
 With the current `Date` value object:
 
-> Assertions recorded on the same civil day belong to the same coarse temporal address.
+> Knowledge recorded on the same civil day belongs to the same coarse temporal address.
 
 Commitments admitted on the same date cannot be ordered by `known_at` alone.
 
@@ -1170,7 +1170,7 @@ Only membership changes.
 
 ## Relationship with the Canon
 
-The Canon preserves admitted Assertions and their canonical metadata.
+The Canon preserves admitted assertions and their canonical metadata.
 
 It provides read-only access to the two Assertion families required by Thesis:
 
@@ -1379,7 +1379,7 @@ A Thesis is responsible for:
 A Thesis is **not** responsible for:
 
 - constructing Commitment structure;
-- admitting Assertions into canonical history;
+- admitting assertions into canonical history;
 - creating hypothetical Events;
 - modifying canonical history;
 - proving when an application physically created a cut;

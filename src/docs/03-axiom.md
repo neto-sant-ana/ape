@@ -10,7 +10,7 @@ However, entities alone cannot guarantee that newly introduced knowledge is cons
 
 Its responsibility is not to execute operations or produce projections.
 
-Its responsibility is to ensure that every new Assertion is structurally consistent before it is emitted.
+Its responsibility is to ensure that every new assertion is structurally consistent before it is emitted.
 
 ---
 
@@ -22,7 +22,7 @@ Applications never instantiate Kernel entities directly.
 
 Instead, they request the creation of new knowledge through the Axiom, which resolves references, validates cross-entity invariants, and produces immutable Kernel entities.
 
-Once emitted, Assertions can never be modified.
+Once emitted, assertions can never be modified.
 
 ---
 
@@ -34,7 +34,7 @@ The Axiom is responsible for:
 * Validating cross-entity invariants.
 * Ensuring referenced entities exist.
 * Constructing immutable Kernel entities.
-* Rejecting structurally inconsistent Assertions.
+* Rejecting structurally inconsistent assertions.
 
 ---
 
@@ -55,7 +55,7 @@ Those responsibilities belong to higher layers.
 
 ## Consistency
 
-The Axiom validates the consistency of Assertions themselves.
+The Axiom validates the consistency of assertions themselves.
 
 It does **not** validate whether an Assertion produces a desirable or consistent projection.
 
@@ -67,15 +67,15 @@ Such conflicts are derived by Hermeneia, never by the Kernel.
 
 ## Knowledge Emission
 
-Only Assertions emitted by the Axiom can become operational knowledge.
+Only assertions emitted by the Axiom can become operational knowledge.
 
-Whether an emitted Assertion enters canonical history is decided by the Canon.
+Whether an emitted assertion enters canonical history is decided by the Canon.
 
 Once emitted, they are immutable.
 
 The context in which an Assertion is used (the Thesis that selects it, whichever one an application treats as main) is defined by higher layers.
 
-Knowledge evolves exclusively through the addition of new Assertions.
+Knowledge evolves exclusively through the addition of new assertions.
 
 ---
 
@@ -94,7 +94,7 @@ Resolve references
 Validate cross-entity invariants
       │
       ▼
-Emit immutable Assertion
+Emit immutable assertion
       │
       ▼
     Canon  ← decides whether it may become history

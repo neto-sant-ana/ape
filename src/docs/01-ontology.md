@@ -128,14 +128,20 @@ They contribute new knowledge from which state may later be projected.
 
 # Assertion
 
-The term _Assertion_, the **A** in **A**PE, refers to the immutable knowledge objects the engine manages.
+The term _assertion_, the **A** in **A**PE, refers to the immutable knowledge objects the engine manages.
 
-The ontology defines two kinds of assertions:
+Every one of them asserts something about operational reality. A Resource asserts that something affected by operations exists; an Action, that a verb makes sense over it; an EligibilityAssignment, that an Agent may take a Role from an instant onward. These assert reality that is already the case.
+
+Two kinds assert reality that is not:
 
 - _Commitments_, representing intended operational reality.
 - _Events_, representing observed operational reality.
 
-Together they form the complete body of operational knowledge represented by the engine.
+Together they form the complete body of operational knowledge represented by the engine, and the remaining kinds are the vocabulary in which they are stated.
+
+Because only those two claim a factual instant — when a Commitment was decided, when an Event was observed — the distinction is not merely conceptual, and the engine reserves the capitalized term for it.
+
+> _**assertion** is any immutable knowledge object. **Assertion** is a Commitment or an Event._
 
 Assertions are therefore a conceptual category rather than an ontological primitive.
 

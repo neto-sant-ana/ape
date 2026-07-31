@@ -4,7 +4,7 @@
 
 The Kernel defines the concepts through which operational knowledge is represented.
 
-The Axiom ensures that Assertions are structurally consistent.
+The Axiom ensures that assertions are structurally consistent.
 
 The Canon preserves the integrity of their admission into canonical history.
 
@@ -12,7 +12,7 @@ However, accumulated knowledge does not directly express operational state.
 
 > _**Hermeneia** is a deterministic interpretation of operational knowledge under a specific historical and temporal context._
 
-Its responsibility is not to create, modify or admit Assertions.
+Its responsibility is not to create, modify or admit assertions.
 
 Its responsibility is to derive the operational consequences of immutable Commitments and Events.
 
@@ -109,7 +109,7 @@ Knowledge time only ever addresses the past. There is no future knowledge, and t
 
 ### The guarantee this rests on
 
-Addressing knowledge by an instant is only meaningful while the knowledge that instant selects cannot change. The Canon guarantees exactly that, keeping recording **monotonic across admission** for every family of Assertion rather than for the chain alone.
+Addressing knowledge by an instant is only meaningful while the knowledge that instant selects cannot change. The Canon guarantees exactly that, keeping recording **monotonic across admission** for every family it admits rather than for the chain alone.
 
 Without it, an assertion admitted today carrying a recording instant from last year would enter every projection taken as of that period. The same question would answer differently before and after, and a past interpretation would stop being reproducible.
 
@@ -135,7 +135,7 @@ Operational time
     determined by the effective time
 ```
 
-An unsettled Commitment may remain within its deadline at one effective time and become Breached at another, even when no new Assertion has been admitted.
+An unsettled Commitment may remain within its deadline at one effective time and become Breached at another, even when no new assertion has been admitted.
 
 A projection is therefore a function of both accumulated knowledge and time.
 
@@ -187,7 +187,7 @@ Where:
 
 A projection is determined by admitted knowledge, not by the order in which applications presented it.
 
-The Canon, by contrast, is order-sensitive by design: references must exist before the Assertions naming them, and a Commitment is settled by the first Event admitted against it. Which submissions are admitted therefore does depend on their order. Determinism belongs to the interpretation of what *was* admitted, and does not extend to admission itself.
+The Canon, by contrast, is order-sensitive by design: references must exist before the assertions naming them, and a Commitment is settled by the first Event admitted against it. Which submissions are admitted therefore does depend on their order. Determinism belongs to the interpretation of what *was* admitted, and does not extend to admission itself.
 
 Admission preserves facts.
 
@@ -530,8 +530,8 @@ Each result remains attributable to the context from which it was derived.
 Hermeneia is **not** responsible for:
 
 - Constructing Kernel entities.
-- Validating Assertion structure.
-- Admitting Assertions into canonical history.
+- Validating assertion structure.
+- Admitting assertions into canonical history.
 - Modifying canonical knowledge.
 - Creating hypothetical Events.
 - Persisting projected state as canonical truth.
@@ -569,7 +569,7 @@ Selected Commitment Graph
 
 The resulting view may contain Commitment conditions, dependency availability, temporal breaches, resource feasibility and operational conflicts.
 
-None of these derived values become canonical Assertions.
+None of these derived values become canonical assertions.
 
 ---
 

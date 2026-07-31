@@ -2,17 +2,17 @@
 
 ## Introduction
 
-The Axiom guarantees that Assertions are structurally consistent.
+The Axiom guarantees that assertions are structurally consistent.
 
-Structural consistency alone, however, does not guarantee that a new Assertion may safely become part of the canonical operational history.
+Structural consistency alone, however, does not guarantee that a new assertion may safely become part of the canonical operational history.
 
 > _The **Canon** is responsible for preserving the integrity of the canonical history._
 
-**Axiom determines whether an Assertion may exist. Canon determines whether it may become history.**
+**Axiom determines whether an assertion may exist. Canon determines whether it may become history.**
 
 Its responsibility is not to define operational semantics or execute projections.
 
-Its responsibility is to ensure that every Assertion admitted into the canonical history preserves the invariants of that history.
+Its responsibility is to ensure that every assertion admitted into the canonical history preserves the invariants of that history.
 
 ---
 
@@ -20,11 +20,11 @@ Its responsibility is to ensure that every Assertion admitted into the canonical
 
 The Canon acts as the canonical admission layer of the Assertion Projection Engine.
 
-Applications submit structurally valid Assertions produced by the Axiom.
+Applications submit structurally valid assertions produced by the Axiom.
 
-The Canon validates historical invariants, enriches Assertions with canonical metadata when necessary, and admits them into the canonical history.
+The Canon validates historical invariants, enriches assertions with canonical metadata when necessary, and admits them into the canonical history.
 
-Once admitted, Assertions become part of the immutable operational record.
+Once admitted, assertions become part of the immutable operational record.
 
 ---
 
@@ -33,10 +33,10 @@ Once admitted, Assertions become part of the immutable operational record.
 The Canon is responsible for:
 
 * Validating invariants that depend on the existing canonical history.
-* Enriching Assertions with canonical metadata.
+* Enriching assertions with canonical metadata.
 * Preserving the integrity of the event history.
-* Preventing duplicate admission of equivalent Assertions.
-* Admitting Assertions atomically into the canonical history.
+* Preventing duplicate admission of equivalent assertions.
+* Admitting assertions atomically into the canonical history.
 
 ---
 
@@ -44,7 +44,7 @@ The Canon is responsible for:
 
 The Canon is **not** responsible for:
 
-* Validating Assertion structure.
+* Validating assertion structure.
 * Constructing Kernel entities.
 * Executing business logic.
 * Producing projections.
@@ -59,7 +59,7 @@ Those responsibilities belong to the Axiom, the Engine or the application itself
 
 The Canon validates properties that emerge only from accumulated operational knowledge.
 
-Unlike the Axiom, which validates Assertions in isolation, the Canon validates Assertions in the context of the existing canonical history.
+Unlike the Axiom, which validates assertions in isolation, the Canon validates assertions in the context of the existing canonical history.
 
 Typical historical invariants include:
 
@@ -67,7 +67,7 @@ Typical historical invariants include:
 * ensuring the uniqueness of the initial Event;
 * validating historical references;
 * guaranteeing idempotent admission;
-* keeping the recording of Assertions monotonic across admission.
+* keeping the recording of assertions monotonic across admission.
 
 The exact set of invariants may evolve without changing the role of the Canon.
 
@@ -89,7 +89,7 @@ The same discipline governs any reader of the history; a projection is valid onl
 
 ## Canonical Metadata
 
-Some information does not belong to the semantic meaning of an Assertion, but to its admission into canonical history.
+Some information does not belong to the semantic meaning of an assertion, but to its admission into canonical history.
 
 The Canon is responsible for assigning such metadata before persistence.
 
@@ -101,9 +101,9 @@ Examples include recording timestamps and other history-specific metadata requir
 
 Recording time is what makes canonical knowledge addressable by an instant, and that addressing is only meaningful while the knowledge an instant selects cannot change.
 
-The Canon therefore keeps recording **monotonic across admission**: no Assertion may be recorded before knowledge already admitted.
+The Canon therefore keeps recording **monotonic across admission**: no assertion may be recorded before knowledge already admitted.
 
-Without it, an Assertion admitted today carrying a recording instant from last year would silently join the knowledge of that period. Nothing in the history would have been rewritten, and yet the past it reports would have changed.
+Without it, an assertion admitted today carrying a recording instant from last year would silently join the knowledge of that period. Nothing in the history would have been rewritten, and yet the past it reports would have changed.
 
 The guarantee spans every family the Canon admits rather than the event chain alone. A Commitment never enters the chain, so back-dating one is invisible to any guarantee the chain could offer — and it is precisely a Commitment appearing retroactively that rewrites the past without touching a single Event.
 
@@ -115,7 +115,7 @@ What readers of the history derive from this guarantee is defined by the layers 
 
 ## Persistence
 
-The Canon does not persist Assertions directly.
+The Canon does not persist assertions directly.
 
 Instead, it depends on an application-provided abstraction representing the canonical history.
 
@@ -134,7 +134,7 @@ Application
     Axiom
       │
       ▼
-Structurally valid Assertion
+Structurally valid assertion
       │
       ▼
     Canon
