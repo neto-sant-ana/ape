@@ -80,6 +80,20 @@ mod tests {
         assert_eq!(Date::from_ymd(2026, 7, 21).unwrap().to_iso(), "2026-07-21");
     }
 
+    /// `to_iso` is not the path an id is built from: the entity macro hashes
+    /// `postcard::to_allocvec` of each field, so it is `Serialize` that decides what a date
+    /// contributes to every id carrying one.
+    #[test]
+    fn contributes_its_padded_iso_string_to_an_id() {
+        let date = Date::from_ymd(2026, 7, 5).unwrap();
+
+        assert_eq!(
+            postcard::to_allocvec(&date).unwrap(),
+            postcard::to_allocvec("2026-07-05").unwrap(),
+            "a date must serialize as its padded ISO string, not as any other encoding",
+        );
+    }
+
     #[test]
     fn normalizes_non_padded_input() {
         assert_eq!(Date::parse("2026-7-5").unwrap().to_iso(), "2026-07-05");
