@@ -92,6 +92,20 @@ struct Settled {
     occurred_at: Date,
 }
 
+/// Which head, if any, this accumulation is bound to interpret.
+///
+/// `Unbound` folds whatever it is handed and interprets wherever it stops, which is the
+/// low-level use: a projection is valid as of the head it was computed from, and saying which
+/// is enough. `Bound` is for a caller that already knows the cut being asked about, and it
+/// closes the two ways a fold can answer the wrong question — absorbing past the head, or
+/// interpreting before reaching it.
+#[derive(Debug, Clone, Copy, Default)]
+enum Recognition {
+    #[default]
+    Unbound,
+    Bound(Option<EventId>),
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Accumulation {
     selected: BTreeMap<CommitmentId, Commitment>,
@@ -99,6 +113,7 @@ pub struct Accumulation {
     movements: BTreeMap<CommitmentId, Movement>,
     constraints: BTreeMap<ResourceInstanceId, Constraint>,
     event_head: Option<EventId>,
+    recognition: Recognition,
 }
 /// Knowledge resolved out of one `absorb` and not yet recorded.
 #[derive(Default)]
@@ -111,6 +126,17 @@ struct Resolved {
 }
 
 impl Accumulation {
+    /// An accumulation that only ever answers for `head`.
+    ///
+    /// The chain may still arrive in batches; what is refused is an event past that head, and
+    /// any interpretation taken before the head is reached.
+    pub fn recognizing(head: Option<EventId>) -> Self {
+        Self {
+            recognition: Recognition::Bound(head),
+            ..Self::default()
+        }
+    }
+
     pub fn absorb<K: Knowledge>(
         &mut self,
         knowledge: &K,
@@ -157,6 +183,15 @@ impl Accumulation {
         }
 
         for event in events {
+            if let Recognition::Bound(recognized) = self.recognition
+                && recognized == resolved.event_head
+            {
+                return Err(ProjectionError::EventBeyondRecognizedHead {
+                    event: event.id(),
+                    recognized,
+                });
+            }
+
             if *event.previous_event() != resolved.event_head {
                 return Err(ProjectionError::DisjointEventChain {
                     event: event.id(),
@@ -211,6 +246,8 @@ impl Accumulation {
     /// legitimately arrive in a later `absorb`, but a commitment whose dependency is
     /// missing cannot be told apart from one whose dependency is merely pending.
     pub fn conditions_at(&self, at: &Date) -> Result<ProjectedConditions, ProjectionError> {
+        self.ensure_recognized()?;
+
         let mut resolved = BTreeMap::new();
         let mut conditions = BTreeMap::new();
 
@@ -254,6 +291,8 @@ impl Accumulation {
         &self,
         hypothesis: Hypothesis,
     ) -> Result<FeasibilityReport, ProjectionError> {
+        self.ensure_recognized()?;
+
         let conflicts = self.conflicts_under(hypothesis)?;
 
         Ok(FeasibilityReport::new(
@@ -510,6 +549,24 @@ impl Accumulation {
         resolved.insert(id, verdict);
 
         Ok(verdict)
+    }
+
+    /// A bound accumulation interprets nothing until the chain it recognizes has been folded.
+    ///
+    /// This is the half of the boundary `absorb` cannot enforce: an event past the head is
+    /// visible the moment it is offered, while a chain that simply stops short looks complete
+    /// from the inside. Only the question being asked reveals it.
+    fn ensure_recognized(&self) -> Result<(), ProjectionError> {
+        if let Recognition::Bound(recognized) = self.recognition
+            && recognized != self.event_head
+        {
+            return Err(ProjectionError::RecognizedChainIncomplete {
+                reached: self.event_head,
+                recognized,
+            });
+        }
+
+        Ok(())
     }
 
     fn outcome_of(&self, commitment: &CommitmentId) -> Outcome {

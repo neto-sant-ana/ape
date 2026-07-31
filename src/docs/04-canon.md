@@ -48,7 +48,7 @@ The Canon is **not** responsible for:
 * Constructing Kernel entities.
 * Executing business logic.
 * Producing projections.
-* Resolving scenario conflicts.
+* Resolving conflicts between Theses.
 * Defining how canonical history is persisted.
 
 Those responsibilities belong to the Axiom, the Engine or the application itself.

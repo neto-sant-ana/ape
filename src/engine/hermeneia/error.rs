@@ -5,7 +5,7 @@
 //! derived results, not errors.
 //!
 //! The selection is the world. A commitment outside it does not exist for this
-//! projection, whether it was never admitted or a Scenario left it out, so naming one —
+//! projection, whether it was never admitted or a Thesis left it out, so naming one —
 //! as a selection root, as a dependency, or as what an event settles — is the single
 //! `UnknownCommitment`.
 //!
@@ -84,5 +84,19 @@ pub enum ProjectionError {
         event: EventId,
         absorbed: Option<EventId>,
         carried: Option<EventId>,
+    },
+
+    #[error("event {event} lies beyond {recognized:?}, the head this accumulation recognizes")]
+    EventBeyondRecognizedHead {
+        event: EventId,
+        recognized: Option<EventId>,
+    },
+
+    #[error(
+        "the chain absorbed so far ends at {reached:?} and {recognized:?} is recognized; nothing is interpretable until it is reached"
+    )]
+    RecognizedChainIncomplete {
+        reached: Option<EventId>,
+        recognized: Option<EventId>,
     },
 }
