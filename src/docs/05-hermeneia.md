@@ -107,15 +107,13 @@ A head and a knowledge instant are consequently not interchangeable. The head de
 
 Knowledge time only ever addresses the past. There is no future knowledge, and the chain always stops at the head.
 
-### What the Canon must guarantee
+### The guarantee this rests on
 
-Addressing knowledge by an instant is only meaningful while the knowledge that instant selects cannot change. The Canon therefore keeps recording **monotonic across admission**: no assertion may be recorded before knowledge already admitted.
+Addressing knowledge by an instant is only meaningful while the knowledge that instant selects cannot change. The Canon guarantees exactly that, keeping recording **monotonic across admission** for every family of Assertion rather than for the chain alone.
 
 Without it, an assertion admitted today carrying a recording instant from last year would enter every projection taken as of that period. The same question would answer differently before and after, and a past interpretation would stop being reproducible.
 
-The guarantee has to span every family rather than the chain alone. A Commitment never enters the chain, so back-dating one is invisible to any guarantee the chain could offer — and it is precisely a Commitment appearing retroactively that rewrites the past without touching a single Event.
-
-Spanning every family also settles the chain as a special case. An Event cannot be recorded before the Event it extends, since that one was admitted earlier. This is what makes the walk backwards from a head a search rather than a scan: without it the walk could reach an Event recorded after the requested instant, leaking later knowledge into an earlier interpretation.
+Monotonic recording is also what makes the walk backwards from a head a search rather than a scan: without it the walk could reach an Event recorded after the requested instant, leaking later knowledge into an earlier interpretation.
 
 Resolution is bounded by the resolution of the recording instant. Several Events recorded at the same instant collapse into a single addressable cut, and the latest of them in chain order is the head. Addressing a head directly remains the finer selection.
 

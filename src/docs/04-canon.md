@@ -6,7 +6,7 @@ The Axiom guarantees that Assertions are structurally consistent.
 
 Structural consistency alone, however, does not guarantee that a new Assertion may safely become part of the canonical operational history.
 
-> *The ****Canon**** is responsible for preserving the integrity of the canonical history.*
+> _The **Canon** is responsible for preserving the integrity of the canonical history._
 
 **Axiom determines whether an Assertion may exist. Canon determines whether it may become history.**
 
@@ -66,7 +66,8 @@ Typical historical invariants include:
 * preserving a single continuous event chain;
 * ensuring the uniqueness of the initial Event;
 * validating historical references;
-* guaranteeing idempotent admission.
+* guaranteeing idempotent admission;
+* keeping the recording of Assertions monotonic across admission.
 
 The exact set of invariants may evolve without changing the role of the Canon.
 
@@ -74,16 +75,15 @@ The exact set of invariants may evolve without changing the role of the Canon.
 
 ## Head-Relative Validity
 
-> _A history validation only remais valid while the observed head remains the same._
+> _A history validation holds only while the observed head remains the same._
 
 A validation against the canonical history is not absolute: it holds only as of the head it observed.
 
 The instant the head advances, a conclusion drawn against the prior head may be stale (a commitment seen as unsettled may now be settled, a reference seen as absent may now exist).
 
-The Canon therefore admits atomically against the observed head: if the head has moved, admission is refused and any subsequent attempt mut be re-evaluated against the new head.
+The Canon therefore admits atomically against the observed head: if the head has moved, admission is refused and any subsequent attempt must be re-evaluated against the new head.
 
-The same discipline governs any reader of the history; a projection is valid
-only as of the head it was computed from.
+The same discipline governs any reader of the history; a projection is valid only as of the head it was computed from.
 
 ---
 
@@ -94,6 +94,22 @@ Some information does not belong to the semantic meaning of an Assertion, but to
 The Canon is responsible for assigning such metadata before persistence.
 
 Examples include recording timestamps and other history-specific metadata required to preserve canonical integrity.
+
+---
+
+## Monotonic Recording
+
+Recording time is what makes canonical knowledge addressable by an instant, and that addressing is only meaningful while the knowledge an instant selects cannot change.
+
+The Canon therefore keeps recording **monotonic across admission**: no Assertion may be recorded before knowledge already admitted.
+
+Without it, an Assertion admitted today carrying a recording instant from last year would silently join the knowledge of that period. Nothing in the history would have been rewritten, and yet the past it reports would have changed.
+
+The guarantee spans every family of Assertion rather than the event chain alone. A Commitment never enters the chain, so back-dating one is invisible to any guarantee the chain could offer — and it is precisely a Commitment appearing retroactively that rewrites the past without touching a single Event.
+
+Spanning every family also settles the chain as a special case: an Event cannot be recorded before the Event it extends, since that one was admitted earlier.
+
+What readers of the history derive from this guarantee is defined by the layers that interpret it.
 
 ---
 

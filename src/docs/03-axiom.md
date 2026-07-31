@@ -61,7 +61,7 @@ It does **not** validate whether an Assertion produces a desirable or consistent
 
 An Assertion may be structurally valid while leading to conflicting interpretations within a particular Thesis.
 
-Such conflicts are resolved by the Engine, never by the Kernel.
+Such conflicts are derived by Hermeneia, never by the Kernel.
 
 ---
 
