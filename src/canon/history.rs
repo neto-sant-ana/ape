@@ -31,7 +31,13 @@ pub enum AppendOutcome {
     AlreadyPresent,
 }
 
-pub trait CanonicalHistory: Knowledge {
+/// The body of canonically admitted knowledge, read as records rather than bare entities.
+pub trait CanonicalKnowledge {
+    fn canonical_commitment(&self, id: CommitmentId) -> Option<Canonical<Commitment>>;
+    fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>>;
+}
+
+pub trait CanonicalHistory: Knowledge + CanonicalKnowledge {
     fn head(&self) -> Option<EventId>;
 
     /// The instant through which this history is recorded: the greatest `recorded_at`
@@ -39,13 +45,6 @@ pub trait CanonicalHistory: Knowledge {
     fn recorded_through(&self) -> Option<Date>;
 
     fn event_of(&self, commitment: CommitmentId) -> Option<Event>;
-
-    /// The canonical records — the assertion together with its `recorded_at` —
-    /// behind the bare-entity reads inherited from `Knowledge`. A projection reads
-    /// these to answer questions as of a recording instant; the Axiom, validating
-    /// structure only, needs just the bare entity.
-    fn canonical_commitment(&self, id: CommitmentId) -> Option<Canonical<Commitment>>;
-    fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>>;
 
     /// Put the record if its id is absent, refusing with
     /// [`CanonError::RecordedOutOfOrder`] a recording instant that precedes

@@ -5,7 +5,7 @@ mod error;
 pub use error::CanonError;
 
 mod history;
-pub use history::{AppendOutcome, CanonicalHistory};
+pub use history::{AppendOutcome, CanonicalHistory, CanonicalKnowledge};
 
 mod record;
 pub use record::Canonical;
