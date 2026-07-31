@@ -1,9 +1,9 @@
-//! Axiom tests: commitment admission.
+//! Axiom tests: commitment emission.
 
 use super::*;
 
 #[test]
-fn admits_a_consistent_discrete_commitment() {
+fn accepts_a_consistent_discrete_commitment() {
     let f = discrete_graph();
     assert!(commit(&f).is_ok());
 }
@@ -43,7 +43,7 @@ fn rejects_discrete_commitment_carrying_a_value() {
 
     input.action_value = ActionValue::value(5.0).unwrap();
 
-    let result = Axiom::new(&f.store).admit_commitment(input);
+    let result = Axiom::new(&f.store).emit_commitment(input);
 
     assert!(matches!(result, Err(AxiomError::ActionValueMismatch)));
 }
@@ -69,7 +69,7 @@ fn accountable_needs_no_role_only_existence() {
 fn rejects_commitment_with_unknown_dependency() {
     let f = discrete_graph();
 
-    let result = Axiom::new(&f.store).admit_commitment(CommitmentInput {
+    let result = Axiom::new(&f.store).emit_commitment(CommitmentInput {
         dependencies: BTreeSet::from([CommitmentId::from([1u8; 32])]),
         ..commitment_input(&f)
     });

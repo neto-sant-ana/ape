@@ -1,4 +1,4 @@
-//! Admission for actions (see `entities/action.rs`).
+//! Emission of actions (see `entities/action.rs`).
 
 use super::{Axiom, AxiomError, Knowledge};
 
@@ -7,7 +7,7 @@ use crate::kernel::entities::{Action, ActionInput};
 use crate::kernel::value_objects::{ActionKind, ResourceKind};
 
 impl<'k, K: Knowledge> Axiom<'k, K> {
-    pub fn admit_action(&self, input: ActionInput) -> Result<Action, AxiomError> {
+    pub fn emit_action(&self, input: ActionInput) -> Result<Action, AxiomError> {
         let target = self
             .knowledge
             .resource(input.resource)

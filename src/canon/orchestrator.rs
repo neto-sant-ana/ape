@@ -37,15 +37,15 @@ impl<H: CanonicalHistory> Canon<H> {
     }
 
     canonical_admission! {
-        admit_role(RoleInput) -> RoleId { admit_role, put_role },
-        admit_agent(AgentInput) -> AgentId { admit_agent, put_agent },
-        admit_resource(ResourceInput) -> ResourceId { admit_resource, put_resource },
+        admit_role(RoleInput) -> RoleId { emit_role, put_role },
+        admit_agent(AgentInput) -> AgentId { emit_agent, put_agent },
+        admit_resource(ResourceInput) -> ResourceId { emit_resource, put_resource },
         admit_resource_instance(ResourceInstanceInput) -> ResourceInstanceId {
-            admit_resource_instance, put_resource_instance
+            emit_resource_instance, put_resource_instance
         },
-        admit_action(ActionInput) -> ActionId { admit_action, put_action },
-        admit_statement(StatementInput) -> StatementId { admit_statement, put_statement },
-        admit_commitment(CommitmentInput) -> CommitmentId { admit_commitment, put_commitment },
+        admit_action(ActionInput) -> ActionId { emit_action, put_action },
+        admit_statement(StatementInput) -> StatementId { emit_statement, put_statement },
+        admit_commitment(CommitmentInput) -> CommitmentId { emit_commitment, put_commitment },
     }
 
     pub fn admit_eligibility(
@@ -68,7 +68,7 @@ impl<H: CanonicalHistory> Canon<H> {
             });
         }
 
-        let eligibility = Axiom::new(&self.history).admit_eligibility_assignment(input)?;
+        let eligibility = Axiom::new(&self.history).emit_eligibility_assignment(input)?;
         let id = eligibility.id();
         self.history
             .put_eligibility(Canonical::new(eligibility, recorded_at)?)?;
@@ -99,7 +99,7 @@ impl<H: CanonicalHistory> Canon<H> {
             ));
         }
 
-        let event = Axiom::new(&self.history).admit_event(EventInput {
+        let event = Axiom::new(&self.history).emit_event(EventInput {
             commitment_id: submission.commitment_id,
             observation: submission.observation,
             previous_event: previous,

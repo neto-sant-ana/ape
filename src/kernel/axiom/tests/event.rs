@@ -1,16 +1,16 @@
-//! Axiom tests: event admission.
+//! Axiom tests: event emission.
 
 use super::*;
 
 #[test]
-fn admits_a_recognized_event_and_rejects_an_unrecognized_one() {
+fn accepts_a_recognized_event_and_rejects_an_unrecognized_one() {
     let mut f = discrete_graph();
     let commitment = f.store.add_commitment(commit(&f).unwrap());
     let axiom = Axiom::new(&f.store);
 
     assert!(
         axiom
-            .admit_event(EventInput {
+            .emit_event(EventInput {
                 commitment_id: commitment,
                 observation: obs("Signed"),
                 previous_event: None,
@@ -20,7 +20,7 @@ fn admits_a_recognized_event_and_rejects_an_unrecognized_one() {
     );
 
     assert!(matches!(
-        axiom.admit_event(EventInput {
+        axiom.emit_event(EventInput {
             commitment_id: commitment,
             observation: obs("Unrelated"),
             previous_event: None,

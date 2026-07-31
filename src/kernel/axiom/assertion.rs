@@ -1,4 +1,4 @@
-//! Admission for the assertion family (see `entities/assertion.rs`).
+//! Emission of the assertion family (see `entities/assertion.rs`).
 
 use std::collections::BTreeSet;
 
@@ -12,7 +12,7 @@ use crate::kernel::entities::{
 use crate::kernel::value_objects::{ActionKind, Date};
 
 impl<'k, K: Knowledge> Axiom<'k, K> {
-    pub fn admit_commitment(&self, input: CommitmentInput) -> Result<Commitment, AxiomError> {
+    pub fn emit_commitment(&self, input: CommitmentInput) -> Result<Commitment, AxiomError> {
         let stmt = self
             .knowledge
             .statement(input.statement)
@@ -67,7 +67,7 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
         Ok(Commitment::create(input)?)
     }
 
-    pub fn admit_event(&self, input: EventInput) -> Result<Event, AxiomError> {
+    pub fn emit_event(&self, input: EventInput) -> Result<Event, AxiomError> {
         let commitment = self
             .knowledge
             .commitment(input.commitment_id)
@@ -93,7 +93,7 @@ impl<'k, K: Knowledge> Axiom<'k, K> {
         Ok(Event::create(input)?)
     }
 
-    pub fn admit_eligibility_assignment(
+    pub fn emit_eligibility_assignment(
         &self,
         input: EligibilityAssignmentInput,
     ) -> Result<EligibilityAssignment, AxiomError> {

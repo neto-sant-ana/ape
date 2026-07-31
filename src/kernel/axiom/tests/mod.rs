@@ -233,5 +233,5 @@ fn commitment_input(f: &Fixture) -> CommitmentInput {
     }
 }
 fn commit(f: &Fixture) -> Result<Commitment, AxiomError> {
-    Axiom::new(&f.store).admit_commitment(commitment_input(f))
+    Axiom::new(&f.store).emit_commitment(commitment_input(f))
 }

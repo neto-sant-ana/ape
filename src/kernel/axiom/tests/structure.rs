@@ -1,4 +1,4 @@
-//! Axiom tests: structural admission of the definitional layer.
+//! Axiom tests: structural emission of the definitional layer.
 
 use super::*;
 
@@ -10,7 +10,7 @@ fn rejects_action_on_missing_resource() {
     let axiom = Axiom::new(&store);
 
     assert!(matches!(
-        axiom.admit_action(ActionInput {
+        axiom.emit_action(ActionInput {
             verb: ident("sign"),
             kind: ActionKind::Discrete,
             resource: ResourceId::from([9u8; 32]),
@@ -34,7 +34,7 @@ fn rejects_action_kind_not_matching_resource_kind() {
     let axiom = Axiom::new(&store);
 
     assert!(matches!(
-        axiom.admit_action(ActionInput {
+        axiom.emit_action(ActionInput {
             verb: ident("increase"),
             kind: ActionKind::Quantifiable(Effect::Increase),
             resource,
@@ -50,7 +50,7 @@ fn rejects_statement_referencing_unknown_action() {
     let axiom = Axiom::new(&store);
 
     assert!(matches!(
-        axiom.admit_statement(StatementInput {
+        axiom.emit_statement(StatementInput {
             participants: Participants::new([role], [role]).unwrap(),
             action: ActionId::from([3u8; 32]),
             settlement: Settlement::new([obs("Signed")], [obs("Cancelled")]).unwrap(),

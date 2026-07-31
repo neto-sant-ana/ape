@@ -1,4 +1,4 @@
-//! Assertions admitted as knowledge about operational coordination.
+//! Assertions — immutable knowledge about operational coordination.
 //!
 //! A `Commitment` is a proposed execution of a statement, completed with an
 //! `assignment`, a `term` (when it was committed and when it is due), its

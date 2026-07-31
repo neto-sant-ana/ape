@@ -10,7 +10,7 @@ However, entities alone cannot guarantee that newly introduced knowledge is cons
 
 Its responsibility is not to execute operations or produce projections.
 
-Its responsibility is to ensure that every new Assertion is structurally consistent before it is admitted into the system.
+Its responsibility is to ensure that every new Assertion is structurally consistent before it is emitted.
 
 ---
 
@@ -22,7 +22,7 @@ Applications never instantiate Kernel entities directly.
 
 Instead, they request the creation of new knowledge through the Axiom, which resolves references, validates cross-entity invariants, and produces immutable Kernel entities.
 
-Once accepted, Assertions become part of the operational knowledge and can never be modified.
+Once emitted, Assertions can never be modified.
 
 ---
 
@@ -65,11 +65,13 @@ Such conflicts are derived by Hermeneia, never by the Kernel.
 
 ---
 
-## Knowledge Admission
+## Knowledge Emission
 
-Only Assertions accepted by the Axiom become part of the operational knowledge.
+Only Assertions emitted by the Axiom can become operational knowledge.
 
-Once admitted, they are immutable.
+Whether an emitted Assertion enters canonical history is decided by the Canon.
+
+Once emitted, they are immutable.
 
 The context in which an Assertion is used (the Thesis that selects it, whichever one an application treats as main) is defined by higher layers.
 
@@ -83,7 +85,7 @@ Knowledge evolves exclusively through the addition of new Assertions.
 Application
       │
       ▼
-    Axiom
+    Axiom  ← reads existing Knowledge
       │
       ▼
 Resolve references
@@ -92,11 +94,8 @@ Resolve references
 Validate cross-entity invariants
       │
       ▼
-Construct immutable Assertion
+Emit immutable Assertion
       │
       ▼
-    Kernel
-      │
-      ▼
-  Knowledge
+    Canon  ← decides whether it may become history
 ```

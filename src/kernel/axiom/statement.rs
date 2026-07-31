@@ -1,11 +1,11 @@
-//! Admission for statements (see `entities/statement.rs`).
+//! Emission of statements (see `entities/statement.rs`).
 
 use super::{Axiom, AxiomError, Knowledge};
 
 use crate::kernel::entities::{Statement, StatementInput};
 
 impl<'k, K: Knowledge> Axiom<'k, K> {
-    pub fn admit_statement(&self, input: StatementInput) -> Result<Statement, AxiomError> {
+    pub fn emit_statement(&self, input: StatementInput) -> Result<Statement, AxiomError> {
         if self.knowledge.action(input.action).is_none() {
             return Err(AxiomError::UnknownAction(input.action));
         }

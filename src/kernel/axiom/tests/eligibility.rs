@@ -1,9 +1,9 @@
-//! Axiom tests: eligibility admission and its temporal (as-of) derivation.
+//! Axiom tests: eligibility emission and its temporal (as-of) derivation.
 
 use super::*;
 
 #[test]
-fn admits_a_valid_eligibility_assignment() {
+fn accepts_a_valid_eligibility_assignment() {
     let mut store = Store::default();
     let role = store.add_role(Role::create(RoleInput { label: ident("role") }).unwrap());
 
@@ -19,7 +19,7 @@ fn admits_a_valid_eligibility_assignment() {
 
     assert!(
         axiom
-            .admit_eligibility_assignment(EligibilityAssignmentInput {
+            .emit_eligibility_assignment(EligibilityAssignmentInput {
                 agent,
                 roles: BTreeSet::from([role]),
                 effective_from: date(2026, 1, 1),
@@ -35,7 +35,7 @@ fn rejects_eligibility_assignment_for_unknown_agent() {
     let axiom = Axiom::new(&store);
 
     assert!(matches!(
-        axiom.admit_eligibility_assignment(EligibilityAssignmentInput {
+        axiom.emit_eligibility_assignment(EligibilityAssignmentInput {
             agent: AgentId::from([9u8; 32]),
             roles: BTreeSet::from([role]),
             effective_from: date(2026, 1, 1),
@@ -59,7 +59,7 @@ fn rejects_eligibility_assignment_for_unknown_role() {
     let axiom = Axiom::new(&store);
 
     assert!(matches!(
-        axiom.admit_eligibility_assignment(EligibilityAssignmentInput {
+        axiom.emit_eligibility_assignment(EligibilityAssignmentInput {
             agent,
             roles: BTreeSet::from([RoleId::from([9u8; 32])]),
             effective_from: date(2026, 1, 1),
@@ -89,7 +89,7 @@ fn rejects_executor_without_eligibility_for_an_actor_role() {
 }
 
 #[test]
-fn admits_an_empty_eligibility_assignment_as_a_withdrawal() {
+fn accepts_an_empty_eligibility_assignment_as_a_withdrawal() {
     let mut store = Store::default();
 
     let agent = store.add_agent(
@@ -104,7 +104,7 @@ fn admits_an_empty_eligibility_assignment_as_a_withdrawal() {
 
     assert!(
         axiom
-            .admit_eligibility_assignment(EligibilityAssignmentInput {
+            .emit_eligibility_assignment(EligibilityAssignmentInput {
                 agent,
                 roles: BTreeSet::new(),
                 effective_from: date(2026, 1, 1),

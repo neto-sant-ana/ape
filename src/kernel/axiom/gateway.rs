@@ -1,7 +1,7 @@
 //! The Axiom — the single gateway through which new knowledge enters the kernel.
 //!
 //! Applications never instantiate kernel entities directly,
-//! they request admission through the Axiom, passing the same
+//! they ask the Axiom to emit one, passing the same
 //! input struct `create` consumes. The Axiom resolves the referenced entities,
 //! validates the cross-entity invariants that a single entity's constructor
 //! cannot see, and only then emits the immutable entity — or rejects a
