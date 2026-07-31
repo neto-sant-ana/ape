@@ -1,8 +1,8 @@
 //! Why knowledge could not be accumulated or interpreted.
 //!
 //! Every variant reports input that does not hold together, never an operational
-//! judgment: an infeasible graph, a breached deadline and a blocked commitment are
-//! derived results, not errors.
+//! judgment: an infeasible graph, a breached deadline and a commitment waiting on a
+//! dependency are derived results, not errors.
 //!
 //! The selection is the world. A commitment outside it does not exist for this
 //! projection, whether it was never admitted or a Thesis left it out, so naming one —

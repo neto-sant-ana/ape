@@ -3,14 +3,20 @@
 //! A `Commitment` is a proposed execution of a statement, completed with an
 //! `assignment`, a `term` (when it was committed and when it is due), its
 //! `action_value`, and the other commitments it depends on (`dependencies`). Its
-//! state is not stored but derived from those relations and the events:
+//! condition is not stored but derived from those relations and the events, along
+//! complementary axes rather than as one exclusive state:
 //!
-//! - `Open` — valid, on schedule, not blocked by a dependency.
-//! - `Breached` — valid, off schedule, not blocked.
-//! - `Blocked` — valid, blocked by a dependency's execution.
-//! - `Fulfilled` — valid, all of its scope completed.
-//! - `Cancelled` — valid, cancelled by an event.
-//! - `Invalid` — invalidated by a dependency or a system constraint.
+//! - settlement — `Unsettled` until an event settles it per its statement, and
+//!   `Fulfilled` or `Cancelled` once one does;
+//! - dependencies — whether any is still pending, and whether any can never be
+//!   fulfilled, which leaves this one unrealizable;
+//! - timeliness — `Breached` once its due date elapses while it is unsettled.
+//!
+//! One commitment may be unsettled, waiting on a dependency and breached at once,
+//! which is why no single state is named here. Nor is it ever invalid: a commitment
+//! whose promised effects cannot be realized remains knowledge, and the
+//! impossibility is a verdict derived over the graph rather than a property of the
+//! assertion.
 //!
 //! An `Event` is a factual execution of coordination relevance; it settles or
 //! cancels a commitment per that commitment's statement, links to the

@@ -129,7 +129,7 @@ Operational knowledge evolves by accumulating facts rather than mutating state.
 
 ## Derived State
 
-Operational states such as **Open**, **Blocked**, **Fulfilled**, **Cancelled** or **Breached** are not manually maintained.
+Operational conditions such as **Unsettled**, **Fulfilled**, **Cancelled** or **Breached** are not manually maintained.
 
 They emerge from the relationships between commitments, dependency graphs, observed events and time.
 

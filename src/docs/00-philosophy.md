@@ -84,7 +84,7 @@ History _is_ the model.
 
 Operational state is an interpretation of accumulated facts.
 
-Whether something is open, fulfilled, blocked or cancelled depends on the relationships between assertions, observed events, dependencies and time.
+Whether something is unsettled, fulfilled, cancelled or breached depends on the relationships between assertions, observed events, dependencies and time.
 
 These states are never fundamental objects.
 

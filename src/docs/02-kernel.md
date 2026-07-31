@@ -86,7 +86,7 @@ Their meaning is derived from the Commitments they affect rather than duplicated
 
 Operational state is never considered canonical.
 
-States such as Open, Fulfilled, Blocked or Cancelled are projections derived from Commitments, Events, Constraints and dependency relationships.
+Conditions such as Unsettled, Fulfilled, Cancelled or Breached are projections derived from Commitments, Events, Constraints and dependency relationships.
 
 The kernel therefore stores knowledge rather than state.
 
