@@ -227,6 +227,22 @@ impl Fixture {
         id
     }
 
+    /// An Event whose predecessor was never admitted: a chain with a missing link.
+    fn severed(&mut self, commitment: CommitmentId) -> EventId {
+        let event = Event::create(EventInput {
+            commitment_id: commitment,
+            observation: Observation::new("Delivered").unwrap(),
+            previous_event: Some(EventId::from([9; 32])),
+            occurred_at: date(2026, 2, 1),
+        })
+        .unwrap();
+
+        let id = event.id();
+        self.events.insert(id, Canonical::new(event, d2()).unwrap());
+
+        id
+    }
+
     /// The chain a head recognizes, in the order Hermeneia absorbs it.
     fn chain_through(&self, head: Option<EventId>) -> Vec<Event> {
         let mut chain = Vec::new();

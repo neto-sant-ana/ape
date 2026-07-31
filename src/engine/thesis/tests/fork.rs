@@ -139,6 +139,10 @@ fn a_fork_that_would_select_what_its_parent_selects_is_refused() {
         },
         omitting(&[absent]),
         introducing(&[kept]),
+        ForkInput {
+            omitted: ids(&[absent]),
+            introduced: ids(&[kept]),
+        },
     ] {
         assert!(matches!(
             parent.fork(&knowledge, request),

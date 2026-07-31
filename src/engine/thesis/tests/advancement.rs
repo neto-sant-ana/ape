@@ -221,6 +221,42 @@ fn an_imposed_commitment_arrives_with_its_ancestors() {
     assert_eq!(imposed_of(&advancement), ids(&[root, settled]));
 }
 
+/// Every way a commitment can reach the frozen past of a child, in one advancement, against the
+/// formula the layer promises: `Imposed = Frozen(H') − Commitments(T)`.
+///
+/// ```text
+/// parent   frozen {a}          already unavoidable
+///          open   {b}          selected, and settled by the new segment
+/// child    frozen {a,b,c,d}    c settled under another continuation, d its ancestor
+///          imposed      {c,d}  only what the parent never selected
+/// ```
+#[test]
+fn imposition_is_what_the_parent_never_selected() {
+    let mut knowledge = Fixture::new();
+    let a = knowledge.commit((3, 31), BTreeSet::new());
+    let b = knowledge.commit((4, 30), BTreeSet::new());
+    let d = knowledge.commit((5, 31), BTreeSet::new());
+    let c = knowledge.commit((6, 30), ids(&[d]));
+
+    let recognized = knowledge.settle(a);
+    let parent = knowledge.genesis(knowledge.cut(d2(), Some(recognized)), &[b]);
+
+    assert_eq!(frozen_of(&parent), ids(&[a]));
+    assert_eq!(open_of(&parent), ids(&[b]));
+
+    knowledge.settle(b);
+    let head = knowledge.settle(c);
+
+    let advancement = parent
+        .advance(&knowledge, knowledge.cut(d3(), Some(head)))
+        .unwrap();
+    let advanced = advancement.thesis();
+
+    assert_eq!(frozen_of(advanced), ids(&[a, b, c, d]));
+    assert!(open_of(advanced).is_empty());
+    assert_eq!(imposed_of(&advancement), ids(&[c, d]));
+}
+
 #[test]
 fn advancement_spans_every_event_of_the_segment() {
     let mut knowledge = Fixture::new();

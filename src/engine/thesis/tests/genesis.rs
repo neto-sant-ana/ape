@@ -89,6 +89,25 @@ fn a_commitment_recorded_after_the_cut_is_refused() {
     ));
 }
 
+/// The head exists, so declaring the cut succeeds; the refusal comes from the walk, which
+/// cannot reach the start of the chain. A cut whose history is not readable recognizes nothing.
+#[test]
+fn a_chain_with_a_missing_link_is_refused() {
+    let mut knowledge = Fixture::new();
+    let settled = knowledge.commit((3, 31), BTreeSet::new());
+    let head = knowledge.severed(settled);
+
+    let refusal = Thesis::genesis(
+        &knowledge,
+        GenesisInput {
+            cut: knowledge.cut(d2(), Some(head)),
+            selection: BTreeSet::new(),
+        },
+    );
+
+    assert!(matches!(refusal, Err(ThesisError::UnknownEvent(_))));
+}
+
 #[test]
 fn an_unadmitted_commitment_is_refused() {
     let knowledge = Fixture::new();

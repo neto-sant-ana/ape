@@ -165,6 +165,32 @@ fn an_event_beyond_the_recognized_head_is_refused() {
     ));
 }
 
+/// A chain of another reach of history is neither beyond the recognized head nor short of it,
+/// so `absorb` has nothing to object to. It never arrives, which is what the question reveals.
+#[test]
+fn a_chain_of_another_reach_of_history_interprets_nothing() {
+    let mut knowledge = Fixture::new();
+    let recognized_commitment = knowledge.commit((3, 31), BTreeSet::new());
+    let elsewhere = knowledge.commit((6, 30), BTreeSet::new());
+    let recognized = knowledge.settle(recognized_commitment);
+    let foreign = knowledge.detached(elsewhere);
+
+    let mut accumulation = Accumulation::recognizing(Some(recognized));
+    accumulation
+        .absorb(
+            &knowledge,
+            &[recognized_commitment, elsewhere],
+            &knowledge.chain_through(Some(foreign)),
+        )
+        .unwrap();
+
+    assert!(matches!(
+        accumulation.conditions_at(&at(4, 1)),
+        Err(ProjectionError::RecognizedChainIncomplete { reached, recognized: expected })
+            if reached == Some(foreign) && expected == Some(recognized)
+    ));
+}
+
 /// And from above: a chain that stops short looks complete from the inside, so the refusal
 /// comes when the question is asked.
 #[test]
