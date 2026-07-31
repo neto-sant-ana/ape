@@ -173,7 +173,13 @@ impl Thesis {
         Ok(Advancement::new(thesis, imposed))
     }
 
-    pub fn selection(&self) -> Vec<CommitmentId> {
+    /// The complete selected graph, in the shape Hermeneia absorbs it.
+    ///
+    /// Deliberately not public. A selection handed out on its own can be folded against any
+    /// chain, and the whole point of a recognized cut is that it cannot: interpretation goes
+    /// through [`super::Interpretation`]. What a Thesis *selects* is public through `frozen`
+    /// and `open`, which is what inspection needs and what projection cannot misuse.
+    pub(super) fn selection(&self) -> Vec<CommitmentId> {
         self.frozen.union(&self.open).copied().collect()
     }
 

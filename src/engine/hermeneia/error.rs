@@ -85,4 +85,18 @@ pub enum ProjectionError {
         absorbed: Option<EventId>,
         carried: Option<EventId>,
     },
+
+    #[error("event {event} lies beyond {recognized:?}, the head this accumulation recognizes")]
+    EventBeyondRecognizedHead {
+        event: EventId,
+        recognized: Option<EventId>,
+    },
+
+    #[error(
+        "the chain absorbed so far ends at {reached:?} and {recognized:?} is recognized; nothing is interpretable until it is reached"
+    )]
+    RecognizedChainIncomplete {
+        reached: Option<EventId>,
+        recognized: Option<EventId>,
+    },
 }

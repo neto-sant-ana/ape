@@ -1,8 +1,12 @@
-//! Why a Thesis could not be derived.
+//! Why a Thesis could not be derived, or interpreted.
 //!
 //! Every variant reports a request that could not produce an interpretable world, never an
 //! operational judgment. A continuation that contradicts what history imposed is not
 //! refused here.
+//!
+//! `Projection` carries what Hermeneia refused while folding a recognized chain. Deriving and
+//! interpreting share one error because one operation does both: an interpretation resolves
+//! the chain its cut recognizes and then folds it, and either half may refuse.
 //!
 //! The refusals separate by who got it wrong:
 //! `FrozenPastOmitted` and `DanglingDependency`
@@ -23,6 +27,8 @@
 //!
 //! `OmittedAndIntroduced`
 //! Is the one refusal of a request that is merely incoherent.
+
+use crate::engine::hermeneia::ProjectionError;
 
 use crate::kernel::entities::{CommitmentId, EventId, IdentityError};
 
@@ -82,4 +88,7 @@ pub enum ThesisError {
 
     #[error(transparent)]
     Identity(#[from] IdentityError),
+
+    #[error(transparent)]
+    Projection(#[from] ProjectionError),
 }

@@ -28,17 +28,40 @@ pub(super) fn settled_at<K: CanonicalKnowledge>(
 }
 
 /// Every commitment settled after `origin` and through `target`.
-///
-/// The walk runs backwards from `target`, so it reads only the segment it reports on.
-/// Reaching the start of the chain without meeting `origin` is what proves `target` never
-/// descended from it. A `target` equal to `origin` settles nothing, which is the advancement
-/// that recognizes later knowledge without observing an Event.
 pub(super) fn settled_between<K: CanonicalKnowledge>(
     knowledge: &K,
     origin: Option<EventId>,
     target: EventId,
 ) -> Result<BTreeSet<CommitmentId>, ThesisError> {
-    let mut settled = BTreeSet::new();
+    Ok(events_between(knowledge, origin, target)?
+        .iter()
+        .map(|event| *event.commitment_id())
+        .collect())
+}
+
+/// The chain a head recognizes, in the order it is to be folded.
+pub(super) fn recognized_chain<K: CanonicalKnowledge>(
+    knowledge: &K,
+    head: Option<EventId>,
+) -> Result<Vec<Event>, ThesisError> {
+    match head {
+        None => Ok(Vec::new()),
+        Some(head) => events_between(knowledge, None, head),
+    }
+}
+
+/// The one traversal, harvested two ways: settlement asks which commitments a segment closed,
+/// interpretation asks for the events themselves.
+///
+/// Reaching the start of the chain without meeting `origin` is what proves `target` never
+/// descended from it. A `target` equal to `origin` spans nothing, which is the advancement that
+/// recognizes later knowledge without observing an Event.
+fn events_between<K: CanonicalKnowledge>(
+    knowledge: &K,
+    origin: Option<EventId>,
+    target: EventId,
+) -> Result<Vec<Event>, ThesisError> {
+    let mut span = Vec::new();
     let mut cursor = Some(target);
 
     while cursor != origin {
@@ -51,11 +74,13 @@ pub(super) fn settled_between<K: CanonicalKnowledge>(
 
         let event = read_event(knowledge, id)?;
 
-        settled.insert(*event.commitment_id());
         cursor = *event.previous_event();
+        span.push(event);
     }
 
-    Ok(settled)
+    span.reverse();
+
+    Ok(span)
 }
 
 /// `seeds` closed upwards over dependencies.
