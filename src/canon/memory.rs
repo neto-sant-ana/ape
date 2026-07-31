@@ -11,7 +11,7 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use super::{AppendOutcome, CanonError, Canonical, CanonicalHistory};
+use super::{AppendOutcome, CanonError, Canonical, CanonicalHistory, CanonicalKnowledge};
 
 use crate::kernel::axiom::Knowledge;
 
@@ -138,6 +138,14 @@ impl Knowledge for InMemoryHistory {
             .collect()
     }
 }
+impl CanonicalKnowledge for InMemoryHistory {
+    fn canonical_commitment(&self, id: CommitmentId) -> Option<Canonical<Commitment>> {
+        self.shelf.lock().unwrap().commitments.get(&id).cloned()
+    }
+    fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>> {
+        self.shelf.lock().unwrap().events.get(&id).cloned()
+    }
+}
 impl CanonicalHistory for InMemoryHistory {
     fn head(&self) -> Option<EventId> {
         self.shelf.lock().unwrap().head
@@ -154,13 +162,6 @@ impl CanonicalHistory for InMemoryHistory {
             .get(&commitment)
             .and_then(|id| shelf.events.get(id))
             .map(|e| e.assertion().clone())
-    }
-
-    fn canonical_commitment(&self, id: CommitmentId) -> Option<Canonical<Commitment>> {
-        self.shelf.lock().unwrap().commitments.get(&id).cloned()
-    }
-    fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>> {
-        self.shelf.lock().unwrap().events.get(&id).cloned()
     }
 
     fn put_role(&mut self, role: Canonical<Role>) -> Result<AppendOutcome, CanonError> {
