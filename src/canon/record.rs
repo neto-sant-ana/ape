@@ -20,6 +20,11 @@ use crate::kernel::value_objects::Date;
 /// (`committed_at`), so recording cannot predate that instant. Definitional
 /// entities and eligibility (a forward declaration whose `effective_from` may be
 /// future) impose no lower bound.
+///
+/// This bound is the assertion's own, and having none is not a licence to record at
+/// any instant: admission keeps recording monotonic, so nothing enters before
+/// knowledge already admitted — including the entities it references, which were
+/// admitted earlier and therefore recorded no later than it.
 pub trait RecordableAfter {
     fn recordable_after(&self) -> Option<&Date>;
 }
@@ -34,7 +39,7 @@ impl RecordableAfter for Event {
         Some(self.occurred_at())
     }
 }
-recordable_anytime!(
+recordable_unanchored!(
     Role,
     Agent,
     Resource,

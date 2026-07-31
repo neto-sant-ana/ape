@@ -1,12 +1,14 @@
 //! Declarative macros for the Canon.
 //!
-//! - `recordable_anytime` — implements `RecordableAfter` returning `None` for
-//!   assertions with no lower bound on `recorded_at` (definitional entities, and
-//!   eligibility as a forward declaration).
+//! - `recordable_unanchored` — implements `RecordableAfter` returning `None` for
+//!   assertions with no factual instant to anchor their `recorded_at` (definitional
+//!   entities, and eligibility as a forward declaration). Not recordable at *any*
+//!   instant: monotonic admission still refuses anything recorded before knowledge
+//!   already admitted.
 //!
 //! - `canonical_admission` — generates the uniform `admit_*` methods of the Canon.
 
-macro_rules! recordable_anytime {
+macro_rules! recordable_unanchored {
     ($($type:ty),+ $(,)?) => {
         $(
             impl $crate::canon::record::RecordableAfter for $type {
