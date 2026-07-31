@@ -1,8 +1,8 @@
-//! That a derived Thesis is interpretable at its own head, whatever derived it.
+//! That a derived Thesis is interpretable at the head its cut recognizes, whatever derived it.
 
 use std::collections::BTreeSet;
 
-use super::{Fixture, ForkInput, ids, introducing};
+use super::{Fixture, ForkInput, d1, d2, ids, introducing};
 
 use crate::engine::hermeneia::{Accumulation, Outcome};
 use crate::engine::thesis::Thesis;
@@ -10,29 +10,30 @@ use crate::engine::thesis::Thesis;
 use crate::kernel::value_objects::Date;
 
 fn project(knowledge: &Fixture, thesis: &Thesis) -> Accumulation {
+    let head = thesis.cut().event_head();
     let mut accumulation = Accumulation::default();
 
     accumulation
         .absorb(
             knowledge,
             &thesis.selection(),
-            &knowledge.chain_through(*thesis.head()),
+            &knowledge.chain_through(head),
         )
         .unwrap();
 
-    assert_eq!(accumulation.event_head(), *thesis.head());
+    assert_eq!(accumulation.event_head(), head);
 
     accumulation
 }
 
 #[test]
-fn every_derivation_absorbs_the_chain_its_head_recognizes() {
+fn every_derivation_absorbs_the_chain_its_cut_recognizes() {
     let mut knowledge = Fixture::new();
     let settled = knowledge.commit((3, 31), BTreeSet::new());
     let open = knowledge.commit((6, 30), BTreeSet::new());
     let introduced = knowledge.commit((9, 30), BTreeSet::new());
 
-    let genesis = knowledge.genesis(None, &[settled, open]);
+    let genesis = knowledge.genesis(knowledge.cut(d1(), None), &[settled, open]);
     project(&knowledge, &genesis);
 
     let fork = genesis
@@ -41,7 +42,10 @@ fn every_derivation_absorbs_the_chain_its_head_recognizes() {
     project(&knowledge, &fork);
 
     let head = knowledge.settle(settled);
-    let advanced = fork.advance(&knowledge, head).unwrap().into_thesis();
+    let advanced = fork
+        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
+        .unwrap()
+        .into_thesis();
     let accumulation = project(&knowledge, &advanced);
 
     let conditions = accumulation
@@ -60,7 +64,7 @@ fn a_thesis_absorbs_a_settlement_it_never_intended() {
     let replaced = knowledge.commit((3, 31), BTreeSet::new());
     let replacement = knowledge.commit((4, 30), BTreeSet::new());
 
-    let genesis = knowledge.genesis(None, &[replaced]);
+    let genesis = knowledge.genesis(knowledge.cut(d1(), None), &[replaced]);
     let revised = genesis
         .fork(
             &knowledge,
@@ -72,7 +76,10 @@ fn a_thesis_absorbs_a_settlement_it_never_intended() {
         .unwrap();
 
     let head = knowledge.settle(replaced);
-    let advanced = revised.advance(&knowledge, head).unwrap().into_thesis();
+    let advanced = revised
+        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
+        .unwrap()
+        .into_thesis();
 
     let accumulation = project(&knowledge, &advanced);
     let conditions = accumulation
@@ -94,9 +101,12 @@ fn the_ancestry_answers_what_was_intended_earlier() {
     let mut knowledge = Fixture::new();
     let commitment = knowledge.commit((3, 31), BTreeSet::new());
 
-    let before = knowledge.genesis(None, &[commitment]);
+    let before = knowledge.genesis(knowledge.cut(d1(), None), &[commitment]);
     let head = knowledge.settle(commitment);
-    let after = before.advance(&knowledge, head).unwrap().into_thesis();
+    let after = before
+        .advance(&knowledge, knowledge.cut(d2(), Some(head)))
+        .unwrap()
+        .into_thesis();
 
     let at = Date::from_ymd(2026, 3, 1).unwrap();
 

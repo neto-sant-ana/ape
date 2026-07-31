@@ -1,19 +1,38 @@
-//! The fixture answers only the reads a derivation performs: a commitment and its
-//! dependencies, and an Event of the chain. Roles, agents, eligibility and resource
-//! instances stay deliberately absent, so a derivation that grew a dependency on anything
-//! beyond the graph and the chain would fail here.
+//! The fixture answers only the reads a derivation performs: a commitment record and an
+//! Event record. Roles, agents, eligibility and resource instances stay deliberately absent,
+//! so a derivation that grew a dependency on anything beyond the graph and the chain would
+//! fail here.
+//!
+//! It implements both ports on purpose. A Thesis reads [`CanonicalKnowledge`], because it
+//! needs the recording instant a bare entity does not carry; Hermeneia reads [`Knowledge`],
+//! and the projection suite drives it over the same fixture. A real adapter answers both the
+//! same way.
 //!
 //! `settle` appends to the chain the same way the Canon does, so a walk backwards from
 //! any head reaches exactly the history that head recognizes.
+//!
+//! Recording instants are explicit throughout, because they are what the cut is made of. The
+//! calendar the suites share:
+//!
+//! ```text
+//! 2026-01-01  committed_at of every commitment
+//! 2026-01-05  D1, when commitments are recorded by default
+//! 2026-02-01  occurred_at of every settling event
+//! 2026-02-05  D2, when events are recorded by default
+//! 2026-03-05  D3, a later cut with nothing recorded at it
+//! ```
 
 mod advancement;
+mod cut;
 mod fork;
 mod genesis;
 mod projection;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::{ForkInput, GenesisInput, Thesis};
+use super::{ForkInput, GenesisInput, KnowledgeCut, Thesis};
+
+use crate::canon::{Canonical, CanonicalKnowledge};
 
 use crate::kernel::axiom::Knowledge;
 
@@ -35,26 +54,51 @@ fn ident(value: &str) -> Identifier {
     Identifier::new(value).unwrap()
 }
 
+/// When commitments are recorded unless a test says otherwise.
+fn d1() -> Date {
+    date(2026, 1, 5)
+}
+/// When settling events are recorded unless a test says otherwise.
+fn d2() -> Date {
+    date(2026, 2, 5)
+}
+/// A cut later than both, with nothing recorded at it.
+fn d3() -> Date {
+    date(2026, 3, 5)
+}
+
 struct Fixture {
-    commitments: BTreeMap<CommitmentId, Commitment>,
+    commitments: BTreeMap<CommitmentId, Canonical<Commitment>>,
     statements: BTreeMap<StatementId, Statement>,
     actions: BTreeMap<ActionId, Action>,
-    events: BTreeMap<EventId, Event>,
+    events: BTreeMap<EventId, Canonical<Event>>,
     statement: StatementId,
     head: Option<EventId>,
 }
+impl CanonicalKnowledge for Fixture {
+    fn canonical_commitment(&self, id: CommitmentId) -> Option<Canonical<Commitment>> {
+        self.commitments.get(&id).cloned()
+    }
+    fn canonical_event(&self, id: EventId) -> Option<Canonical<Event>> {
+        self.events.get(&id).cloned()
+    }
+}
 impl Knowledge for Fixture {
     fn commitment(&self, id: CommitmentId) -> Option<Commitment> {
-        self.commitments.get(&id).cloned()
+        self.commitments
+            .get(&id)
+            .map(|record| record.assertion().clone())
+    }
+    fn event(&self, id: EventId) -> Option<Event> {
+        self.events
+            .get(&id)
+            .map(|record| record.assertion().clone())
     }
     fn statement(&self, id: StatementId) -> Option<Statement> {
         self.statements.get(&id).cloned()
     }
     fn action(&self, id: ActionId) -> Option<Action> {
         self.actions.get(&id).cloned()
-    }
-    fn event(&self, id: EventId) -> Option<Event> {
-        self.events.get(&id).cloned()
     }
 
     fn role(&self, _: RoleId) -> Option<Role> {
@@ -108,8 +152,18 @@ impl Fixture {
         }
     }
 
-    /// A commitment due on `due`, waiting on `dependencies`.
+    /// A commitment due on `due`, waiting on `dependencies`, recorded at [`d1`].
     fn commit(&mut self, due: (u8, u8), dependencies: BTreeSet<CommitmentId>) -> CommitmentId {
+        self.commit_recorded_at(d1(), due, dependencies)
+    }
+
+    /// The same, admitted into canonical history at a stated instant.
+    fn commit_recorded_at(
+        &mut self,
+        recorded_at: Date,
+        due: (u8, u8),
+        dependencies: BTreeSet<CommitmentId>,
+    ) -> CommitmentId {
         let (month, day) = due;
 
         let commitment = Commitment::create(CommitmentInput {
@@ -128,13 +182,19 @@ impl Fixture {
         .unwrap();
 
         let id = commitment.id();
-        self.commitments.insert(id, commitment);
+        self.commitments
+            .insert(id, Canonical::new(commitment, recorded_at).unwrap());
 
         id
     }
 
     /// Settle `commitment`, extending the chain and advancing the head.
     fn settle(&mut self, commitment: CommitmentId) -> EventId {
+        self.settle_recorded_at(d2(), commitment)
+    }
+
+    /// The same, admitted into canonical history at a stated instant.
+    fn settle_recorded_at(&mut self, recorded_at: Date, commitment: CommitmentId) -> EventId {
         let event = Event::create(EventInput {
             commitment_id: commitment,
             observation: Observation::new("Delivered").unwrap(),
@@ -144,24 +204,25 @@ impl Fixture {
         .unwrap();
 
         let id = event.id();
-        self.events.insert(id, event);
+        self.events
+            .insert(id, Canonical::new(event, recorded_at).unwrap());
         self.head = Some(id);
 
         id
     }
 
-    /// An Event opening a chain of its own, admitted nowhere: a head no Thesis descends from.
+    /// An Event opening a chain of its own: a head no Thesis descends from.
     fn detached(&mut self, commitment: CommitmentId) -> EventId {
         let event = Event::create(EventInput {
             commitment_id: commitment,
             observation: Observation::new("Delivered").unwrap(),
             previous_event: None,
-            occurred_at: date(2026, 3, 1),
+            occurred_at: date(2026, 2, 1),
         })
         .unwrap();
 
         let id = event.id();
-        self.events.insert(id, event);
+        self.events.insert(id, Canonical::new(event, d2()).unwrap());
 
         id
     }
@@ -172,7 +233,7 @@ impl Fixture {
         let mut cursor = head;
 
         while let Some(id) = cursor {
-            let event = self.events.get(&id).unwrap().clone();
+            let event = self.events.get(&id).unwrap().assertion().clone();
             cursor = *event.previous_event();
             chain.push(event);
         }
@@ -181,11 +242,15 @@ impl Fixture {
         chain
     }
 
-    fn genesis(&self, head: Option<EventId>, selection: &[CommitmentId]) -> Thesis {
+    fn cut(&self, known_at: Date, event_head: Option<EventId>) -> KnowledgeCut {
+        KnowledgeCut::declare(self, known_at, event_head).unwrap()
+    }
+
+    fn genesis(&self, cut: KnowledgeCut, selection: &[CommitmentId]) -> Thesis {
         Thesis::genesis(
             self,
             GenesisInput {
-                head,
+                cut,
                 selection: selection.iter().copied().collect(),
             },
         )

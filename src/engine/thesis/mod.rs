@@ -3,6 +3,9 @@ pub use error::ThesisError;
 
 mod frozen;
 
+mod cut;
+pub use cut::KnowledgeCut;
+
 mod advancement;
 pub use advancement::Advancement;
 

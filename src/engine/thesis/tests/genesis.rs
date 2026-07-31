@@ -2,11 +2,11 @@
 
 use std::collections::BTreeSet;
 
-use super::{Fixture, GenesisInput, Thesis, ids};
+use super::{Fixture, GenesisInput, Thesis, d1, d2, d3, ids};
 
 use crate::engine::thesis::ThesisError;
 
-use crate::kernel::entities::EventId;
+use crate::kernel::entities::CommitmentId;
 
 #[test]
 fn an_empty_history_freezes_nothing() {
@@ -14,11 +14,11 @@ fn an_empty_history_freezes_nothing() {
     let a = knowledge.commit((3, 31), BTreeSet::new());
     let b = knowledge.commit((6, 30), BTreeSet::new());
 
-    let thesis = knowledge.genesis(None, &[a, b]);
+    let thesis = knowledge.genesis(knowledge.cut(d1(), None), &[a, b]);
 
     assert!(thesis.frozen().is_empty());
     assert_eq!(thesis.open(), &ids(&[a, b]));
-    assert_eq!(thesis.head(), &None);
+    assert_eq!(thesis.cut().known_at(), &d1());
     assert_eq!(thesis.parent(), &None);
 }
 
@@ -29,7 +29,7 @@ fn a_genesis_at_an_advanced_head_absorbs_what_history_settled() {
     let intended = knowledge.commit((6, 30), BTreeSet::new());
     let head = knowledge.settle(settled);
 
-    let thesis = knowledge.genesis(Some(head), &[intended]);
+    let thesis = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[intended]);
 
     assert_eq!(thesis.frozen(), &ids(&[settled]));
     assert_eq!(thesis.open(), &ids(&[intended]));
@@ -42,7 +42,7 @@ fn the_ancestors_of_a_settled_commitment_are_frozen_with_it() {
     let settled = knowledge.commit((6, 30), ids(&[root]));
     let head = knowledge.settle(settled);
 
-    let thesis = knowledge.genesis(Some(head), &[]);
+    let thesis = knowledge.genesis(knowledge.cut(d2(), Some(head)), &[]);
 
     assert_eq!(thesis.frozen(), &ids(&[root, settled]));
     assert!(thesis.open().is_empty());
@@ -57,7 +57,7 @@ fn a_selection_omitting_a_dependency_is_refused() {
     let refusal = Thesis::genesis(
         &knowledge,
         GenesisInput {
-            head: None,
+            cut: knowledge.cut(d1(), None),
             selection: ids(&[waiting]),
         },
     );
@@ -70,33 +70,37 @@ fn a_selection_omitting_a_dependency_is_refused() {
 }
 
 #[test]
-fn an_unadmitted_commitment_is_refused() {
-    let knowledge = Fixture::new();
-    let absent = super::CommitmentId::from([9; 32]);
+fn a_commitment_recorded_after_the_cut_is_refused() {
+    let mut knowledge = Fixture::new();
+    let later = knowledge.commit_recorded_at(d3(), (6, 30), BTreeSet::new());
 
     let refusal = Thesis::genesis(
         &knowledge,
         GenesisInput {
-            head: None,
+            cut: knowledge.cut(d1(), None),
+            selection: ids(&[later]),
+        },
+    );
+
+    assert!(matches!(
+        refusal,
+        Err(ThesisError::CommitmentNotKnownAtCut { commitment, recorded_at, known_at })
+            if commitment == later && recorded_at == d3() && known_at == d1()
+    ));
+}
+
+#[test]
+fn an_unadmitted_commitment_is_refused() {
+    let knowledge = Fixture::new();
+    let absent = CommitmentId::from([9; 32]);
+
+    let refusal = Thesis::genesis(
+        &knowledge,
+        GenesisInput {
+            cut: knowledge.cut(d1(), None),
             selection: ids(&[absent]),
         },
     );
 
     assert!(matches!(refusal, Err(ThesisError::UnknownCommitment(id)) if id == absent));
-}
-
-#[test]
-fn a_head_absent_from_history_is_refused() {
-    let knowledge = Fixture::new();
-    let absent = EventId::from([9; 32]);
-
-    let refusal = Thesis::genesis(
-        &knowledge,
-        GenesisInput {
-            head: Some(absent),
-            selection: BTreeSet::new(),
-        },
-    );
-
-    assert!(matches!(refusal, Err(ThesisError::UnknownEvent(id)) if id == absent));
 }
