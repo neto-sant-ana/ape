@@ -12,6 +12,7 @@
 
 mod base;
 mod candidate;
+mod conflict;
 mod difference;
 mod transfer;
 
@@ -37,9 +38,14 @@ fn d1() -> Date {
     date(2026, 1, 5)
 }
 
-/// When settling events are recorded, and the instant every cut here is taken at.
+/// When settling events are recorded, and the instant an ordinary cut is taken at.
 fn d2() -> Date {
     date(2026, 2, 5)
+}
+
+/// Later than both, for a Thesis that advanced past what another may know.
+fn d3() -> Date {
+    date(2026, 3, 5)
 }
 
 #[derive(Default)]
@@ -76,6 +82,16 @@ impl CanonicalKnowledge for Fixture {
 impl Fixture {
     /// A commitment due on `due`, waiting on `dependencies`, recorded at [`d1`].
     fn commit(&mut self, due: (u8, u8), dependencies: BTreeSet<CommitmentId>) -> CommitmentId {
+        self.commit_recorded_at(d1(), due, dependencies)
+    }
+
+    /// The same, admitted into canonical history at a stated instant.
+    fn commit_recorded_at(
+        &mut self,
+        recorded_at: Date,
+        due: (u8, u8),
+        dependencies: BTreeSet<CommitmentId>,
+    ) -> CommitmentId {
         let (month, day) = due;
 
         let commitment = Commitment::create(CommitmentInput {
@@ -95,7 +111,7 @@ impl Fixture {
 
         let id = commitment.id();
         self.commitments
-            .insert(id, Canonical::new(commitment, d1()).unwrap());
+            .insert(id, Canonical::new(commitment, recorded_at).unwrap());
 
         id
     }
@@ -119,7 +135,12 @@ impl Fixture {
 
     /// The cut [`d2`] addresses, resolved against whatever has been recorded so far.
     fn cut(&self) -> KnowledgeCut {
-        KnowledgeCut::at(self, d2())
+        self.cut_at(d2())
+    }
+
+    /// The cut a stated instant addresses, for a Thesis that knows more than another.
+    fn cut_at(&self, known_at: Date) -> KnowledgeCut {
+        KnowledgeCut::at(self, known_at)
     }
 
     fn genesis(&self, selection: &[CommitmentId]) -> Thesis {

@@ -9,5 +9,8 @@ pub use transfer::ResolvedTransfer;
 mod candidate;
 pub use candidate::CandidateSelection;
 
+mod conflict;
+pub use conflict::ApplicabilityConflict;
+
 #[cfg(test)]
 mod tests;
