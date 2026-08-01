@@ -11,6 +11,7 @@
 //! ```
 
 mod base;
+mod candidate;
 mod difference;
 mod transfer;
 
