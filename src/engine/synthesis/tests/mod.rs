@@ -10,6 +10,7 @@
 //! 2026-02-05  D2, when settling events are recorded
 //! ```
 
+mod base;
 mod difference;
 
 use std::collections::{BTreeMap, BTreeSet};
