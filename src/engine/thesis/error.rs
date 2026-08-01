@@ -30,6 +30,11 @@
 //! Report a reference canonical history does not hold, and each is a single refusal
 //! whether the assertion was never admitted or the reference is simply wrong.
 //!
+//! `ParentNotArchived`
+//! Answers a lineage that would begin in a hole. Ancestry is walked by resolving
+//! `parent` repeatedly, so a stored child whose parent is absent ends that walk
+//! indistinguishably from a genesis.
+//!
 //! `OmittedAndIntroduced` and `SelectionUnchanged`
 //! Answer a request that states nothing: one both drops and selects the same commitment, the
 //! other leaves the world exactly as its parent had it. A Thesis is produced by a change in
@@ -37,6 +42,8 @@
 //! decision the model cannot read back.
 
 use crate::engine::hermeneia::HermeneiaError;
+
+use super::ThesisId;
 
 use crate::kernel::entities::{CommitmentId, EventId, IdentityError};
 
@@ -49,6 +56,9 @@ pub enum ThesisError {
 
     #[error("event {0} is named as a head but absent from canonical history")]
     UnknownEvent(EventId),
+
+    #[error("thesis {thesis} names parent {parent}, which the archive does not hold")]
+    ParentNotArchived { thesis: ThesisId, parent: ThesisId },
 
     #[error("commitment {0} belongs to the frozen causal past and may not be omitted")]
     FrozenPastOmitted(CommitmentId),
