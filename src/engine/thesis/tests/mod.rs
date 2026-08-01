@@ -23,6 +23,7 @@
 //! ```
 
 mod advancement;
+mod archive;
 mod cut;
 mod fork;
 mod genesis;

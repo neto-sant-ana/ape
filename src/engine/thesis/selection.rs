@@ -27,6 +27,17 @@
 //! both costs at once means hashing hierarchically, where an unchanged region contributes its
 //! own hash and only the path to a change is recomputed. Neither belongs here before a Thesis
 //! is stored somewhere.
+//!
+//! Whenever that arrives, the hierarchy has to be addressed by key rather than by position. A
+//! root over ordered ids is deterministic but not prunable: a leaf's place depends on every id
+//! below it, so a single insertion rewrites nearly all of them. Keyed by the bits of a
+//! `CommitmentId` — uniform already, being a hash — an insertion touches one path, and the two
+//! halves keep roots of their own, so an unchanged past proves itself apart from an unchanged
+//! intention.
+//!
+//! Such a root would define the identity and the serialized storage form would not. That
+//! divergence is worth stating before it exists: deriving identity from the encoding is what
+//! makes the encoding impossible to change afterwards.
 
 use std::collections::BTreeSet;
 
