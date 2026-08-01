@@ -36,7 +36,7 @@ It allows applications to:
 - evaluate alternative operational continuations;
 - preserve the historical context in which decisions were made;
 - reconstruct what was intended under earlier knowledge;
-- support future comparison and combination of operational continuations.
+- support the comparison and combination of operational continuations.
 
 A Thesis contains no hypothetical Events.
 
@@ -1294,22 +1294,24 @@ The selection and factual chain form one inseparable world.
 
 ---
 
-## Future Combination Boundary
+## Combination Boundary
 
 Operations transferring intentional changes between Theses at different cuts must preserve the same boundary.
 
 A source Thesis is never directly reinterpreted under the target cut.
 
-Instead, the operation constructs a candidate Thesis historically closed at the target cut.
+Instead, Synthesis derives a candidate selection at the target cut.
 
 ```text
 source: Tsource@K
 target: Ttarget@K'
 
-candidate: Tc@K'
+candidate selection at K'
 ```
 
-Hermeneia evaluates the candidate.
+That candidate is an analysis rather than a world. It has no identity, no parent and no ancestry, and nothing interprets it.
+
+Where applicability is established, the application may construct a Thesis derived from the target, and Hermeneia interprets that Thesis and nothing else.
 
 ```text
 interpret(Tc@K')
@@ -1317,7 +1319,7 @@ interpret(Tc@K')
 
 The source remains anchored to its own cut.
 
-Detailed comparison and combination semantics belong to another layer.
+Comparison and transfer semantics belong to Synthesis.
 
 ---
 
@@ -1377,7 +1379,7 @@ A Thesis is responsible for:
 - preserving immutable ancestry;
 - exposing Commitments imposed by historical advancement;
 - remaining interpretable only under its own cut;
-- providing a stable input for Hermeneia and future combination operations.
+- providing a stable input for Hermeneia and Synthesis.
 
 ---
 
@@ -1399,7 +1401,7 @@ A Thesis is **not** responsible for:
 - repairing contradictions imposed by facts;
 - defining mutable branch references;
 - deciding which Thesis is main;
-- defining combination policy;
+- defining combination policy, which belongs to Synthesis;
 - resolving combination conflicts;
 - requiring a particular storage representation;
 - requiring structural sharing.
