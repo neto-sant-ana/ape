@@ -14,6 +14,7 @@ mod base;
 mod candidate;
 mod conflict;
 mod difference;
+mod orchestrator;
 mod transfer;
 
 use std::collections::{BTreeMap, BTreeSet};

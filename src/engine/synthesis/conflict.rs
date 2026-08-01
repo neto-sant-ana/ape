@@ -29,7 +29,7 @@ use super::{CandidateSelection, ResolvedTransfer};
 
 use crate::canon::CanonicalKnowledge;
 
-use crate::engine::thesis::{Thesis, ThesisError, ThesisId};
+use crate::engine::thesis::{Thesis, ThesisError};
 
 use crate::kernel::entities::CommitmentId;
 
@@ -37,13 +37,6 @@ use crate::kernel::value_objects::Date;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApplicabilityConflict {
-    /// The declared Base is not a common ancestor of the Source and the Target.
-    IncoherentBase {
-        base: ThesisId,
-        source: ThesisId,
-        target: ThesisId,
-    },
-
     /// The transfer asks to remove a commitment the Target's history made unavoidable.
     HistoricalFreezing { commitment: CommitmentId },
 
