@@ -30,10 +30,11 @@
 //! Report a reference canonical history does not hold, and each is a single refusal
 //! whether the assertion was never admitted or the reference is simply wrong.
 //!
-//! `ParentNotArchived`
-//! Answers a lineage that would begin in a hole. Ancestry is walked by resolving
-//! `parent` repeatedly, so a stored child whose parent is absent ends that walk
-//! indistinguishably from a genesis.
+//! `ParentNotArchived` and `UnknownThesis`
+//! Answer a lineage that cannot be walked. Ancestry is resolved `parent` by `parent`, so a
+//! stored child whose parent is absent would end that walk indistinguishably from a
+//! genesis; the first refuses to create that hole, the second refuses to walk one — a
+//! Thesis that was never stored, or an adapter that let a child in without its parent.
 //!
 //! `OmittedAndIntroduced` and `SelectionUnchanged`
 //! Answer a request that states nothing: one both drops and selects the same commitment, the
@@ -59,6 +60,9 @@ pub enum ThesisError {
 
     #[error("thesis {thesis} names parent {parent}, which the archive does not hold")]
     ParentNotArchived { thesis: ThesisId, parent: ThesisId },
+
+    #[error("thesis {0} is absent from the archive")]
+    UnknownThesis(ThesisId),
 
     #[error("commitment {0} belongs to the frozen causal past and may not be omitted")]
     FrozenPastOmitted(CommitmentId),

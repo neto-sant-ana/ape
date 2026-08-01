@@ -21,6 +21,9 @@ pub use scenario::{ForkInput, GenesisInput, Thesis, ThesisId};
 mod archive;
 pub use archive::{ArchiveOutcome, ThesisArchive, ThesisLookup};
 
+mod lineage;
+pub use lineage::descends_from;
+
 #[cfg(any(test, feature = "reference"))]
 mod memory;
 #[cfg(any(test, feature = "reference"))]

@@ -27,6 +27,7 @@ mod archive;
 mod cut;
 mod fork;
 mod genesis;
+mod lineage;
 mod projection;
 
 use std::collections::{BTreeMap, BTreeSet};
