@@ -20,12 +20,23 @@
 //! that existed was broken — and the classification is decided by the candidate rather than
 //! by which check ran first.
 //!
+//! Invariants are pressed against **what the transfer asked for**, not against the candidate
+//! it would produce. The two differ in one place and it matters: a candidate never drops a
+//! frozen commitment, so measuring closure over it would let one impossibility absorb
+//! another — a removal refused by history would also hide the dependent it strands, and the
+//! planner would meet the second conflict only after resolving the first.
+//!
+//! ```text
+//! attempted = Commitments(Target) − remove ∪ introduce      ← invariants are pressed here
+//! candidate = Commitments(Target) − open removals ∪ introduce  ← what would be built
+//! ```
+//!
 //! Detection is ordered by category and then by commitment id, because a report is compared
 //! and cached, and an order that followed iteration would make equal analyses look different.
 
 use std::collections::BTreeSet;
 
-use super::{CandidateSelection, ResolvedTransfer};
+use super::ResolvedTransfer;
 
 use crate::canon::CanonicalKnowledge;
 
@@ -63,14 +74,13 @@ pub enum ApplicabilityConflict {
 pub(super) fn conflicts<K: CanonicalKnowledge>(
     knowledge: &K,
     transfer: &ResolvedTransfer,
-    candidate: &CandidateSelection,
     target: &Thesis,
 ) -> Result<Vec<ApplicabilityConflict>, ThesisError> {
     let mut found = Vec::new();
 
     found.extend(historical_freezing(transfer, target));
     found.extend(historical_unavailability(knowledge, transfer, target)?);
-    found.extend(broken_closure(knowledge, candidate, target)?);
+    found.extend(broken_closure(knowledge, transfer, target)?);
 
     Ok(found)
 }
@@ -111,14 +121,25 @@ fn historical_unavailability<K: CanonicalKnowledge>(
     Ok(found)
 }
 
-/// A Thesis denotes a complete graph, so the candidate may not select a commitment while
-/// leaving out an identity its structure requires.
+/// A Thesis denotes a complete graph, so the world a transfer asks for may not select a
+/// commitment while leaving out an identity its structure requires.
+///
+/// Every removal is taken at its word here, including one history will refuse. The refusal is
+/// reported on its own; what this asks is a separate question about the same request.
 fn broken_closure<K: CanonicalKnowledge>(
     knowledge: &K,
-    candidate: &CandidateSelection,
+    transfer: &ResolvedTransfer,
     target: &Thesis,
 ) -> Result<Vec<ApplicabilityConflict>, ThesisError> {
-    let selected: BTreeSet<CommitmentId> = candidate.resolved().collect();
+    let removed: BTreeSet<CommitmentId> = transfer.remove().collect();
+
+    let selected: BTreeSet<CommitmentId> = target
+        .selection()
+        .resolved()
+        .filter(|id| !removed.contains(id))
+        .chain(transfer.introduce())
+        .collect();
+
     let mut found = Vec::new();
 
     for commitment in &selected {

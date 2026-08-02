@@ -58,10 +58,11 @@ pub fn synthesize<A: ThesisLookup, K: CanonicalKnowledge>(
     let status = if transfer.is_empty() {
         ApplicabilityStatus::AlreadyApplied
     } else {
-        let candidate = CandidateSelection::deriving(&transfer, &target_thesis);
-        let found = conflicts(knowledge, &transfer, &candidate, &target_thesis)?;
+        let found = conflicts(knowledge, &transfer, &target_thesis)?;
 
         if found.is_empty() {
+            let candidate = CandidateSelection::deriving(&transfer, &target_thesis);
+
             ApplicabilityStatus::Applicable {
                 transfer,
                 candidate,

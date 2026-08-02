@@ -5,9 +5,7 @@ use std::collections::BTreeSet;
 use super::{Fixture, d3, ids, introducing, omitting};
 
 use crate::engine::synthesis::conflict::conflicts;
-use crate::engine::synthesis::{
-    ApplicabilityConflict, CandidateSelection, IntentionalDifference, ResolvedTransfer,
-};
+use crate::engine::synthesis::{ApplicabilityConflict, IntentionalDifference, ResolvedTransfer};
 use crate::engine::thesis::Thesis;
 
 fn found(
@@ -18,9 +16,8 @@ fn found(
 ) -> Vec<ApplicabilityConflict> {
     let difference = IntentionalDifference::between(base, source);
     let transfer = ResolvedTransfer::resolving(&difference, target);
-    let candidate = CandidateSelection::deriving(&transfer, target);
 
-    conflicts(knowledge, &transfer, &candidate, target).unwrap()
+    conflicts(knowledge, &transfer, target).unwrap()
 }
 
 #[test]
@@ -171,23 +168,94 @@ fn the_two_dependency_conflicts_are_told_apart_by_the_target() {
     );
 }
 
-/// Detection is ordered, because reports are compared and cached.
+/// One impossibility must not absorb another. A frozen removal is refused, and the same
+/// removal would also strand a dependent — both are objective facts about the same request,
+/// and reporting only the first would have the planner discover the second on the next round.
 #[test]
-fn conflicts_come_back_in_a_stable_order() {
+fn a_frozen_removal_still_reports_what_it_would_strand() {
     let mut knowledge = Fixture::default();
     let dependency = knowledge.commit((3, 31), BTreeSet::new());
     let dependent = knowledge.commit((4, 30), ids(&[dependency]));
-    let other = knowledge.commit((5, 31), ids(&[dependency]));
 
     let base = knowledge.genesis(&[dependency]);
     let source = base.fork(&knowledge, omitting(&[dependency])).unwrap();
-    let target = base
-        .fork(&knowledge, introducing(&[dependent, other]))
+
+    let target = base.fork(&knowledge, introducing(&[dependent])).unwrap();
+    knowledge.settle(dependency);
+    let advanced = target.advance(&knowledge, knowledge.cut()).unwrap();
+    let target = advanced.thesis();
+
+    assert!(
+        target.selection().is_frozen(dependency),
+        "the fixture must actually freeze it, or this proves nothing",
+    );
+
+    let found = found(&knowledge, &base, &source, target);
+
+    assert!(
+        found.contains(&ApplicabilityConflict::HistoricalFreezing {
+            commitment: dependency
+        }),
+        "the removal is refused by history",
+    );
+    assert!(
+        found.contains(&ApplicabilityConflict::DependencyBreakage {
+            dependent,
+            missing_dependency: dependency,
+        }),
+        "and the same removal would strand its dependent",
+    );
+}
+
+/// Detection follows a declared order — category first, then commitment id — because reports
+/// are compared and cached, and an order that followed iteration would make equal analyses
+/// look different.
+///
+/// Repeating the call proves only that nothing is random. What this pins is the policy: a
+/// transfer breaking three categories at once comes back grouped, and sorted within a group.
+#[test]
+fn conflicts_come_back_in_the_declared_order() {
+    let mut knowledge = Fixture::default();
+    let frozen_one = knowledge.commit((3, 31), BTreeSet::new());
+    let frozen_two = knowledge.commit((4, 30), BTreeSet::new());
+    let dependency = knowledge.commit((5, 31), BTreeSet::new());
+    let unsupported = knowledge.commit((6, 30), ids(&[dependency]));
+
+    let base = knowledge.genesis(&[frozen_one, frozen_two, dependency]);
+    let source = base
+        .fork(&knowledge, omitting(&[frozen_one, frozen_two]))
+        .unwrap()
+        .fork(&knowledge, introducing(&[unsupported]))
         .unwrap();
 
-    let once = found(&knowledge, &base, &source, &target);
-    let again = found(&knowledge, &base, &source, &target);
+    let target = base.fork(&knowledge, omitting(&[dependency])).unwrap();
+    knowledge.settle(frozen_one);
+    knowledge.settle(frozen_two);
+    let advanced = target.advance(&knowledge, knowledge.cut()).unwrap();
+    let target = advanced.thesis();
 
-    assert_eq!(once, again);
-    assert_eq!(once.len(), 2, "both dependents are reported");
+    let found = found(&knowledge, &base, &source, target);
+
+    let (first_frozen, second_frozen) = if frozen_one < frozen_two {
+        (frozen_one, frozen_two)
+    } else {
+        (frozen_two, frozen_one)
+    };
+
+    assert_eq!(
+        found,
+        vec![
+            ApplicabilityConflict::HistoricalFreezing {
+                commitment: first_frozen,
+            },
+            ApplicabilityConflict::HistoricalFreezing {
+                commitment: second_frozen,
+            },
+            ApplicabilityConflict::MissingDependency {
+                commitment: unsupported,
+                dependency,
+            },
+        ],
+        "freezing before closure, and each category sorted by id",
+    );
 }
