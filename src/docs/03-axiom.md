@@ -46,7 +46,7 @@ The Axiom is **not** responsible for:
 * Producing projections.
 * Evaluating operational consequences.
 * Resolving conflicts between Theses.
-* Performing merges.
+* Transferring intentions between Theses.
 * Persisting data.
 
 Those responsibilities belong to higher layers.

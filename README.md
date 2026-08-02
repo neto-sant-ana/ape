@@ -8,7 +8,7 @@ Git transformed software engineering by modeling software evolution as a graph o
 
 APE applies the same philosophy to operational evolution.
 
-Instead of modeling workflows, processes or state machines, APE models operational assertions, commitments and events. From these facts, operational state can be projected, analyzed, merged and evolved over time.
+Instead of modeling workflows, processes or state machines, APE models operational assertions, commitments and events. From these facts, operational state can be projected, analyzed, combined and evolved over time.
 
 The goal is not to replace ERPs, CRMs or workflow systems.
 

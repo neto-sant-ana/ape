@@ -473,13 +473,13 @@ Which Commitments a Thesis may introduce, omit or replace, and what its selectio
 
 ---
 
-## Merge
+## Synthesis
 
-Merging a Thesis into canonical history asks whether the intentions it introduces can join the canonical graph without producing an unrealizable operational future.
+Transferring intentions from one Thesis onto another asks two questions, and only one of them is about consequences: whether the difference may be applied at all, and whether the world it would produce is realizable.
 
-Hermeneia supplies the material for that judgment: a feasibility verdict over the combined graph, labelled with the hypothesis that produced it.
+Hermeneia supplies the material for the second: a feasibility verdict over the resulting graph, labelled with the hypothesis that produced it.
 
-It does not decide which hypothesis a merge must ask, nor what a failing verdict should prevent. Those are policy, and they belong to the Merge layer.
+It does not decide which hypothesis to ask, nor what a failing verdict should prevent. Those are policy, and they belong to the application. The first question is Synthesis's, and it asks nothing of feasibility.
 
 ---
 
@@ -536,11 +536,11 @@ Hermeneia is **not** responsible for:
 - Creating hypothetical Events.
 - Persisting projected state as canonical truth.
 - Composing the Commitment graph a Thesis selects.
-- Deciding which feasibility hypothesis a merge must satisfy.
-- Resolving how conflicting Theses are merged.
+- Deciding which feasibility hypothesis a transfer must satisfy.
+- Resolving how conflicting Theses are combined.
 - Orchestrating application workflows.
 
-Those responsibilities belong to the Axiom, Canon, Thesis, Merge, Engine or application layers.
+Those responsibilities belong to the Axiom, Canon, Thesis, Synthesis, Engine or application layers.
 
 > _Hermeneia does not interpret the business. It derives the consequences of the operational model defined by the application._
 
