@@ -8,7 +8,7 @@ Git transformed software engineering by modeling software evolution as a graph o
 
 APE applies the same philosophy to operational evolution.
 
-Instead of modeling workflows, processes or state machines, APE models operational assertions, commitments and events. From these facts, operational state can be projected, analyzed, combined and evolved over time.
+Instead of modeling workflows, processes or state machines, APE models operational knowledge as immutable Assertions: Commitments, which assert an intended reality, and Events, which assert an observed one. From these facts, operational state can be projected, analyzed, combined and evolved over time.
 
 The goal is not to replace ERPs, CRMs or workflow systems.
 
@@ -18,17 +18,17 @@ The goal is to establish a canonical coordination engine that any operational so
 
 # Why?
 
-Most operational systems models **processes** as the primary abstraction.
+Most operational systems model **processes** as the primary abstraction.
 
 APE models **assertions**.
 
 A process describes _how_ work should flow.
 
-An assertion describes _what_ is expected to become true.
+An assertion describes _what_ is the case, or _what_ is expected to become true.
 
 Rather than embedding business rules inside workflows and state transitions, APE represents operational knowledge as immutable assertions connected by explicit relationships.
 
-From these assertions, dependencies and observed events, every operational state becomes a projection instead of a stored truth.
+From those assertions, their dependencies and the passage of time, every operational state becomes a projection instead of a stored truth.
 
 This distinction allows planning, execution and historical analysis to coexist without duplicating business logic.
 
@@ -58,102 +58,36 @@ The philosophy is intentionally shared.
 
 ---
 
-# Core Philosophy
+# Repository
 
-APE is intentionally small.
+The workspace holds two crates.
 
-The engine avoids domain-specific concepts of industries, departments or business processes, keeping the kernel stable, deterministic and extensible.
+**[`ape`](core)** — the engine, in [`core/`](core). The ontology, the canonical history that accumulates it, and the interpretation built over that history. It executes no business logic, stores no operational state and orchestrates no workflow.
 
-Instead, it defines an ontology of a few universal concepts capable of expressing coordination in many operational domains.
+**[`ape-cli`](cli)** — an executable laboratory, in [`cli/`](cli). APE exercised as a dependency of an application, so the boundary between semantics and use can be inspected rather than assumed.
 
-Complex behavior emerges from composing simple concepts rather than introducing increasingly specialized abstractions.
+The dependency runs one way, and never back.
 
----
+```text
+ape-cli
+   ↓
+  ape
+```
 
-# Core Concepts
-
-The kernel is centered around the following concepts:
-
-- **Agent** — an operational entity capable of assuming roles and being held accountable for commitments.
-- **Role** — a responsibility that may be fulfilled by eligible agents.
-- **Resource** — something affected by an action.
-- **Action** — a semantic operation performed over exactly one resource.
-- **Statement** — a reusable operational proposition describing who performs which action for whom.
-- **Commitment** — a concrete instantiation of a Statement, binding agents, deadlines and dependencies.
-- **Event** — an observed operational fact that affects a commitment.
-- **Projection** — the result produced by the engine after evaluating commitments, events and dependency graphs.
-
-Everything else is composition.
+Storage format, addressing strategy, command vocabulary and presentation are decisions of the application. None of them may become a decision of the engine.
 
 ---
 
-# Design Principles
+# Documentation
 
-APE follows a few fundamental rules.
+The design documents the implementation answers to live in [`core/src/docs`](core/src/docs), ordered as they were written: philosophy, ontology, then one per layer.
 
-## Declarative by Design
+They are rendered as part of the crate documentation, so the reasoning travels with the signatures.
 
-The kernel describes operational semantics.
-
-It never executes business logic.
-
-It never stores operational state.
-
-It never orchestrates workflows.
-
-Those responsibilities belong to higher-level layers.
-
----
-
-## Atomic Coordination
-
-Every Statement defines exactly one Action.
-
-Every Action affects exactly one Resource.
-
-Complex operational behavior is obtained through composition of multiple commitments rather than larger statements.
-
----
-
-## Immutable Facts
-
-Operational history is never rewritten.
-
-Events describe observations.
-
-Commitments describe decisions.
-
-Operational knowledge evolves by accumulating facts rather than mutating state.
-
----
-
-## Derived State
-
-Operational conditions such as **Unsettled**, **Fulfilled**, **Cancelled** or **Breached** are not manually maintained.
-
-They emerge from the relationships between commitments, dependency graphs, observed events and time.
-
----
-
-## Stable Ontology
-
-APE intentionally provides a minimal ontology.
-
-Rather than continuously introducing new concepts, the engine encourages expressing complexity through combinations of existing primitives.
-
-Its purpose is not to model every business domain directly, but to provide a stable coordination language from which many operational models can be constructed.
-
----
-
-# Construction Model
-
-Entities cannot be created in an invalid state.
-
-Invariants that depend only on an entity's own data are validated by the entity, or its value objects, at construction.
-
-Invariants that span several entities are validated by a dedicated mechanism of knowledge admission, the single entry point through which entities are created, which resolves the needed references, checks semantic consistency, and only then emits the entity holding stable identities.
-
-Validation stays separate from instantiation, keeping the construction path predictable and composable.
+```sh
+cargo doc --open -p ape   # the engine, its layers and the documents
+cargo test --workspace    # the suites
+```
 
 ---
 
@@ -172,6 +106,8 @@ APE explores the same philosophy for operational coordination because it often b
 Git became the language of software collaboration.
 
 APE aims to become the language of operational coordination.
+
+---
 
 # License
 
