@@ -1,0 +1,17 @@
+[package]
+name = "ape"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+conformance = []
+reference = []
+
+[dependencies]
+hex = { version = "0.4.3", features = ["serde"] }
+postcard = { version = "1.1.3", features = ["use-std"] }
+serde = { version = "1.0.228", features = ["derive"] }
+sha2 = "0.11.0"
+thiserror = "2.0.18"
+time = { version = "0.3", default-features = false, features = ["std"] }
