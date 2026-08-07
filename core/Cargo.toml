@@ -1,8 +1,11 @@
 [package]
 name = "ape"
+description = "An open-source coordination engine inspired by the architectural principles that made Git one of the most successful distributed systems."
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [features]
 conformance = []
