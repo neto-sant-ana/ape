@@ -1,0 +1,11 @@
+[package]
+name = "ape-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ape = { path = "../core" }
+
+[dev-dependencies]
+ape = { path = "../core", features = ["conformance"] }
