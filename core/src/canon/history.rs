@@ -96,6 +96,11 @@ pub trait CanonicalHistory: Knowledge + CanonicalKnowledge {
     /// opposite responses: a stale head invites a fresh admission, while a back-dated
     /// instant would have that admission fail identically forever.
     ///
+    /// Checking the watermark is not advancing it. A refused append leaves
+    /// [`CanonicalHistory::recorded_through`] where it was, because a watermark moved by a
+    /// write that never happened is a trace like any other — and one that would refuse a
+    /// later record the history should have taken.
+    ///
     /// A refusal is not the adapter's to retry, nor the caller's to paper over by
     /// re-stamping the event and resubmitting here. Recovery is a fresh admission through
     /// the Canon, which re-runs the settle-once check.
