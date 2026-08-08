@@ -314,8 +314,16 @@ pub fn append_event_is_atomic_compare_and_append<H: CanonicalHistory>(mut histor
     // An event built against the empty chain is stale now. The append is refused
     // and leaves no trace: not the head, not the commitment index, not the by-id
     // read — persisting and linking were one indivisible step.
+    //
+    // The watermark is the fourth trace, and the one an adapter is likeliest to leave:
+    // checking it before the head is not the same as advancing it there, and an adapter
+    // that advances on the way past has moved it for a write that never happened. It is
+    // stamped later than the chain so far so that a refusal that moved it is visible.
     let stale_commitment = CommitmentId::from([2; 32]);
-    let stale = sample_event(stale_commitment, None, "Paid");
+    let stale = rerecorded(
+        &sample_event(stale_commitment, None, "Paid"),
+        date(2026, 7, 2),
+    );
     let stale_id = stale.assertion().id();
     assert!(
         history.append_event(stale).is_err(),
@@ -324,6 +332,11 @@ pub fn append_event_is_atomic_compare_and_append<H: CanonicalHistory>(mut histor
     assert_eq!(history.head(), Some(genesis_id));
     assert!(history.event_of(stale_commitment).is_none());
     assert!(history.event(stale_id).is_none());
+    assert_eq!(
+        history.recorded_through(),
+        Some(date(2026, 7, 1)),
+        "a refused append leaves the recording watermark where it was"
+    );
 
     // Extending from the current head succeeds and moves it.
     let next = sample_event(CommitmentId::from([3; 32]), Some(genesis_id), "Signed");
@@ -511,15 +524,22 @@ where
     let genesis_id = genesis.assertion().id();
     history.clone().append_event(genesis).unwrap();
 
+    // Each racer carries a distinct recording instant, so the watermark left behind names
+    // which of them wrote. Racers sharing one instant could not tell a loser that moved it
+    // from the winner that did — it would land on the same value either way.
     const CONTENDERS: u8 = 8;
     let racers: Vec<_> = (1..=CONTENDERS)
         .map(|tag| {
             let mut adapter = history.clone();
             std::thread::spawn(move || {
                 let commitment = CommitmentId::from([tag; 32]);
-                let event = sample_event(commitment, Some(genesis_id), "Signed");
+                let recorded_at = date(2026, 7, 1 + tag);
+                let event = rerecorded(
+                    &sample_event(commitment, Some(genesis_id), "Signed"),
+                    recorded_at,
+                );
                 let event_id = event.assertion().id();
-                (commitment, event_id, adapter.append_event(event))
+                (commitment, event_id, recorded_at, adapter.append_event(event))
             })
         })
         .collect();
@@ -528,11 +548,11 @@ where
 
     let winners = outcomes
         .iter()
-        .filter(|(_, _, outcome)| matches!(outcome, Ok(AppendOutcome::Admitted)))
+        .filter(|(_, _, _, outcome)| matches!(outcome, Ok(AppendOutcome::Admitted)))
         .count();
     assert_eq!(winners, 1, "exactly one racer advances the head");
 
-    for (commitment, event_id, outcome) in &outcomes {
+    for (commitment, event_id, recorded_at, outcome) in &outcomes {
         match outcome {
             Ok(AppendOutcome::Admitted) => {
                 assert_eq!(
@@ -540,8 +560,16 @@ where
                     Some(*event_id),
                     "the head is the sole winner's event"
                 );
+                assert_eq!(
+                    history.recorded_through(),
+                    Some(*recorded_at),
+                    "the watermark is the sole winner's instant, unmoved by any loser"
+                );
             }
-            Err(CanonError::UnexpectedHead { .. }) => {
+            // A loser whose instant precedes the winner's is refused by the watermark
+            // rather than by the head, because the watermark is checked first. Both are
+            // refusals, and both must leave the history as it was.
+            Err(CanonError::UnexpectedHead { .. } | CanonError::RecordedOutOfOrder { .. }) => {
                 assert!(
                     history.event(*event_id).is_none(),
                     "a refused append persists no event",
