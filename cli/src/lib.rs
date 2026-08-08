@@ -11,3 +11,5 @@
 //! Behavior lives in the library, because nothing can construct a type that lives inside a
 //! binary — not an integration test, not the engine's conformance suites. The binary reads
 //! arguments and writes output.
+
+pub mod repository;
