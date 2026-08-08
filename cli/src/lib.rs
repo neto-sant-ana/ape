@@ -14,3 +14,4 @@
 
 pub mod history;
 pub mod repository;
+pub mod subject;
