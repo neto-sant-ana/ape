@@ -14,5 +14,8 @@ pub use projection::ProjectedConditions;
 mod accumulation;
 pub use accumulation::Accumulation;
 
+mod movement;
+pub use movement::{Movement, movement_of};
+
 #[cfg(test)]
 mod tests;
