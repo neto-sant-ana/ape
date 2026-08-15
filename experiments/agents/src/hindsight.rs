@@ -1,5 +1,4 @@
-//! The scenario experiment 02 audits: a decision taken soundly, and knowledge arriving
-//! afterwards that makes it look otherwise.
+//! The scenario experiment 02 audits, written as the sequence that produces it.
 //!
 //! ```text
 //! K1   the house weighs 120 and 30 against a balance of 100
@@ -9,25 +8,26 @@
 //!      70 - 90 = -20
 //! ```
 //!
-//! The sequence mirrors what the first run's agent did, because the point of auditing is to
-//! audit something that happened rather than something arranged to be auditable. What is
-//! added is only the obligation, and the recording instant that puts it out of reach of the
-//! cut the decision was taken under.
+//! # Why a sequence and not a program
 //!
-//! # What an auditor is handed
+//! An auditor has to derive what happened. Handed a program, it would read the plot off the
+//! variable names — `priority`, `standard`, `obligation` say which intention was wanted,
+//! which was settled for and which arrived to spoil it, before a single call is made.
+//! Renaming them to `c1`, `c2`, `c3` hides the plot without making it derivable, which is
+//! worse: an audit that succeeds against deliberately obscured names has proved nothing
+//! about a graph.
 //!
-//! One `ThesisId`, the archive, and canonical history. Nothing else, and the shortness of
-//! that list is not an aesthetic choice.
+//! So the scenario is [`Step`]s. Intentions are referred to by their position in the
+//! sequence, decisions name the instants they are taken at, and nothing is called anything.
+//! What happened is recoverable from the world the steps produce, which is the only place an
+//! audit should be able to recover it from.
 //!
-//! The engine's reads are entirely by identity. There is no operation that enumerates
-//! commitments, no operation that enumerates theses, and no named reference — the archive's
-//! own documentation says deciding what `main` points at is not its business. So a graph
-//! cannot be handed over as a graph; it is handed over as an entry point, and everything
-//! else is reached by walking from it.
-//!
-//! One entry point is therefore the honest minimum, and it is what an application keeping a
-//! single current world would have. What can be reached from it is the experiment's question,
-//! not its premise.
+//! The form is borrowed from the reconstruction experiment, which arrived at it under
+//! different pressure: the public boundary admits constructing knowledge and does not admit
+//! reading a description back out, so a durable world has to be the record of what was
+//! supplied. Here nothing is being persisted — the sequence is used because a sequence
+//! carries no narrative, and it is worth naming that this is the second place in the
+//! workspace to fold an admission sequence. Two is not a pattern; a third would be.
 
 use ape::canon::{Canon, EventSubmission, InMemoryHistory};
 use ape::engine::thesis::{
@@ -38,21 +38,48 @@ use ape::kernel::value_objects::{ActionValue, Assignment, Date, Term};
 
 use crate::world::{self, World, cancelling};
 
-/// What the auditor receives.
+/// One thing that happened, in the order it happened.
+///
+/// Intentions are addressed by the position of the `Intend` that produced them, counting
+/// from zero, because a position says nothing about what the intention was for.
+#[derive(Debug, Clone)]
+pub enum Step {
+    /// The house intends to spend `amount` by `due`, recorded at `recorded_at`.
+    Intend {
+        amount: f64,
+        due: Date,
+        recorded_at: Date,
+    },
+    /// It was observed that intention `which` will not happen.
+    Cancel { which: usize, at: Date },
+    /// A world is opened at `known_at`, proposing intentions `select`.
+    Open { known_at: Date, select: Vec<usize> },
+    /// The current world is carried to `known_at`, recognizing what became known.
+    Carry { known_at: Date },
+    /// The current world is replaced by one that adds intentions `introduce`.
+    Add { introduce: Vec<usize> },
+}
+
+/// What an auditor receives: knowledge, the archived worlds, and one way in.
 pub struct Graph {
     pub canon: Canon<InMemoryHistory>,
     pub archive: InMemoryArchive,
     pub current: ThesisId,
 }
 
-/// What the harness keeps, so that it can check what the auditor concludes.
+/// What the harness keeps, to check what an auditor concludes.
 pub struct Scenario {
     pub graph: Graph,
-    pub decision: ThesisId,
-    pub considered: ThesisId,
-    pub priority: CommitmentId,
-    pub standard: CommitmentId,
-    pub obligation: CommitmentId,
+    pub intentions: Vec<CommitmentId>,
+    pub worlds: Vec<ThesisId>,
+}
+
+impl Scenario {
+    /// The world the decision under audit was taken in: the third opened, counting the two
+    /// that only carried knowledge forward.
+    pub fn decision(&self) -> ThesisId {
+        self.worlds[2]
+    }
 }
 
 pub fn decided_at() -> Date {
@@ -67,99 +94,132 @@ pub fn audited_at() -> Date {
     january(12)
 }
 
+/// The sequence. Read it and the plot is derivable; read the names and there are none.
+pub fn scenario() -> Vec<Step> {
+    vec![
+        Step::Intend {
+            amount: 120.0,
+            due: january(8),
+            recorded_at: decided_at(),
+        },
+        Step::Open {
+            known_at: decided_at(),
+            select: vec![0],
+        },
+        Step::Intend {
+            amount: 30.0,
+            due: january(14),
+            recorded_at: decided_at(),
+        },
+        Step::Cancel {
+            which: 0,
+            at: decided_at(),
+        },
+        Step::Carry {
+            known_at: decided_at(),
+        },
+        Step::Add {
+            introduce: vec![1],
+        },
+        Step::Intend {
+            amount: 90.0,
+            due: january(20),
+            recorded_at: obligation_recorded_at(),
+        },
+        Step::Carry {
+            known_at: audited_at(),
+        },
+        Step::Add {
+            introduce: vec![2],
+        },
+    ]
+}
+
 pub fn build() -> Scenario {
+    replay(&scenario())
+}
+
+/// Fold a sequence of steps into the world it describes.
+///
+/// Every thesis produced is archived, including the ones that only carry knowledge forward:
+/// the archive refuses a child whose parent it does not hold, and a walk that skipped them
+/// would end in a hole rather than at a beginning.
+pub fn replay(steps: &[Step]) -> Scenario {
     let mut world = world::build();
     let mut archive = InMemoryArchive::default();
 
-    let priority = intend(&mut world, 120.0, january(8), decided_at());
+    let mut intentions: Vec<CommitmentId> = Vec::new();
+    let mut worlds: Vec<ThesisId> = Vec::new();
+    let mut current: Option<Thesis> = None;
 
-    let considered = Thesis::genesis(
-        world.canon.history(),
-        GenesisInput {
-            cut: KnowledgeCut::at(world.canon.history(), decided_at()),
-            selection: [priority].into(),
-        },
-    )
-    .expect("the priority slot is selectable at the decision instant");
+    for step in steps {
+        match step {
+            Step::Intend {
+                amount,
+                due,
+                recorded_at,
+            } => intentions.push(intend(&mut world, *amount, *due, *recorded_at)),
 
-    archive
-        .put_thesis(considered.clone())
-        .expect("a genesis has no parent to wait for");
+            Step::Cancel { which, at } => {
+                world
+                    .canon
+                    .admit_event(
+                        EventSubmission {
+                            commitment_id: intentions[*which],
+                            observation: cancelling(),
+                            occurred_at: *at,
+                        },
+                        *at,
+                    )
+                    .expect("an intention may be cancelled");
+            }
 
-    let standard = intend(&mut world, 30.0, january(14), decided_at());
+            Step::Open { known_at, select } => {
+                let thesis = Thesis::genesis(
+                    world.canon.history(),
+                    GenesisInput {
+                        cut: KnowledgeCut::at(world.canon.history(), *known_at),
+                        selection: select.iter().map(|at| intentions[*at]).collect(),
+                    },
+                )
+                .expect("the proposed intentions are selectable at that instant");
 
-    world
-        .canon
-        .admit_event(
-            EventSubmission {
-                commitment_id: priority,
-                observation: cancelling(),
-                occurred_at: decided_at(),
-            },
-            decided_at(),
-        )
-        .expect("an intention may be cancelled");
+                current = Some(keep(&mut archive, &mut worlds, thesis));
+            }
 
-    // Advancing produces a Thesis of its own: recognizing the cancellation is a node in the
-    // lineage, distinct from the node that chooses differently because of it. Both have to be
-    // archived, or the walk from a descendant ends in a hole.
-    let recognized = considered
-        .advance(
-            world.canon.history(),
-            KnowledgeCut::at(world.canon.history(), decided_at()),
-        )
-        .expect("the cancellation is later knowledge at the same instant")
-        .into_thesis();
+            Step::Carry { known_at } => {
+                let thesis = current
+                    .as_ref()
+                    .expect("a world must be open before it is carried")
+                    .advance(
+                        world.canon.history(),
+                        KnowledgeCut::at(world.canon.history(), *known_at),
+                    )
+                    .expect("the instant recognizes knowledge the world had not")
+                    .into_thesis();
 
-    archive
-        .put_thesis(recognized.clone())
-        .expect("its parent is held");
+                current = Some(keep(&mut archive, &mut worlds, thesis));
+            }
 
-    let decision = recognized
-        .fork(
-            world.canon.history(),
-            ForkInput {
-                omitted: [].into(),
-                introduced: [standard].into(),
-            },
-        )
-        .expect("the standard slot is introducible at the same cut");
+            Step::Add { introduce } => {
+                let thesis = current
+                    .as_ref()
+                    .expect("a world must be open before it is added to")
+                    .fork(
+                        world.canon.history(),
+                        ForkInput {
+                            omitted: [].into(),
+                            introduced: introduce.iter().map(|at| intentions[*at]).collect(),
+                        },
+                    )
+                    .expect("the intentions are introducible at that cut");
 
-    archive
-        .put_thesis(decision.clone())
-        .expect("its ancestry is already held");
+                current = Some(keep(&mut archive, &mut worlds, thesis));
+            }
+        }
+    }
 
-    let obligation = intend(&mut world, 90.0, january(20), obligation_recorded_at());
-
-    // The world as it stands once the obligation is known. An application learning of an
-    // obligation would want to know what it does to the world it is in, and the only way to
-    // ask is to be in a world that contains it — so the current world is a fork of the
-    // decision, at a cut that reaches the obligation.
-    let widened = decision
-        .advance(
-            world.canon.history(),
-            KnowledgeCut::at(world.canon.history(), audited_at()),
-        )
-        .expect("the obligation is later knowledge")
-        .into_thesis();
-
-    archive
-        .put_thesis(widened.clone())
-        .expect("its parent is held");
-
-    let current = widened
-        .fork(
-            world.canon.history(),
-            ForkInput {
-                omitted: [].into(),
-                introduced: [obligation].into(),
-            },
-        )
-        .expect("the obligation is introducible at a cut that reaches it");
-
-    archive
-        .put_thesis(current.clone())
-        .expect("its ancestry is already held");
+    let current = current.expect("the sequence opens a world");
 
     Scenario {
         graph: Graph {
@@ -167,12 +227,19 @@ pub fn build() -> Scenario {
             archive,
             current: current.id(),
         },
-        decision: decision.id(),
-        considered: considered.id(),
-        priority,
-        standard,
-        obligation,
+        intentions,
+        worlds,
     }
+}
+
+fn keep(archive: &mut InMemoryArchive, worlds: &mut Vec<ThesisId>, thesis: Thesis) -> Thesis {
+    worlds.push(thesis.id());
+
+    archive
+        .put_thesis(thesis.clone())
+        .expect("a thesis is archived after its parent");
+
+    thesis
 }
 
 /// Admit an intention of the house to spend `amount` by `due`, recorded at `recorded_at`.

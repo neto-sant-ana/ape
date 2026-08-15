@@ -35,6 +35,20 @@ fn resolve(scenario: &Scenario, id: ape::engine::thesis::ThesisId) -> Thesis {
         .expect("the archive holds what was stored in it")
 }
 
+// The harness knows the plot, and says so plainly. What the sequence withholds it withholds
+// from the auditor, not from the checks that keep the auditor honest.
+fn priority(scenario: &Scenario) -> CommitmentId {
+    scenario.intentions[0]
+}
+
+fn standard(scenario: &Scenario) -> CommitmentId {
+    scenario.intentions[1]
+}
+
+fn obligation(scenario: &Scenario) -> CommitmentId {
+    scenario.intentions[2]
+}
+
 /// Criterion 1 — the obligation cannot be selected at the instant the decision was taken.
 ///
 /// It was recorded after that instant, so a cut there does not reach it. This is the property
@@ -47,7 +61,7 @@ fn the_obligation_is_out_of_reach_of_the_decision_instant() {
         scenario.graph.canon.history(),
         GenesisInput {
             cut: KnowledgeCut::at(scenario.graph.canon.history(), decided_at()),
-            selection: [scenario.obligation].into(),
+            selection: [obligation(&scenario)].into(),
         },
     );
 
@@ -61,10 +75,10 @@ fn the_obligation_is_out_of_reach_of_the_decision_instant() {
 #[test]
 fn the_decision_still_reads_clean() {
     let scenario = hindsight::build();
-    let decision = resolve(&scenario, scenario.decision);
+    let decision = resolve(&scenario, scenario.decision());
 
     assert_eq!(decision.cut().known_at(), &decided_at());
-    assert!(!decision.selection().contains(scenario.obligation));
+    assert!(!decision.selection().contains(obligation(&scenario)));
 
     assert!(
         conflicts(&scenario, &decision).is_empty(),
@@ -82,7 +96,7 @@ fn the_world_that_knows_the_obligation_is_short() {
     let current = resolve(&scenario, scenario.graph.current);
 
     assert_eq!(current.cut().known_at(), &audited_at());
-    assert!(current.selection().contains(scenario.obligation));
+    assert!(current.selection().contains(obligation(&scenario)));
 
     assert_eq!(
         conflicts(&scenario, &current),
@@ -122,15 +136,30 @@ fn walking_the_lineage_reaches_both_candidates() {
     assert_eq!(visited, 5, "two forks, two advancements, and the genesis");
 
     assert!(
-        reached.contains(&scenario.standard),
+        reached.contains(&standard(&scenario)),
         "the intention taken is reached"
     );
     assert!(
-        reached.contains(&scenario.priority),
+        reached.contains(&priority(&scenario)),
         "the intention abandoned is reached, through the ancestor that selected it"
     );
     assert!(
-        reached.contains(&scenario.obligation),
+        reached.contains(&obligation(&scenario)),
         "the knowledge that made the decision look bad is reached"
     );
+}
+
+/// The world is a function of the sequence.
+///
+/// This is what makes handing an auditor the sequence equivalent to handing it the world,
+/// rather than a convenience of the harness: two replays of the same steps agree on every
+/// identity, and identities here are derived from content.
+#[test]
+fn the_same_sequence_produces_the_same_worlds() {
+    let once = hindsight::replay(&hindsight::scenario());
+    let twice = hindsight::replay(&hindsight::scenario());
+
+    assert_eq!(once.graph.current, twice.graph.current);
+    assert_eq!(once.worlds, twice.worlds);
+    assert_eq!(once.intentions, twice.intentions);
 }
