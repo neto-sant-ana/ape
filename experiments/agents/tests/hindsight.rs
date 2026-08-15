@@ -5,21 +5,45 @@
 //! of the cut the decision was taken under, the decision has to read the same with it in
 //! history, and the world that contains it has to genuinely conflict.
 //!
-//! The last test is not a criterion. It walks the lineage from the single entry point an
-//! auditor is given, and records what that walk can reach — which decides whether the audit
-//! is possible at all, and is therefore worth knowing before asking anyone to perform it.
+//! The plot lives here and not in `hindsight.rs`, because that file is handed to the auditor.
+//! What the sequence withholds it withholds from the auditor, never from the checks that keep
+//! the auditor honest.
 
 use ape::engine::hermeneia::{Conflict, Hypothesis};
-use ape::engine::thesis::{
-    GenesisInput, Interpretation, KnowledgeCut, Thesis, ThesisLookup,
-};
+use ape::engine::thesis::{GenesisInput, Interpretation, KnowledgeCut, Thesis, ThesisId, ThesisLookup};
 use ape::kernel::entities::CommitmentId;
 
-use ape_agents::hindsight::{self, Scenario, audited_at, decided_at};
+use ape_agents::hindsight::{self, Replay, january};
 use ape_agents::world;
 
-fn conflicts(scenario: &Scenario, thesis: &Thesis) -> Vec<Conflict> {
-    Interpretation::of(thesis, scenario.graph.canon.history())
+fn decided_at() -> ape::kernel::value_objects::Date {
+    january(6)
+}
+
+fn audited_at() -> ape::kernel::value_objects::Date {
+    january(12)
+}
+
+fn priority(replay: &Replay) -> CommitmentId {
+    replay.intentions[0]
+}
+
+fn standard(replay: &Replay) -> CommitmentId {
+    replay.intentions[1]
+}
+
+fn obligation(replay: &Replay) -> CommitmentId {
+    replay.intentions[2]
+}
+
+/// The world the decision under audit was taken in: the third opened, counting the two that
+/// only carried knowledge forward.
+fn decision(replay: &Replay) -> ThesisId {
+    replay.worlds[2]
+}
+
+fn conflicts(replay: &Replay, thesis: &Thesis) -> Vec<Conflict> {
+    Interpretation::of(thesis, replay.graph.canon.history())
         .expect("the Thesis is interpretable")
         .feasibility_under(Hypothesis::FinalState)
         .expect("feasibility is derivable")
@@ -27,26 +51,12 @@ fn conflicts(scenario: &Scenario, thesis: &Thesis) -> Vec<Conflict> {
         .to_vec()
 }
 
-fn resolve(scenario: &Scenario, id: ape::engine::thesis::ThesisId) -> Thesis {
-    scenario
+fn resolve(replay: &Replay, id: ThesisId) -> Thesis {
+    replay
         .graph
         .archive
         .thesis(id)
         .expect("the archive holds what was stored in it")
-}
-
-// The harness knows the plot, and says so plainly. What the sequence withholds it withholds
-// from the auditor, not from the checks that keep the auditor honest.
-fn priority(scenario: &Scenario) -> CommitmentId {
-    scenario.intentions[0]
-}
-
-fn standard(scenario: &Scenario) -> CommitmentId {
-    scenario.intentions[1]
-}
-
-fn obligation(scenario: &Scenario) -> CommitmentId {
-    scenario.intentions[2]
 }
 
 /// Criterion 1 — the obligation cannot be selected at the instant the decision was taken.
@@ -55,13 +65,13 @@ fn obligation(scenario: &Scenario) -> CommitmentId {
 /// the whole experiment rests on, and asserting it is cheaper than trusting it.
 #[test]
 fn the_obligation_is_out_of_reach_of_the_decision_instant() {
-    let scenario = hindsight::build();
+    let replay = hindsight::build();
 
     let refused = Thesis::genesis(
-        scenario.graph.canon.history(),
+        replay.graph.canon.history(),
         GenesisInput {
-            cut: KnowledgeCut::at(scenario.graph.canon.history(), decided_at()),
-            selection: [obligation(&scenario)].into(),
+            cut: KnowledgeCut::at(replay.graph.canon.history(), decided_at()),
+            selection: [obligation(&replay)].into(),
         },
     );
 
@@ -74,32 +84,32 @@ fn the_obligation_is_out_of_reach_of_the_decision_instant() {
 /// Criterion 2 — the decision reads the same with the obligation sitting in history.
 #[test]
 fn the_decision_still_reads_clean() {
-    let scenario = hindsight::build();
-    let decision = resolve(&scenario, scenario.decision());
+    let replay = hindsight::build();
+    let decision = resolve(&replay, decision(&replay));
 
     assert_eq!(decision.cut().known_at(), &decided_at());
-    assert!(!decision.selection().contains(obligation(&scenario)));
+    assert!(!decision.selection().contains(obligation(&replay)));
 
     assert!(
-        conflicts(&scenario, &decision).is_empty(),
+        conflicts(&replay, &decision).is_empty(),
         "spending 30 of 100 conflicts with nothing under what could be known"
     );
 }
 
-/// Criterion 3 — and the world that knows about the obligation genuinely does not.
+/// Criterion 3 — and the world that knows the obligation genuinely does not.
 ///
 /// Without this the comparison would be between two readings that agree, and agreement
 /// proves nothing about hindsight.
 #[test]
 fn the_world_that_knows_the_obligation_is_short() {
-    let scenario = hindsight::build();
-    let current = resolve(&scenario, scenario.graph.current);
+    let replay = hindsight::build();
+    let current = resolve(&replay, replay.graph.current);
 
     assert_eq!(current.cut().known_at(), &audited_at());
-    assert!(current.selection().contains(obligation(&scenario)));
+    assert!(current.selection().contains(obligation(&replay)));
 
     assert_eq!(
-        conflicts(&scenario, &current),
+        conflicts(&replay, &current),
         vec![Conflict::OutOfBounds {
             instance: world::build().account,
             level: -20.0,
@@ -118,14 +128,14 @@ fn the_world_that_knows_the_obligation_is_short() {
 /// which is what makes an audit of the deliberation conceivable rather than hopeless.
 #[test]
 fn walking_the_lineage_reaches_both_candidates() {
-    let scenario = hindsight::build();
+    let replay = hindsight::build();
 
     let mut reached: Vec<CommitmentId> = Vec::new();
     let mut visited = 0;
-    let mut next = Some(scenario.graph.current);
+    let mut next = Some(replay.graph.current);
 
     while let Some(id) = next {
-        let thesis = resolve(&scenario, id);
+        let thesis = resolve(&replay, id);
         visited += 1;
         reached.extend(thesis.selection().resolved());
         next = *thesis.parent();
@@ -136,15 +146,15 @@ fn walking_the_lineage_reaches_both_candidates() {
     assert_eq!(visited, 5, "two forks, two advancements, and the genesis");
 
     assert!(
-        reached.contains(&standard(&scenario)),
+        reached.contains(&standard(&replay)),
         "the intention taken is reached"
     );
     assert!(
-        reached.contains(&priority(&scenario)),
+        reached.contains(&priority(&replay)),
         "the intention abandoned is reached, through the ancestor that selected it"
     );
     assert!(
-        reached.contains(&obligation(&scenario)),
+        reached.contains(&obligation(&replay)),
         "the knowledge that made the decision look bad is reached"
     );
 }

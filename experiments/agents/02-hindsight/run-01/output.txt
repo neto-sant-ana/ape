@@ -1,0 +1,295 @@
+
+==============================================================================
+0. THE WAY IN
+==============================================================================
+
+the world the house is in now: 712504072e79a2c354a172bdefdafdc6c9e7cdb928cf24401d87353ac182fbb9
+
+the canonical history's own head is dd0c480b, recorded through 2026-01-09
+
+walking `parent` from that identity reaches 5 worlds before ending at a genesis.
+
+==============================================================================
+1. WHAT WAS COMMITTED TO
+==============================================================================
+
+every commitment reached by walking the selections of those worlds:
+
+  C1  7998cbe1db9379c84983b5acfd48393ef67151962652673530b4b19ab3779aa0
+      receive +100 on 'account'
+      committed_at 2026-01-01  due 2026-01-02  recorded_at 2026-01-01
+      accountable 'market'  →  beneficiaries house
+      dependencies: none
+
+  C2  834371edecde4378978aa5185585a93f4e56761c1ecdaab97f6155f1cbef4525
+      spend -120 on 'account'
+      committed_at 2026-01-06  due 2026-01-08  recorded_at 2026-01-06
+      accountable 'house'  →  beneficiaries market
+      dependencies: none
+
+  C3  1f0d449afa2ca1cdc0876fcb5cf11ac61e8f2c2f754e13ba8459d6a12027a4a4
+      spend -30 on 'account'
+      committed_at 2026-01-06  due 2026-01-14  recorded_at 2026-01-06
+      accountable 'house'  →  beneficiaries market
+      dependencies: none
+
+  C4  5c6332ee6fd1a62de02c134929fe3f92a7816bd786a9d4c47015b2240fa38409
+      spend -90 on 'account'
+      committed_at 2026-01-09  due 2026-01-20  recorded_at 2026-01-09
+      accountable 'house'  →  beneficiaries market
+      dependencies: none
+
+the movement each contributes to the level, derived through the engine's own
+`movement_of` rather than re-implemented here:
+
+  C1   +100  on instance 9920b32a
+  C2   -120  on instance 9920b32a
+  C3    -30  on instance 9920b32a
+  C4    -90  on instance 9920b32a
+
+==============================================================================
+2. WHAT WAS OBSERVED
+==============================================================================
+
+the whole canonical event chain, oldest first:
+
+  5664085b7aaea7fe1686b816aa5e5431976c0d837a22adbb71dc42ce1dc1e30c
+      settles C1 with 'Settled'
+      occurred_at 2026-01-02  recorded_at 2026-01-02
+      previous_event none
+
+  dd0c480bbcc8aa61e4781895967ca9aab5e57a350832391c4ed9370dea62ccbf
+      settles C2 with 'Cancelled'
+      occurred_at 2026-01-06  recorded_at 2026-01-06
+      previous_event 5664085b
+
+both events were recorded on days the history can address. what the chain does
+*not* order is the commitments: a commitment never enters the chain, so two
+recorded on the same civil day cannot be put in order at all.
+
+==============================================================================
+3. THE WORLDS, IN THE ORDER THEY WERE HELD
+==============================================================================
+
+W0  a2c8c533b4d82c474fcda07dbf842c31db8a327482c6cb3a0677bc8674365c50
+    cut: known_at 2026-01-06  event_head 5664085b
+    derivation: genesis — no parent
+    frozen: {C1}
+    open:   {C2}
+    conditions as of its own known_at (2026-01-06):
+        C1   Fulfilled  (settled — no deadline applies)
+        C2   Unsettled  within deadline
+    factual level — only what an event actually settled as fulfilled: +100
+    level once every movement it still expects has landed:
+        C1   Fulfilled      +100   running +100
+        C2   Unsettled      -120   running -20
+        = -20
+    feasibility under FinalState: OutOfBounds on 9920b32a at level -20
+    feasibility under OnDueDateNet: OutOfBounds on 9920b32a at level -20
+    feasibility under OnDueDateInAnyOrder: OutOfBounds on 9920b32a at level -20
+    cross-check: this audit summed -20 (outside the bounds); the engine reported a breach at -20 — agree
+
+W1  d207a4e78266ece8fe1b0a861c13df322063251c648d51a43d0ef98c22fde805
+    cut: known_at 2026-01-06  event_head dd0c480b
+    derivation: ADVANCE — later cut, intention preserved. newly frozen {C2}, of which imposed by history none
+    frozen: {C1, C2}
+    open:   {}
+    conditions as of its own known_at (2026-01-06):
+        C1   Fulfilled  (settled — no deadline applies)
+        C2   Cancelled  (settled — no deadline applies)
+    factual level — only what an event actually settled as fulfilled: +100
+    level once every movement it still expects has landed:
+        C1   Fulfilled      +100   running +100
+        C2   Cancelled        +0   running +100
+        = +100
+    feasibility under FinalState: no conflict found
+    feasibility under OnDueDateNet: no conflict found
+    feasibility under OnDueDateInAnyOrder: no conflict found
+    cross-check: this audit summed +100 (inside the bounds); the engine reported no breach — agree
+
+W2  4688fa77f8e91704693890619e5f736eaf10a2bbfe489259e53349c9b2eaa0ee
+    cut: known_at 2026-01-06  event_head dd0c480b
+    derivation: FORK — same cut, so a decision. introduced {C3}, omitted {}
+    frozen: {C1, C2}
+    open:   {C3}
+    conditions as of its own known_at (2026-01-06):
+        C3   Unsettled  within deadline
+        C1   Fulfilled  (settled — no deadline applies)
+        C2   Cancelled  (settled — no deadline applies)
+    factual level — only what an event actually settled as fulfilled: +100
+    level once every movement it still expects has landed:
+        C1   Fulfilled      +100   running +100
+        C2   Cancelled        +0   running +100
+        C3   Unsettled       -30   running +70
+        = +70
+    feasibility under FinalState: no conflict found
+    feasibility under OnDueDateNet: no conflict found
+    feasibility under OnDueDateInAnyOrder: no conflict found
+    cross-check: this audit summed +70 (inside the bounds); the engine reported no breach — agree
+
+W3  615cbca21d9bebba10739bfd5bbff51f32984b004e11fd7478d7fa6efd6e1256
+    cut: known_at 2026-01-12  event_head dd0c480b
+    derivation: ADVANCE — later cut, intention preserved. newly frozen {}, of which imposed by history none
+    frozen: {C1, C2}
+    open:   {C3}
+    conditions as of its own known_at (2026-01-12):
+        C3   Unsettled  within deadline
+        C1   Fulfilled  (settled — no deadline applies)
+        C2   Cancelled  (settled — no deadline applies)
+    factual level — only what an event actually settled as fulfilled: +100
+    level once every movement it still expects has landed:
+        C1   Fulfilled      +100   running +100
+        C2   Cancelled        +0   running +100
+        C3   Unsettled       -30   running +70
+        = +70
+    feasibility under FinalState: no conflict found
+    feasibility under OnDueDateNet: no conflict found
+    feasibility under OnDueDateInAnyOrder: no conflict found
+    cross-check: this audit summed +70 (inside the bounds); the engine reported no breach — agree
+
+W4  712504072e79a2c354a172bdefdafdc6c9e7cdb928cf24401d87353ac182fbb9
+    cut: known_at 2026-01-12  event_head dd0c480b
+    derivation: FORK — same cut, so a decision. introduced {C4}, omitted {}
+    frozen: {C1, C2}
+    open:   {C3, C4}
+    conditions as of its own known_at (2026-01-12):
+        C3   Unsettled  within deadline
+        C4   Unsettled  within deadline
+        C1   Fulfilled  (settled — no deadline applies)
+        C2   Cancelled  (settled — no deadline applies)
+    factual level — only what an event actually settled as fulfilled: +100
+    level once every movement it still expects has landed:
+        C1   Fulfilled      +100   running +100
+        C2   Cancelled        +0   running +100
+        C3   Unsettled       -30   running +70
+        C4   Unsettled       -90   running -20
+        = -20
+    feasibility under FinalState: OutOfBounds on 9920b32a at level -20
+    feasibility under OnDueDateNet: OutOfBounds on 9920b32a at level -20
+    feasibility under OnDueDateInAnyOrder: OutOfBounds on 9920b32a at level -20
+    cross-check: this audit summed -20 (outside the bounds); the engine reported a breach at -20 — agree
+
+
+==============================================================================
+4. THE FLOOR THE ACCOUNT ANSWERS TO
+==============================================================================
+
+the instance every commitment in {C1, C2, C3, C4} moves is 'account', of resource 'cash'.
+
+the constraint is opaque: it exposes `check`, not its bound. probing it:
+
+    check( -20.0000) = REFUSED
+    check(  -0.5000) = REFUSED
+    check(  -0.0001) = REFUSED
+    check(   0.0000) = allowed
+    check(   0.0001) = allowed
+    check(  70.0000) = allowed
+    check( 100.0000) = allowed
+
+the refusals stop exactly below zero, so the floor is `level >= 0`. its debug form
+confirms the reading: Constraint(GreaterThanOrEqual(0.0))
+
+==============================================================================
+5. WHAT EACH DECISION WAS DECIDED AGAINST
+==============================================================================
+
+for each edge, the level its parent implied and the level it left, both derived
+under each world's own cut:
+
+  W0 → W1  advance (knowledge, not a decision)
+      open {C2} → {}
+      level -20 → +100
+      breaches the floor before? YES ; after? no
+
+  W1 → W2  fork (a decision)
+      open {} → {C3}
+      level +100 → +70
+      breaches the floor before? no ; after? no
+
+  W2 → W3  advance (knowledge, not a decision)
+      open {C3} → {C3}
+      level +70 → +70
+      breaches the floor before? no ; after? no
+
+  W3 → W4  fork (a decision)
+      open {C3} → {C3, C4}
+      level +70 → -20
+      breaches the floor before? no ; after? YES
+      ← this edge is where the floor was first breached by a choice
+
+
+==============================================================================
+6. WHAT THE CUT PREVENTS: THE SAME QUESTION ASKED WRONGLY
+==============================================================================
+
+the genesis recognizes head 5664085b.
+asking the canon today for the cut of the same instant, 2026-01-06, yields head dd0c480b.
+
+those differ, so an event was recorded on 2026-01-06 *after* the genesis was taken.
+asking the canon to rebuild that exact cut today is refused: head 5664085b7aaea7fe1686b816aa5e5431976c0d837a22adbb71dc42ce1dc1e30c precedes the cut Some(EventId([221, 12, 72, 11, 188, 200, 170, 97, 228, 120, 24, 149, 150, 124, 169, 170, 181, 229, 122, 53, 8, 50, 57, 28, 78, 217, 55, 13, 234, 98, 204, 191])), which its instant addresses
+the genesis therefore could not have been taken with the cancellation in
+hand. this is the only evidence in the graph that orders two things inside
+one civil day, and it works because a cut names a head.
+
+settlements the genesis recognizes: C1 Fulfilled
+settlements the history knows now:   C1 Fulfilled, C2 Cancelled
+
+the same selection scored against the two: -20 under its own cut, +100 under today's.
+the second number is the one an audit would reach by asking 'what does that world mean now'; it is not
+what the house was looking at, and the engine refuses to produce it — `Interpretation::of` takes the
+chain from the Thesis, never from the caller.
+
+==============================================================================
+7. WHAT ELSE THE HOUSE COULD HAVE SELECTED
+==============================================================================
+
+the pool of commitments this audit can enumerate is exactly the ones some world in
+the lineage selected: {C1, C2, C3, C4}. the canon offers lookup by identity and no enumeration,
+so a commitment the house admitted and never selected anywhere is unreachable from
+here and cannot appear below.
+
+── at the genesis cut (2026-01-06, head 5664085b) ──
+
+a genesis selection is a proposal: the cut adds whatever it made unavoidable, so
+two proposals differing only by a frozen commitment denote the same world.
+
+  select {}           → level +100  FinalState: no conflict found | OnDueDateNet: no conflict found | OnDueDateInAnyOrder: no conflict found
+  select {C3}         → level +70  FinalState: no conflict found | OnDueDateNet: no conflict found | OnDueDateInAnyOrder: no conflict found
+  select {C1}         → level +100  FinalState: no conflict found | OnDueDateNet: no conflict found | OnDueDateInAnyOrder: no conflict found
+  select {C1, C3}     → level +70  FinalState: no conflict found | OnDueDateNet: no conflict found | OnDueDateInAnyOrder: no conflict found
+  select {C2}         → level -20  FinalState: OutOfBounds on 9920b32a at level -20 | OnDueDateNet: OutOfBounds on 9920b32a at level -20 | OnDueDateInAnyOrder: OutOfBounds on 9920b32a at level -20   ← what the house did
+  select {C2, C3}     → level -50  FinalState: OutOfBounds on 9920b32a at level -50 | OnDueDateNet: OutOfBounds on 9920b32a at level -20 | OnDueDateInAnyOrder: OutOfBounds on 9920b32a at level -20
+  select {C1, C2}     → level -20  FinalState: OutOfBounds on 9920b32a at level -20 | OnDueDateNet: OutOfBounds on 9920b32a at level -20 | OnDueDateInAnyOrder: OutOfBounds on 9920b32a at level -20   ← what the house did
+  select {C1, C2, C3} → level -50  FinalState: OutOfBounds on 9920b32a at level -50 | OnDueDateNet: OutOfBounds on 9920b32a at level -20 | OnDueDateInAnyOrder: OutOfBounds on 9920b32a at level -20
+
+── at the last decision, forking W3 (2026-01-12, head dd0c480b) ──
+
+  open {}           → level +100  FinalState: no conflict found | OnDueDateNet: no conflict found | OnDueDateInAnyOrder: no conflict found
+  open {C3}         → refused: the fork selects exactly what its parent selects; nothing would distinguish them
+  open {C4}         → level +10  FinalState: no conflict found | OnDueDateNet: no conflict found | OnDueDateInAnyOrder: no conflict found
+  open {C3, C4}     → level -20  FinalState: OutOfBounds on 9920b32a at level -20 | OnDueDateNet: OutOfBounds on 9920b32a at level -20 | OnDueDateInAnyOrder: OutOfBounds on 9920b32a at level -20   ← what the house did
+
+==============================================================================
+8. WHAT THE GRAPH DOES NOT CARRY
+==============================================================================
+
+questions this graph was interrogated for and did not answer:
+
+  · why the cancellation happened. the event carries an observation name
+    ('Cancelled'), an occurred_at (2026-01-06) and a recorded_at (2026-01-06). there is no field
+    for a reason and none for who observed it.
+
+  · who took each decision. a Thesis carries parent, cut and selection — the
+    fields its identity is derived from. no author, no timestamp of its own.
+
+  · when each decision was physically taken. the cut is *declared* knowledge,
+    not attested provenance; the layer says so itself. the only ordering
+    evidence recovered above is indirect: a cut naming a head the instant no
+    longer addresses.
+
+  · whether anyone ever ran feasibility. nothing records that a projection was
+    taken; projections are derived and never stored.
+
+  · the order of commitments recorded on one civil day. recording time is a
+    date, and a commitment never enters the event chain, so there is nothing
+    finer to read. days carrying more than one selected commitment: 2026-01-06 (C3 and C2)

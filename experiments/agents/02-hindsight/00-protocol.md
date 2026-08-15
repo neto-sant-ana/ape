@@ -97,6 +97,38 @@ differ, or the experiment is measuring nothing.
 
 ---
 
+## Why the world is a sequence and not a program
+
+The auditor is handed the code that builds the world, because it has to be able to build one.
+That creates a leak with no obvious fix: a program names things, and the names are the answer.
+`priority`, `standard`, `obligation` say which intention was wanted, which was settled for and
+which arrived to spoil it, before a single call is made.
+
+Renaming them to `c1`, `c2`, `c3` is worse than leaving them. It hides the plot without making
+it derivable, and an audit that succeeds against deliberately obscured names has proved
+something about obscured names rather than about a graph.
+
+So the world is written as a sequence of steps. Intentions are addressed by their position,
+decisions name only the instants they were taken at, and nothing is called anything. What
+happened is recoverable from the world the steps produce, which is the only place an audit
+should have to recover it from.
+
+The form is borrowed from the reconstruction experiment, which reached it under different
+pressure — that the public boundary admits constructing knowledge and does not admit reading a
+description back out, so a durable world must be the record of what was supplied. Nothing is
+persisted here. The sequence is used because a sequence carries no narrative.
+
+Two consequences are worth stating plainly.
+
+This is the second place in the workspace to fold an admission sequence, and the two cannot
+share code: an experiment does not depend on the CLI. Two is not a pattern; a third would be.
+
+And handing over the sequence is only equivalent to handing over the world if the world is a
+function of it. That is asserted rather than assumed, by replaying twice and comparing every
+derived identity.
+
+---
+
 ## The audit
 
 The measurement is not an assertion the harness makes. It is a second agent.
