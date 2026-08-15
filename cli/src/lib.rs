@@ -12,6 +12,8 @@
 //! binary — not an integration test, not the engine's conformance suites. The binary reads
 //! arguments and writes output.
 
+pub mod error;
 pub mod history;
+pub mod level;
 pub mod repository;
 pub mod subject;

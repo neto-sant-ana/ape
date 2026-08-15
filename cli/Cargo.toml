@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 ape = { path = "../core" }
+thiserror = "2.0.18"
 
 [dev-dependencies]
 ape = { path = "../core", features = ["conformance"] }

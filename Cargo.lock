@@ -19,6 +19,7 @@ name = "ape-cli"
 version = "0.1.0"
 dependencies = [
  "ape",
+ "thiserror",
 ]
 
 [[package]]
