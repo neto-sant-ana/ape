@@ -15,7 +15,7 @@ use ape_cli::history::ResidentHistory;
 use ape_cli::journal;
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision};
-use ape_cli::reading::{OutcomeRecord, Reading};
+use ape_cli::reading::{self, OutcomeRecord, Reading};
 use ape_cli::repository::Repository;
 use ape_cli::subject::{self, Constructed};
 
@@ -351,7 +351,8 @@ fn phase_3_persist() {
 #[test]
 fn phase_4_terminate() {
     let repository = Repository::open(scratch("phase-4"));
-    let (commitment, instance) = persisted(&repository);
+    let living = persisted(&repository);
+    let (commitment, instance) = (living.commitment, living.instance);
 
     let dead = std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli"));
 
@@ -378,8 +379,124 @@ fn phase_4_terminate() {
     assert_eq!(reading.outcome, OutcomeRecord::Fulfilled);
 }
 
-/// Build the world through Phases 1 to 3 and leave it on disk.
-fn persisted(repository: &Repository) -> (CommitmentId, ResourceInstanceId) {
+/// Phase 7 — Compare.
+///
+/// Two readings of one world: one taken while the process that built it was alive, one
+/// taken by a process that never met it. The protocol names six coordinates, and each is
+/// asserted by name so that a divergence says which one moved rather than that something
+/// did. The whole reading is then compared as well, because a coordinate the protocol did
+/// not think to name is exactly the kind that would slip through a list.
+///
+/// The literals are asserted too, and they answer a different question. The equality above
+/// proves reconstruction; it would keep proving it if both sides drifted together. The
+/// literals are what the experiment expected before it ran, and they are the reason a
+/// change of meaning cannot pass as a success.
+#[test]
+fn phase_7_compare() {
+    let repository = Repository::open(scratch("phase-7"));
+    let living = persisted(&repository);
+
+    let rebuilt = reconstruct_in_fresh_process(
+        std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli")),
+        repository.root(),
+        living.commitment,
+        living.instance,
+    );
+
+    assert!(
+        rebuilt.status.success(),
+        "the fresh process failed: {}",
+        String::from_utf8_lossy(&rebuilt.stderr)
+    );
+
+    let after: Reading = serde_json::from_slice(&rebuilt.stdout).expect("a reading came back");
+    let before = living.reading;
+
+    assert_eq!(
+        before.canonical_head, after.canonical_head,
+        "the canonical chain ends where it ended"
+    );
+    assert_eq!(
+        before.thesis, after.thesis,
+        "the Thesis has the identity it had, derived again rather than remembered"
+    );
+    assert_eq!(
+        (&before.known_at, &before.event_head),
+        (&after.known_at, &after.event_head),
+        "the Knowledge Cut addresses the same moment"
+    );
+    assert_eq!(
+        (
+            &before.outcome,
+            &before.timeliness,
+            before.pending_dependencies,
+            before.unfulfillable_dependencies
+        ),
+        (
+            &after.outcome,
+            &after.timeliness,
+            after.pending_dependencies,
+            after.unfulfillable_dependencies
+        ),
+        "the projected condition is the same condition"
+    );
+    assert_eq!(
+        before.level, after.level,
+        "the derived consequence on the resource is reproduced"
+    );
+    assert_eq!(
+        before.conflicts, after.conflicts,
+        "feasibility under the same hypothesis reaches the same verdict"
+    );
+
+    assert_eq!(
+        before, after,
+        "the readings agree in every coordinate, including the ones not named above"
+    );
+
+    // What the experiment expected before it ran, and the half that does the work when a
+    // defect is in code both sides share. Equality compares two readings produced by one
+    // implementation, so it survives that implementation moving; these do not, because they
+    // were written down before it ran.
+    assert_eq!(
+        after.outcome,
+        OutcomeRecord::Fulfilled,
+        "the Event settled the commitment"
+    );
+    assert_eq!(
+        after.timeliness, None,
+        "a settled commitment is under no deadline"
+    );
+    assert_eq!(after.level, 10.0, "the increase of 10 landed");
+    assert_eq!(after.conflicts, 0, "the world stays within the resource bounds");
+    assert_eq!(
+        after.known_at, "2026-01-15",
+        "the world recognizes history up to the instant the advancement decided"
+    );
+    assert_eq!(
+        after.effective_at, "2026-01-15",
+        "the interpretation was asked for at the instant requested"
+    );
+    assert!(after.event_head.is_some(), "the cut recognizes the Event");
+    assert_eq!(
+        after.event_head, after.canonical_head,
+        "the world recognizes the whole chain"
+    );
+    assert!(
+        after.thesis_parent.is_some(),
+        "the world reached is a child of the genesis"
+    );
+}
+
+/// The world Phases 1 to 3 produce: what it says about itself, and what it left on disk.
+struct Living {
+    commitment: CommitmentId,
+    instance: ResourceInstanceId,
+    reading: Reading,
+}
+
+/// Build the world through Phases 1 to 3, read it while it is alive, and leave it on disk.
+fn persisted(repository: &Repository) -> Living {
     let (mut canon, subject, decisions, _) = constructed();
 
     let mut journal = subject.journal;
@@ -390,10 +507,25 @@ fn persisted(repository: &Repository) -> (CommitmentId, ResourceInstanceId) {
     let mut decisions = decisions;
     decisions.push(subject::advancement());
 
+    let lineage = lineage::replay(canon.history(), &decisions).expect("the lineage holds");
+
+    let reading = reading::of(
+        canon.history(),
+        &lineage,
+        subject.commitment,
+        subject.instance,
+        &day(15),
+    )
+    .expect("the living world reads");
+
     repository.write_journal(&journal).expect("writable");
     repository.write_lineage(&decisions).expect("writable");
 
-    (subject.commitment, subject.instance)
+    Living {
+        commitment: subject.commitment,
+        instance: subject.instance,
+        reading,
+    }
 }
 
 fn reconstruct_in_fresh_process(
