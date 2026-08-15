@@ -14,9 +14,12 @@
 //!   engine's public documentation.
 //! - [`policy`] — whether an intention may proceed, decided outside the engine, by a rule
 //!   fixed before the agent runs.
+//! - [`hindsight`] — the scenario experiment 02 audits: a decision taken soundly, and
+//!   knowledge arriving afterwards that makes it look otherwise.
 //!
 //! What the agent produces is not here. It is recorded as it was written, in the directory
 //! of the experiment that produced it, because a run is evidence rather than source.
 
+pub mod hindsight;
 pub mod policy;
 pub mod world;
