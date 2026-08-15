@@ -32,6 +32,35 @@ impl JournalError {
 }
 
 #[derive(Debug, thiserror::Error)]
+pub enum ReadingError {
+    #[error(transparent)]
+    Repository(#[from] RepositoryError),
+
+    #[error(transparent)]
+    Journal(#[from] JournalError),
+
+    #[error(transparent)]
+    Lineage(#[from] LineageError),
+
+    #[error(transparent)]
+    Thesis(#[from] ape::engine::thesis::ThesisError),
+
+    #[error(transparent)]
+    Hermeneia(#[from] HermeneiaError),
+
+    #[error(transparent)]
+    Level(#[from] LevelError),
+
+    /// A repository whose lineage decides nothing. There is no world to read.
+    #[error("the lineage is empty")]
+    EmptyLineage,
+
+    /// The world was rebuilt, and does not contain what the reading was asked about.
+    #[error("commitment {0} is not projected by this world")]
+    UnprojectedCommitment(CommitmentId),
+}
+
+#[derive(Debug, thiserror::Error)]
 pub enum LineageError {
     #[error(transparent)]
     Thesis(#[from] ape::engine::thesis::ThesisError),

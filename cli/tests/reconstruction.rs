@@ -8,12 +8,14 @@
 use ape::canon::{Canon, CanonicalHistory};
 use ape::engine::hermeneia::{Hypothesis, Outcome, Timeliness};
 use ape::engine::thesis::{GenesisInput, Interpretation, KnowledgeCut, Thesis};
+use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::history::ResidentHistory;
 use ape_cli::journal;
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision};
+use ape_cli::reading::{OutcomeRecord, Reading};
 use ape_cli::repository::Repository;
 use ape_cli::subject::{self, Constructed};
 
@@ -333,6 +335,80 @@ fn phase_3_persist() {
     }
     assert!(written.contains("2026-01-10"), "the genesis instant");
     assert!(written.contains("2026-01-15"), "the advancement instant");
+}
+
+/// Phase 4 — Terminate.
+///
+/// The original process is dead, and here that is literal rather than agreed: the world is
+/// rebuilt by the `ape-cli` binary, in an operating-system process of its own, which shares
+/// no memory with the one that built it. None of the things the procedure forbids can carry
+/// correctness across that boundary, because none of them can cross it at all.
+///
+/// What the child is given is a repository path and the explicit inputs needed to ask for
+/// the same interpretation. That the repository is doing the work rather than something
+/// ambient is what the second half of this test establishes: without it, the same command
+/// on the same machine fails.
+#[test]
+fn phase_4_terminate() {
+    let repository = Repository::open(scratch("phase-4"));
+    let (commitment, instance) = persisted(&repository);
+
+    let dead = std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli"));
+
+    let refused = reconstruct_in_fresh_process(dead, &scratch("phase-4-absent"), commitment, instance);
+
+    assert!(
+        !refused.status.success(),
+        "a fresh process with no repository must not produce a world"
+    );
+
+    let survived = reconstruct_in_fresh_process(dead, repository.root(), commitment, instance);
+
+    assert!(
+        survived.status.success(),
+        "the fresh process failed: {}",
+        String::from_utf8_lossy(&survived.stderr)
+    );
+
+    let reading: Reading = serde_json::from_slice(&survived.stdout).expect("a reading came back");
+
+    // Phase 7 is what weighs these against the living world. What Phase 4 establishes is
+    // narrower and has to come first: a process that shared nothing produced a world at all.
+    assert_eq!(reading.effective_at, "2026-01-15");
+    assert_eq!(reading.outcome, OutcomeRecord::Fulfilled);
+}
+
+/// Build the world through Phases 1 to 3 and leave it on disk.
+fn persisted(repository: &Repository) -> (CommitmentId, ResourceInstanceId) {
+    let (mut canon, subject, decisions, _) = constructed();
+
+    let mut journal = subject.journal;
+    let settlement = subject::settlement(subject.commitment);
+    journal::replay(&mut canon, std::slice::from_ref(&settlement)).expect("the Event admits");
+    journal.push(settlement);
+
+    let mut decisions = decisions;
+    decisions.push(subject::advancement());
+
+    repository.write_journal(&journal).expect("writable");
+    repository.write_lineage(&decisions).expect("writable");
+
+    (subject.commitment, subject.instance)
+}
+
+fn reconstruct_in_fresh_process(
+    binary: &std::path::Path,
+    repository: &std::path::Path,
+    commitment: CommitmentId,
+    instance: ResourceInstanceId,
+) -> std::process::Output {
+    std::process::Command::new(binary)
+        .arg(repository)
+        .arg(commitment.to_string())
+        .arg(instance.to_string())
+        .arg("2026-01-15")
+        .output()
+        .expect("the binary runs")
 }
 
 fn scratch(name: &str) -> std::path::PathBuf {
