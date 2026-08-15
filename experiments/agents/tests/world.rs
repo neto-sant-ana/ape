@@ -9,7 +9,6 @@
 //! on. It is asserted rather than described so that an engine which stops behaving that way
 //! fails here, instead of quietly making a written prediction wrong.
 
-use ape::canon::Canon;
 use ape::engine::hermeneia::{Conflict, Hypothesis};
 use ape::engine::thesis::{GenesisInput, Interpretation, KnowledgeCut, Thesis};
 use ape::kernel::entities::{CommitmentId, CommitmentInput};
