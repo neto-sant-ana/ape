@@ -133,7 +133,16 @@ measured.
 * The engine the run is measured against is pinned by commit, and the pin is recorded with
   the run. A boundary is a property of a version, and a finding about a boundary that has
   since moved is a finding about nothing unless it says which one it met.
-* The briefing is committed before the run.
+* The briefing is *provably* fixed before the run, by one of two means: committed first, or
+  its digest published in the session record before the agent is invoked. What the rule
+  protects against is an input edited after seeing the output, and a digest settles that
+  without requiring a commit round-trip to stand between the briefing and the run.
+
+  This replaced a stricter-sounding *commit it first*, and the replacement was written at
+  the moment the original bound its author — which is the circumstance under which rules are
+  usually weakened. It is recorded here so the substitution can be judged rather than
+  noticed: a digest is a stronger claim than an ordering, because ordering relies on nobody
+  having amended in between and a digest does not.
 * The agent's output is recorded verbatim, before it is judged.
 * A run that goes badly is recorded, not discarded.
 * An observation names the smallest case that reproduces it.

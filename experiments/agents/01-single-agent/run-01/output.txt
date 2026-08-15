@@ -1,0 +1,21 @@
+The house holds an account of cash bounded by `cash >= 0`, standing at 100
+after the opening 7998cbe1 settled. Today is 2026-01-06.
+
+Intended: the priority slot — spend 120 due 2026-01-08, 834371ed
+
+the intended world — 2 selected (1 frozen, 1 open):
+  FinalState             out of bounds: 9920b32a would reach -20
+  OnDueDateNet           out of bounds: 9920b32a would reach -20
+  OnDueDateInAnyOrder    out of bounds: 9920b32a would reach -20
+
+Fallen back to: the standard slot — spend 30 due 2026-01-12, e89f3c93
+
+the undertaken world — 3 selected (2 frozen, 1 open):
+  FinalState             nothing found
+  OnDueDateNet           nothing found
+  OnDueDateInAnyOrder    nothing found
+
+Conditions as of 2026-01-06:
+  7998cbe1  Fulfilled
+  834371ed  Cancelled
+  e89f3c93  Unsettled, within deadline
