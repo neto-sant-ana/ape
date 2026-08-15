@@ -159,6 +159,58 @@ fn walking_the_lineage_reaches_both_candidates() {
     );
 }
 
+/// The genesis's cut cannot be rebuilt today, and that refusal is evidence.
+///
+/// Its instant is 2026-01-06 and its head is the event that settled the opening, recorded on
+/// the 2nd. Today that instant addresses the cancellation, recorded on the 6th. Neither public
+/// path reconstructs the original: `at` resolves the later head, and `within` refuses a head
+/// belonging to an earlier instant.
+///
+/// So a Thesis holding that cut could not have been manufactured after the cancellation was
+/// recorded, which dates it without anything having been recorded to date it.
+#[test]
+fn the_genesis_cut_cannot_be_rebuilt_today() {
+    let replay = hindsight::build();
+    let history = replay.graph.canon.history();
+
+    let genesis = resolve(&replay, replay.worlds[0]);
+    let taken_under = genesis.cut().event_head().expect("the opening had settled");
+
+    assert_eq!(genesis.cut().known_at(), &decided_at());
+
+    let addressed_now = KnowledgeCut::at(history, decided_at());
+    assert_ne!(
+        addressed_now.event_head(),
+        Some(taken_under),
+        "the instant now addresses the cancellation, not what the genesis was taken under"
+    );
+
+    assert!(
+        KnowledgeCut::within(history, decided_at(), taken_under).is_err(),
+        "a head from an earlier instant cannot be named as a finer cut within a later one"
+    );
+}
+
+/// The limit of that evidence, stated so it is not overclaimed.
+///
+/// A day that nothing was recorded after still resolves the head it resolved then, so a cut
+/// naming such a day is constructible at any later time. The dating above works because
+/// knowledge moved *within* the instant, and nothing guarantees that.
+#[test]
+fn a_cut_on_a_day_nothing_followed_is_still_constructible() {
+    let replay = hindsight::build();
+    let history = replay.graph.canon.history();
+
+    let genesis = resolve(&replay, replay.worlds[0]);
+    let taken_under = genesis.cut().event_head().expect("the opening had settled");
+
+    assert_eq!(
+        KnowledgeCut::at(history, january(5)).event_head(),
+        Some(taken_under),
+        "a quiet day still addresses the head it addressed then"
+    );
+}
+
 /// The world is a function of the sequence.
 ///
 /// This is what makes handing an auditor the sequence equivalent to handing it the world,
