@@ -15,6 +15,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ape-agents"
+version = "0.1.0"
+dependencies = [
+ "ape",
+]
+
+[[package]]
 name = "ape-cli"
 version = "0.1.0"
 dependencies = [

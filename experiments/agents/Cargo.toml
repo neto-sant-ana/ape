@@ -1,0 +1,11 @@
+[package]
+name = "ape-agents"
+description = "An experiment: APE with an autonomous agent in the planner's place."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+ape = { path = "../../core", features = ["reference"] }
