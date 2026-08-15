@@ -13,6 +13,7 @@ use ape::kernel::value_objects::Date;
 use ape_cli::history::ResidentHistory;
 use ape_cli::journal;
 use ape_cli::level;
+use ape_cli::lineage::{self, Decision};
 use ape_cli::repository::Repository;
 use ape_cli::subject::{self, Constructed};
 
@@ -22,20 +23,21 @@ fn day(day: u8) -> Date {
 
 /// The world as Phase 1 leaves it: the subject admitted, and a Genesis Thesis selecting it
 /// at a cut taken before any Event exists.
-fn constructed() -> (Canon<ResidentHistory>, Constructed, Thesis) {
+///
+/// The Thesis comes from replaying a decision rather than from a call written here, for the
+/// same reason the subject comes from a journal: what a later process gets is the decision,
+/// so the decision is what every phase must go through.
+fn constructed() -> (Canon<ResidentHistory>, Constructed, Vec<Decision>, Thesis) {
     let mut canon = Canon::new(ResidentHistory::new());
     let subject = subject::construct(&mut canon).expect("the subject is admissible");
 
-    let thesis = Thesis::genesis(
-        canon.history(),
-        GenesisInput {
-            cut: KnowledgeCut::at(canon.history(), day(10)),
-            selection: [subject.commitment].into(),
-        },
-    )
-    .expect("a genesis selecting an admitted commitment");
+    let decisions = vec![subject::genesis(subject.commitment)];
+    let lineage =
+        lineage::replay(canon.history(), &decisions).expect("a genesis over admitted knowledge");
 
-    (canon, subject, thesis)
+    let thesis = lineage.into_iter().next_back().expect("one Thesis");
+
+    (canon, subject, decisions, thesis)
 }
 
 /// Phase 1 — Construct.
@@ -132,7 +134,7 @@ fn phase_1_construct() {
 /// the reference observation reconstruction is measured against.
 #[test]
 fn phase_2_observe() {
-    let (mut canon, subject, genesis) = constructed();
+    let (mut canon, subject, decisions, genesis) = constructed();
 
     // The settlement is a journal entry like every other admission, so the world stays
     // described in one place rather than in a journal plus a call this test made.
@@ -168,19 +170,17 @@ fn phase_2_observe() {
     );
 
     // So recognizing it requires advancing, which is what the boundary's exclusion list
-    // permits when the procedure itself demands it. Advancement is how a Thesis takes on
-    // later history, and it produces a new Thesis rather than mutating this one.
-    let advancement = genesis
-        .advance(canon.history(), KnowledgeCut::at(canon.history(), day(15)))
-        .expect("a later cut the genesis can advance to");
+    // permits when the procedure itself demands it. It is a decision like the genesis was,
+    // and it goes into the lineage rather than being taken here.
+    let mut decisions = decisions;
+    decisions.push(subject::advancement());
 
-    assert_eq!(
-        advancement.imposed_count(),
-        0,
-        "history imposed nothing the genesis had not already selected"
-    );
+    let lineage = lineage::replay(canon.history(), &decisions)
+        .expect("a lineage the canonical knowledge supports");
 
-    let advanced = advancement.into_thesis();
+    assert_eq!(lineage.len(), 2, "the genesis, and the world that succeeded it");
+
+    let advanced = lineage.into_iter().next_back().expect("the advanced Thesis");
 
     assert_ne!(
         advanced.id(),
@@ -254,16 +254,25 @@ fn phase_2_observe() {
 /// process only because it was kept.
 #[test]
 fn phase_3_persist() {
-    let (mut canon, subject, _) = constructed();
+    let (mut canon, subject, decisions, genesis) = constructed();
 
     let mut journal = subject.journal;
     let settlement = subject::settlement(subject.commitment);
     journal::replay(&mut canon, std::slice::from_ref(&settlement)).expect("the Event admits");
     journal.push(settlement);
 
+    // The lineage the experiment reached: the world it first reasoned about, and the
+    // recognition of the Event. Both are decisions, and neither is recoverable from
+    // canonical knowledge — history says what became known, not which of it a world selects.
+    let mut decisions = decisions;
+    decisions.push(subject::advancement());
+
     let repository = Repository::open(scratch("phase-3"));
     repository
         .write_journal(&journal)
+        .expect("the repository is writable");
+    repository
+        .write_lineage(&decisions)
         .expect("the repository is writable");
 
     // The journal survives its own encoding. This is not yet reconstruction — no process
@@ -305,6 +314,25 @@ fn phase_3_persist() {
     // And what must: the recording instants, which nothing recomputes.
     assert!(written.contains("2026-01-05"), "the commitment's instant");
     assert!(written.contains("2026-01-12"), "the Event's instant");
+
+    // The lineage survives the same question. A `ThesisId` is derived from the selection a
+    // cut resolves, so writing one down would keep an answer beside the question it comes
+    // from — and the decisions are what a fresh process needs to ask it again.
+    let read = repository.read_lineage().expect("the lineage reads back");
+    assert_eq!(read.len(), decisions.len());
+
+    let written = std::fs::read_to_string(repository.lineage_path()).expect("the file is there");
+
+    let reached = lineage::replay(canon.history(), &decisions).expect("the lineage rebuilds");
+
+    for thesis in [&genesis, reached.last().expect("the advanced Thesis")] {
+        assert!(
+            !written.contains(&thesis.id().to_string()),
+            "the repository holds a derived Thesis identity"
+        );
+    }
+    assert!(written.contains("2026-01-10"), "the genesis instant");
+    assert!(written.contains("2026-01-15"), "the advancement instant");
 }
 
 fn scratch(name: &str) -> std::path::PathBuf {

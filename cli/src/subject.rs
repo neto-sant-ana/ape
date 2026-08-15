@@ -35,6 +35,7 @@ use crate::history::ResidentHistory;
 use crate::journal::{
     ActionKindRecord, Admission, AgentKindRecord, EffectRecord, ResourceKindRecord, replay,
 };
+use crate::lineage::Decision;
 
 pub const FULFILLING: &str = "Delivered";
 pub const CANCELLING: &str = "Cancelled";
@@ -148,6 +149,22 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         instance,
         journal,
     })
+}
+
+/// The genesis decision: which world Phase 1 reasons about, and when it is taken.
+///
+/// The instant sits after the commitment was recorded and before it is due, so the cut
+/// resolves an empty chain — there is an intention and nothing has settled it.
+pub fn genesis(commitment: CommitmentId) -> Decision {
+    Decision::Genesis {
+        known_at: day(10),
+        selection: [commitment].into(),
+    }
+}
+
+/// The advancement Phase 2 needs, because a cut cannot recognize an Event it predates.
+pub fn advancement() -> Decision {
+    Decision::Advance { known_at: day(15) }
 }
 
 /// The settling Event, which Phase 2 admits after the world has been interpreted without it.

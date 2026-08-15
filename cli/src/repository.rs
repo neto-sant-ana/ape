@@ -19,8 +19,10 @@ use std::path::{Path, PathBuf};
 
 use crate::error::RepositoryError;
 use crate::journal::Admission;
+use crate::lineage::Decision;
 
 const JOURNAL: &str = "journal.json";
+const LINEAGE: &str = "lineage.json";
 
 pub struct Repository {
     root: PathBuf,
@@ -53,6 +55,31 @@ impl Repository {
     /// Read the admissions back, in the order they were made.
     pub fn read_journal(&self) -> Result<Vec<Admission>, RepositoryError> {
         let encoded = fs::read_to_string(self.journal_path())?;
+
+        Ok(serde_json::from_str(&encoded)?)
+    }
+
+    pub fn lineage_path(&self) -> PathBuf {
+        self.root.join(LINEAGE)
+    }
+
+    /// Write the decisions a Thesis was reached by.
+    ///
+    /// Kept apart from the journal because the two answer to different authorities: what
+    /// became known is not revisable, and which world is being reasoned about is a choice
+    /// that may be made again.
+    pub fn write_lineage(&self, lineage: &[Decision]) -> Result<(), RepositoryError> {
+        fs::create_dir_all(&self.root)?;
+
+        let encoded = serde_json::to_string_pretty(lineage)?;
+
+        fs::write(self.lineage_path(), encoded)?;
+
+        Ok(())
+    }
+
+    pub fn read_lineage(&self) -> Result<Vec<Decision>, RepositoryError> {
+        let encoded = fs::read_to_string(self.lineage_path())?;
 
         Ok(serde_json::from_str(&encoded)?)
     }

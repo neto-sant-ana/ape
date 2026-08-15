@@ -32,6 +32,20 @@ impl JournalError {
 }
 
 #[derive(Debug, thiserror::Error)]
+pub enum LineageError {
+    #[error(transparent)]
+    Thesis(#[from] ape::engine::thesis::ThesisError),
+
+    #[error("{0:?} is not readable as an instant")]
+    UnreadableInstant(String),
+
+    /// An advancement with nothing to advance. The lineage on disk begins in the middle,
+    /// which no sequence of decisions could have produced.
+    #[error("the lineage advances before it begins")]
+    AdvancedWithoutGenesis,
+}
+
+#[derive(Debug, thiserror::Error)]
 pub enum RepositoryError {
     #[error("the repository could not be read or written: {0}")]
     Io(#[from] std::io::Error),
