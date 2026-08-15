@@ -19,6 +19,35 @@ already exist.
 
 ---
 
+## The claim being tested
+
+Stated as the thing APE would be, if the answer is yes:
+
+> *An immutable, content-addressed operational knowledge graph for making autonomous-agent
+> decisions historically reconstructible, projectable and auditable.*
+
+Three properties, and they are not equally hard.
+
+**Reconstructible** and **projectable** are properties of the engine's existing design, asked
+of a new caller. Experiment 01 answered both inside its boundary.
+
+**Auditable** is the one that is not a restatement. A record can be perfectly reconstructible
+and still not settle whether a decision was defensible, because defensibility is a claim about
+the alternatives that existed and were not taken. That is the burden the later experiments
+carry.
+
+One consequence of this framing runs through everything below, and it corrects a reading the
+first experiment made before the framing was written down: where the graph exists to govern
+the agent, every assertion in it is about the agent. There is no principal being reported on
+from outside, because an agent acting with delegated authority forms the principal's
+intentions rather than describing them.
+
+What looks like operational noise under one framing — candidates weighed and abandoned,
+sitting permanently in history — is under this one the record that makes an audit possible at
+all.
+
+---
+
 ## Question
 
 An agent given a goal and a world will produce two things.
