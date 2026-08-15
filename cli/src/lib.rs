@@ -14,6 +14,7 @@
 
 pub mod error;
 pub mod history;
+pub mod journal;
 pub mod level;
 pub mod repository;
 pub mod subject;

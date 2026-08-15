@@ -4,8 +4,44 @@
 //! the cases the engine has no opinion about, because they arise from the application
 //! reading a world it assembled itself.
 
+use ape::canon::CanonError;
 use ape::engine::hermeneia::HermeneiaError;
 use ape::kernel::entities::CommitmentId;
+
+#[derive(Debug, thiserror::Error)]
+pub enum JournalError {
+    #[error(transparent)]
+    Canon(#[from] CanonError),
+
+    /// A journal the engine refuses to admit. The field is named because a journal is read
+    /// long after it was written, and "invalid" alone sends the reader back to the bytes.
+    #[error("{field} in the journal is not admissible: {cause}")]
+    Malformed {
+        field: &'static str,
+        cause: String,
+    },
+}
+
+impl JournalError {
+    pub(crate) fn malformed(field: &'static str, cause: impl std::fmt::Display) -> Self {
+        Self::Malformed {
+            field,
+            cause: cause.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum RepositoryError {
+    #[error("the repository could not be read or written: {0}")]
+    Io(#[from] std::io::Error),
+
+    /// A journal on disk the application cannot read. Kept distinct from an unreadable
+    /// directory because the two say different things: one is the repository missing, the
+    /// other is the repository present and no longer meaning what it did.
+    #[error("the journal is not readable as one: {0}")]
+    Encoding(#[from] serde_json::Error),
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum LevelError {

@@ -5,14 +5,16 @@
 //! preserve are asserted here, so a later phase that reproduces them differently is a
 //! failure rather than a footnote.
 
-use ape::canon::{Canon, CanonicalHistory, EventSubmission};
+use ape::canon::{Canon, CanonicalHistory};
 use ape::engine::hermeneia::{Hypothesis, Outcome, Timeliness};
 use ape::engine::thesis::{GenesisInput, Interpretation, KnowledgeCut, Thesis};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::history::ResidentHistory;
+use ape_cli::journal;
 use ape_cli::level;
-use ape_cli::subject::{self, Subject};
+use ape_cli::repository::Repository;
+use ape_cli::subject::{self, Constructed};
 
 fn day(day: u8) -> Date {
     Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
@@ -20,7 +22,7 @@ fn day(day: u8) -> Date {
 
 /// The world as Phase 1 leaves it: the subject admitted, and a Genesis Thesis selecting it
 /// at a cut taken before any Event exists.
-fn constructed() -> (Canon<ResidentHistory>, Subject, Thesis) {
+fn constructed() -> (Canon<ResidentHistory>, Constructed, Thesis) {
     let mut canon = Canon::new(ResidentHistory::new());
     let subject = subject::construct(&mut canon).expect("the subject is admissible");
 
@@ -132,16 +134,15 @@ fn phase_1_construct() {
 fn phase_2_observe() {
     let (mut canon, subject, genesis) = constructed();
 
-    let event = canon
-        .admit_event(
-            EventSubmission {
-                commitment_id: subject.commitment,
-                observation: subject.fulfilling.clone(),
-                occurred_at: day(12),
-            },
-            day(12),
-        )
+    // The settlement is a journal entry like every other admission, so the world stays
+    // described in one place rather than in a journal plus a call this test made.
+    journal::replay(&mut canon, &[subject::settlement(subject.commitment)])
         .expect("an observation the statement can settle with");
+
+    let event = canon
+        .history()
+        .head()
+        .expect("the settling Event is now the head");
 
     assert_eq!(
         canon.history().head(),
@@ -242,4 +243,72 @@ fn phase_2_observe() {
         Some(event),
         "the report is derived from the chain that contains the Event"
     );
+}
+
+/// Phase 3 — Persist.
+///
+/// Only what a later process cannot derive is written down. For every datum the procedure
+/// asks what reconstruction becomes impossible without it, and the journal is what survives
+/// that question: an admission's fields are the input the engine derives everything else
+/// from, and its recording instant is assigned rather than derived, so it exists after the
+/// process only because it was kept.
+#[test]
+fn phase_3_persist() {
+    let (mut canon, subject, _) = constructed();
+
+    let mut journal = subject.journal;
+    let settlement = subject::settlement(subject.commitment);
+    journal::replay(&mut canon, std::slice::from_ref(&settlement)).expect("the Event admits");
+    journal.push(settlement);
+
+    let repository = Repository::open(scratch("phase-3"));
+    repository
+        .write_journal(&journal)
+        .expect("the repository is writable");
+
+    // The journal survives its own encoding. This is not yet reconstruction — no process
+    // has died — but a repository that cannot return what it was handed would fail the
+    // later phases for a reason that has nothing to do with APE.
+    let read = repository.read_journal().expect("the journal reads back");
+
+    assert_eq!(
+        read.len(),
+        journal.len(),
+        "every admission was kept, and none was invented"
+    );
+
+    let written = std::fs::read_to_string(repository.journal_path()).expect("the file is there");
+
+    // What must not be there. Each of these is derived from the journal above it, and
+    // storing one would put an answer beside the question it comes from, where the two can
+    // drift apart without anything noticing.
+    for derived in [
+        "level",
+        "outcome",
+        "fulfilled",
+        "unsettled",
+        "timeliness",
+        "breached",
+        "condition",
+        "feasib",
+        "conflict",
+        "thesis",
+        "previous_event",
+        "head",
+    ] {
+        assert!(
+            !written.to_lowercase().contains(derived),
+            "the repository holds {derived:?}, which is derived rather than supplied"
+        );
+    }
+
+    // And what must: the recording instants, which nothing recomputes.
+    assert!(written.contains("2026-01-05"), "the commitment's instant");
+    assert!(written.contains("2026-01-12"), "the Event's instant");
+}
+
+fn scratch(name: &str) -> std::path::PathBuf {
+    let path = std::env::temp_dir().join("ape-reconstruction").join(name);
+    let _ = std::fs::remove_dir_all(&path);
+    path
 }

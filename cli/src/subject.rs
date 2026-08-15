@@ -4,172 +4,162 @@
 //! ```text
 //! Agent ── Role ── Statement ──▶ Action ──▶ Resource
 //!                      │
-//!                  Commitment
+//!                  Commitment ──▶ Event
 //! ```
 //!
 //! The domain is irrelevant and deliberately thin. What the subject must supply is a
 //! complete semantic path: a quantifiable resource, so that interpreting it exposes both a
-//! commitment's condition and a factual consequence on a level; one commitment, so there
-//! is an intention to settle; and no dependencies, so nothing here is waiting on anything
-//! but the event that has not happened yet.
+//! commitment's condition and a derived consequence on a level; one commitment, so there
+//! is an intention to settle; and no dependencies, so nothing is waiting on anything but
+//! the event.
+//!
+//! The subject is given as a **journal** rather than as a sequence of calls, because a
+//! journal is what survives a process and a sequence of calls is not. Constructing it is
+//! replaying it, so what Phase 1 exercises is what Phase 6 has to reproduce, and there is
+//! no second description of the subject that could disagree with the first.
+//!
+//! Authoring it takes several passes, because a reference is an identity and an identity
+//! exists only once the thing it names has been admitted. Reading it back takes one: the
+//! journal that comes out is flat and complete, and that is the shape a fresh process gets.
 //!
 //! Every quantity is an integer. Feasibility accumulates levels in `f64`, where addition
 //! is not associative, and a reconstruction that read records back in a different order
 //! could differ in the last bit and flip a comparison against a constraint. Integers keep
 //! the experiment measuring reconstruction rather than float determinism.
 
-use ape::canon::{Canon, CanonError};
-use ape::kernel::entities::{
-    ActionInput, AgentInput, CommitmentId, CommitmentInput, EligibilityAssignmentInput,
-    ResourceInput, ResourceInstanceId, ResourceInstanceInput, RoleInput, StatementInput,
-};
-use ape::kernel::value_objects::{
-    ActionKind, ActionValue, AgentKind, Assignment, Constraint, Date, Effect, Identifier,
-    Observation, Participants, ResourceKind, Settlement, Term,
-};
+use ape::canon::Canon;
+use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 
+use crate::error::JournalError;
 use crate::history::ResidentHistory;
+use crate::journal::{
+    ActionKindRecord, Admission, AgentKindRecord, EffectRecord, ResourceKindRecord, replay,
+};
 
-/// What the procedure needs to carry from one phase to the next.
-pub struct Subject {
+pub const FULFILLING: &str = "Delivered";
+pub const CANCELLING: &str = "Cancelled";
+
+/// What the procedure refers to across phases, and the journal that produced it.
+pub struct Constructed {
     pub commitment: CommitmentId,
     pub instance: ResourceInstanceId,
-    pub fulfilling: Observation,
-    pub term: Term,
+    /// Every admission made, in order. Replaying this into a fresh history reproduces the
+    /// world exactly, which is what makes it the thing worth persisting.
+    pub journal: Vec<Admission>,
 }
 
-pub fn vocabulary_recorded_at() -> Date {
-    day(1)
-}
+/// Admit the subject, accumulating the journal that describes it.
+pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, JournalError> {
+    let mut journal = Vec::new();
 
-pub fn commitment_recorded_at() -> Date {
-    day(5)
-}
-
-/// Admit the subject through the ordinary APE boundaries.
-///
-/// Nothing here takes a persistence-specific construction path: this is the same sequence
-/// a reconstruction has to reproduce, which is what makes the two comparable at all.
-pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Subject, CanonError> {
-    let vocabulary_at = vocabulary_recorded_at();
-
-    let supplier = canon.admit_role(
-        RoleInput {
-            label: name("supplier"),
+    let vocabulary = vec![
+        Admission::Role {
+            label: "supplier".into(),
+            recorded_at: day(1),
         },
-        vocabulary_at,
-    )?;
-
-    let buyer = canon.admit_role(
-        RoleInput {
-            label: name("buyer"),
+        Admission::Role {
+            label: "buyer".into(),
+            recorded_at: day(1),
         },
-        vocabulary_at,
-    )?;
-
-    let shipper = canon.admit_agent(
-        AgentInput {
-            label: name("shipper"),
-            kind: AgentKind::Company,
+        Admission::Agent {
+            label: "shipper".into(),
+            kind: AgentKindRecord::Company,
+            recorded_at: day(1),
         },
-        vocabulary_at,
-    )?;
-
-    let receiver = canon.admit_agent(
-        AgentInput {
-            label: name("receiver"),
-            kind: AgentKind::Company,
+        Admission::Agent {
+            label: "receiver".into(),
+            kind: AgentKindRecord::Company,
+            recorded_at: day(1),
         },
-        vocabulary_at,
-    )?;
+        Admission::Resource {
+            label: "inventory".into(),
+            kind: ResourceKindRecord::Between {
+                lower: 0.0,
+                upper: 100.0,
+            },
+            recorded_at: day(1),
+        },
+    ];
+    let named = replay(canon, &vocabulary)?;
+    journal.extend(vocabulary);
 
-    canon.admit_eligibility(
-        EligibilityAssignmentInput {
+    let (supplier, buyer) = (named.roles[0], named.roles[1]);
+    let (shipper, receiver) = (named.agents[0], named.agents[1]);
+    let inventory = named.resources[0];
+
+    let bound = vec![
+        Admission::Eligibility {
             agent: shipper,
             roles: [supplier].into(),
-            effective_from: vocabulary_at,
+            effective_from: day(1),
+            recorded_at: day(1),
         },
-        vocabulary_at,
-    )?;
-
-    canon.admit_eligibility(
-        EligibilityAssignmentInput {
+        Admission::Eligibility {
             agent: receiver,
             roles: [buyer].into(),
-            effective_from: vocabulary_at,
+            effective_from: day(1),
+            recorded_at: day(1),
         },
-        vocabulary_at,
-    )?;
-
-    let inventory = canon.admit_resource(
-        ResourceInput {
-            label: name("inventory"),
-            kind: ResourceKind::Quantifiable(
-                Constraint::between(0.0, 100.0).expect("an ordered, finite range"),
-            ),
-        },
-        vocabulary_at,
-    )?;
-
-    let instance = canon.admit_resource_instance(
-        ResourceInstanceInput {
-            label: name("warehouse"),
+        Admission::ResourceInstance {
+            label: "warehouse".into(),
             resource: inventory,
+            recorded_at: day(1),
         },
-        vocabulary_at,
-    )?;
-
-    let deliver = canon.admit_action(
-        ActionInput {
-            verb: name("deliver"),
-            kind: ActionKind::Quantifiable(Effect::Increase),
+        Admission::Action {
+            verb: "deliver".into(),
+            kind: ActionKindRecord::Quantifiable(EffectRecord::Increase),
             resource: inventory,
+            recorded_at: day(1),
         },
-        vocabulary_at,
-    )?;
+    ];
+    let placed = replay(canon, &bound)?;
+    journal.extend(bound);
 
-    let fulfilling = observation("Delivered");
+    let instance = placed.instances[0];
 
-    let statement = canon.admit_statement(
-        StatementInput {
-            participants: Participants::new([supplier], [buyer]).expect("both sides named"),
-            action: deliver,
-            settlement: Settlement::new([fulfilling.clone()], [observation("Cancelled")])
-                .expect("both outcomes named"),
-        },
-        vocabulary_at,
-    )?;
+    let proposed = vec![Admission::Statement {
+        actors: [supplier].into(),
+        recipients: [buyer].into(),
+        action: placed.actions[0],
+        fulfills: [FULFILLING.to_owned()].into(),
+        cancels: [CANCELLING.to_owned()].into(),
+        recorded_at: day(1),
+    }];
+    let stated = replay(canon, &proposed)?;
+    journal.extend(proposed);
 
-    let term = Term::new(day(5), day(20)).expect("committed before due");
+    let intended = vec![Admission::Commitment {
+        accountable: shipper,
+        executors: [shipper].into(),
+        beneficiaries: [receiver].into(),
+        statement: stated.statements[0],
+        resource: instance,
+        committed_at: day(5),
+        due_date: day(20),
+        magnitude: Some(10.0),
+        dependencies: [].into(),
+        recorded_at: day(5),
+    }];
+    let committed = replay(canon, &intended)?;
+    journal.extend(intended);
 
-    let commitment = canon.admit_commitment(
-        CommitmentInput {
-            assignment: Assignment::new(shipper, [shipper], [receiver]).expect("both sides staffed"),
-            statement,
-            resource: instance,
-            term: term.clone(),
-            action_value: ActionValue::value(10.0).expect("a positive, finite magnitude"),
-            dependencies: [].into(),
-        },
-        commitment_recorded_at(),
-    )?;
-
-    Ok(Subject {
-        commitment,
+    Ok(Constructed {
+        commitment: committed.commitments[0],
         instance,
-        fulfilling,
-        term,
+        journal,
     })
 }
 
-fn day(day: u8) -> Date {
-    Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
+/// The settling Event, which Phase 2 admits after the world has been interpreted without it.
+pub fn settlement(commitment: CommitmentId) -> Admission {
+    Admission::Event {
+        commitment,
+        observation: FULFILLING.into(),
+        occurred_at: day(12),
+        recorded_at: day(12),
+    }
 }
 
-fn name(value: &str) -> Identifier {
-    Identifier::new(value).expect("a non-blank identifier")
-}
-
-fn observation(value: &str) -> Observation {
-    Observation::new(value).expect("a non-blank observation")
+fn day(day: u8) -> String {
+    format!("2026-01-{day:02}")
 }
