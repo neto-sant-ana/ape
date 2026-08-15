@@ -1,0 +1,108 @@
+worlds in the lineage: 5
+distinct worlds recorded: 5
+history head: Some("dd0c480b")
+recorded through: Some("2026-01-09")
+
+=== world 0 — a2c8c533
+    parent: None
+    cut: known_at 2026-01-06 head Some("5664085b")
+    frozen:
+      7998cbe1 +100 committed 2026-01-01 due 2026-01-02 recorded 2026-01-01 [Settled on 2026-01-02]
+    open:
+      834371ed -120 committed 2026-01-06 due 2026-01-08 recorded 2026-01-06 [Cancelled on 2026-01-06]
+    conditions at 2026-01-06: 7998cbe1=Fulfilled 834371ed=Unsettled/WithinDeadline 
+    conditions at 2026-01-06: 7998cbe1=Fulfilled 834371ed=Unsettled/WithinDeadline 
+    conditions at 2026-01-20: 7998cbe1=Fulfilled 834371ed=Unsettled/Breached 
+    FinalState: [OutOfBounds { instance: ResourceInstanceId([153, 32, 179, 42, 201, 230, 254, 98, 22, 95, 129, 98, 95, 0, 100, 126, 184, 224, 242, 142, 91, 254, 82, 134, 154, 95, 164, 167, 102, 152, 110, 173]), level: -20.0 }]
+    OnDueDateNet: [OutOfBounds { instance: ResourceInstanceId([153, 32, 179, 42, 201, 230, 254, 98, 22, 95, 129, 98, 95, 0, 100, 126, 184, 224, 242, 142, 91, 254, 82, 134, 154, 95, 164, 167, 102, 152, 110, 173]), level: -20.0 }]
+    OnDueDateInAnyOrder: [OutOfBounds { instance: ResourceInstanceId([153, 32, 179, 42, 201, 230, 254, 98, 22, 95, 129, 98, 95, 0, 100, 126, 184, 224, 242, 142, 91, 254, 82, 134, 154, 95, 164, 167, 102, 152, 110, 173]), level: -20.0 }]
+    level settled-only: +100 ; if every live intention lands: +100
+
+=== world 1 — d207a4e7
+    parent: Some("a2c8c533")
+    cut: known_at 2026-01-06 head Some("dd0c480b")
+    frozen:
+      7998cbe1 +100 committed 2026-01-01 due 2026-01-02 recorded 2026-01-01 [Settled on 2026-01-02]
+      834371ed -120 committed 2026-01-06 due 2026-01-08 recorded 2026-01-06 [Cancelled on 2026-01-06]
+    open:
+    conditions at 2026-01-06: 7998cbe1=Fulfilled 834371ed=Cancelled 
+    conditions at 2026-01-06: 7998cbe1=Fulfilled 834371ed=Cancelled 
+    conditions at 2026-01-20: 7998cbe1=Fulfilled 834371ed=Cancelled 
+    FinalState: []
+    OnDueDateNet: []
+    OnDueDateInAnyOrder: []
+    level settled-only: +100 ; if every live intention lands: +100
+
+=== world 2 — 4688fa77
+    parent: Some("d207a4e7")
+    cut: known_at 2026-01-06 head Some("dd0c480b")
+    frozen:
+      7998cbe1 +100 committed 2026-01-01 due 2026-01-02 recorded 2026-01-01 [Settled on 2026-01-02]
+      834371ed -120 committed 2026-01-06 due 2026-01-08 recorded 2026-01-06 [Cancelled on 2026-01-06]
+    open:
+      1f0d449a -30 committed 2026-01-06 due 2026-01-14 recorded 2026-01-06 [unsettled]
+    conditions at 2026-01-06: 1f0d449a=Unsettled/WithinDeadline 7998cbe1=Fulfilled 834371ed=Cancelled 
+    conditions at 2026-01-06: 1f0d449a=Unsettled/WithinDeadline 7998cbe1=Fulfilled 834371ed=Cancelled 
+    conditions at 2026-01-20: 1f0d449a=Unsettled/Breached 7998cbe1=Fulfilled 834371ed=Cancelled 
+    FinalState: []
+    OnDueDateNet: []
+    OnDueDateInAnyOrder: []
+    level settled-only: +100 ; if every live intention lands: +70
+
+=== world 3 — 615cbca2
+    parent: Some("4688fa77")
+    cut: known_at 2026-01-12 head Some("dd0c480b")
+    frozen:
+      7998cbe1 +100 committed 2026-01-01 due 2026-01-02 recorded 2026-01-01 [Settled on 2026-01-02]
+      834371ed -120 committed 2026-01-06 due 2026-01-08 recorded 2026-01-06 [Cancelled on 2026-01-06]
+    open:
+      1f0d449a -30 committed 2026-01-06 due 2026-01-14 recorded 2026-01-06 [unsettled]
+    conditions at 2026-01-12: 1f0d449a=Unsettled/WithinDeadline 7998cbe1=Fulfilled 834371ed=Cancelled 
+    conditions at 2026-01-06: 1f0d449a=Unsettled/WithinDeadline 7998cbe1=Fulfilled 834371ed=Cancelled 
+    conditions at 2026-01-20: 1f0d449a=Unsettled/Breached 7998cbe1=Fulfilled 834371ed=Cancelled 
+    FinalState: []
+    OnDueDateNet: []
+    OnDueDateInAnyOrder: []
+    level settled-only: +100 ; if every live intention lands: +70
+
+=== world 4 — 71250407
+    parent: Some("615cbca2")
+    cut: known_at 2026-01-12 head Some("dd0c480b")
+    frozen:
+      7998cbe1 +100 committed 2026-01-01 due 2026-01-02 recorded 2026-01-01 [Settled on 2026-01-02]
+      834371ed -120 committed 2026-01-06 due 2026-01-08 recorded 2026-01-06 [Cancelled on 2026-01-06]
+    open:
+      1f0d449a -30 committed 2026-01-06 due 2026-01-14 recorded 2026-01-06 [unsettled]
+      5c6332ee -90 committed 2026-01-09 due 2026-01-20 recorded 2026-01-09 [unsettled]
+    conditions at 2026-01-12: 1f0d449a=Unsettled/WithinDeadline 5c6332ee=Unsettled/WithinDeadline 7998cbe1=Fulfilled 834371ed=Cancelled 
+    conditions at 2026-01-06: 1f0d449a=Unsettled/WithinDeadline 5c6332ee=Unsettled/WithinDeadline 7998cbe1=Fulfilled 834371ed=Cancelled 
+    conditions at 2026-01-20: 1f0d449a=Unsettled/Breached 5c6332ee=Unsettled/WithinDeadline 7998cbe1=Fulfilled 834371ed=Cancelled 
+    FinalState: [OutOfBounds { instance: ResourceInstanceId([153, 32, 179, 42, 201, 230, 254, 98, 22, 95, 129, 98, 95, 0, 100, 126, 184, 224, 242, 142, 91, 254, 82, 134, 154, 95, 164, 167, 102, 152, 110, 173]), level: -20.0 }]
+    OnDueDateNet: [OutOfBounds { instance: ResourceInstanceId([153, 32, 179, 42, 201, 230, 254, 98, 22, 95, 129, 98, 95, 0, 100, 126, 184, 224, 242, 142, 91, 254, 82, 134, 154, 95, 164, 167, 102, 152, 110, 173]), level: -20.0 }]
+    OnDueDateInAnyOrder: [OutOfBounds { instance: ResourceInstanceId([153, 32, 179, 42, 201, 230, 254, 98, 22, 95, 129, 98, 95, 0, 100, 126, 184, 224, 242, 142, 91, 254, 82, 134, 154, 95, 164, 167, 102, 152, 110, 173]), level: -20.0 }]
+    level settled-only: +100 ; if every live intention lands: -20
+
+--- what each edge changed
+    a2c8c533 -> d207a4e7: cut moved ; imposed by history [] ; introduced by decision []
+    d207a4e7 -> 4688fa77: intention changed ; imposed by history [] ; introduced by decision ["1f0d449a"]
+    4688fa77 -> 615cbca2: cut moved ; imposed by history [] ; introduced by decision []
+    615cbca2 -> 71250407: intention changed ; imposed by history [] ; introduced by decision ["5c6332ee"]
+
+--- every commitment the canon holds, in the order it was recorded
+    834371ed -120 committed 2026-01-06 due 2026-01-08 recorded 2026-01-06 [Cancelled on 2026-01-06]
+    1f0d449a -30 committed 2026-01-06 due 2026-01-14 recorded 2026-01-06 [unsettled]
+    5c6332ee -90 committed 2026-01-09 due 2026-01-20 recorded 2026-01-09 [unsettled]
+
+--- counterfactuals from the current world
+    drop the 90 under FinalState: no conflict
+    drop the 90 under OnDueDateNet: no conflict
+    drop the 90 under OnDueDateInAnyOrder: no conflict
+    drop the 30 under FinalState: no conflict
+    drop the 30 under OnDueDateNet: no conflict
+    drop the 30 under OnDueDateInAnyOrder: no conflict
+    add an inbound 20 due Jan 19 under FinalState: no conflict
+    add an inbound 20 due Jan 19 under OnDueDateNet: no conflict
+    add an inbound 20 due Jan 19 under OnDueDateInAnyOrder: no conflict
+    swap the 90 for a 70 under FinalState: no conflict
+    swap the 90 for a 70 under OnDueDateNet: no conflict
+    swap the 90 for a 70 under OnDueDateInAnyOrder: no conflict
