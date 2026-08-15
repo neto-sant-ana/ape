@@ -34,13 +34,9 @@ use crate::kernel::axiom::Knowledge;
 
 use crate::kernel::entities::{Commitment, CommitmentId, Event, EventId, ResourceInstanceId};
 
-use crate::kernel::value_objects::{ActionKind, Constraint, Date, Effect, ResourceKind};
+use crate::kernel::value_objects::{Constraint, Date};
 
-#[derive(Debug, Clone)]
-struct Movement {
-    instance: ResourceInstanceId,
-    magnitude: f64,
-}
+use super::movement::{Movement, bounded_movement_of};
 
 /// How many movements may share one instant on one resource before the levels their
 /// arrangements can produce stop being worth enumerating.
@@ -175,7 +171,7 @@ impl Accumulation {
                 .ok_or(HermeneiaError::UnknownCommitment(*id))?;
 
             if let Some((movement, constraint)) = resolve_movement(knowledge, &commitment)? {
-                resolved.constraints.insert(movement.instance, constraint);
+                resolved.constraints.insert(movement.instance(), constraint);
                 resolved.movements.insert(*id, movement);
             }
 
@@ -447,7 +443,7 @@ impl Accumulation {
             };
 
             grouped
-                .entry(movement.instance)
+                .entry(movement.instance())
                 .or_default()
                 .entry(position)
                 .or_default()
@@ -483,7 +479,7 @@ impl Accumulation {
                     .fold(0, |mask, (slot, _)| mask | (1 << slot));
 
                 Simultaneous {
-                    magnitude: self.movements.get(id).map_or(0.0, |m| m.magnitude),
+                    magnitude: self.movements.get(id).map_or(0.0, |m| m.magnitude()),
                     requires,
                 }
             })
@@ -498,7 +494,7 @@ impl Accumulation {
                 continue;
             }
 
-            *levels.entry(movement.instance).or_insert(0.0) += movement.magnitude;
+            *levels.entry(movement.instance()).or_insert(0.0) += movement.magnitude();
         }
 
         levels
@@ -578,58 +574,5 @@ fn resolve_movement<K: Knowledge>(
     knowledge: &K,
     commitment: &Commitment,
 ) -> Result<Option<(Movement, Constraint)>, HermeneiaError> {
-    let statement_id = *commitment.statement();
-    let statement = knowledge
-        .statement(statement_id)
-        .ok_or(HermeneiaError::UnknownStatement {
-            commitment: commitment.id(),
-            statement: statement_id,
-        })?;
-
-    let action_id = *statement.action();
-    let action = knowledge
-        .action(action_id)
-        .ok_or(HermeneiaError::UnknownAction {
-            statement: statement_id,
-            action: action_id,
-        })?;
-
-    let effect = match (action.kind(), commitment.action_value().as_value()) {
-        (ActionKind::Discrete, None) => return Ok(None),
-        (ActionKind::Quantifiable(effect), Some(magnitude)) => (effect, magnitude),
-        _ => return Err(HermeneiaError::ActionValueMismatch(commitment.id())),
-    };
-
-    let instance_id = *commitment.resource();
-    let instance = knowledge.resource_instance(instance_id).ok_or(
-        HermeneiaError::UnknownResourceInstance {
-            commitment: commitment.id(),
-            instance: instance_id,
-        },
-    )?;
-
-    let resource_id = *instance.resource();
-    let resource = knowledge
-        .resource(resource_id)
-        .ok_or(HermeneiaError::UnknownResource {
-            instance: instance_id,
-            resource: resource_id,
-        })?;
-
-    let ResourceKind::Quantifiable(constraint) = resource.kind() else {
-        return Err(HermeneiaError::ActionResourceKindMismatch(commitment.id()));
-    };
-
-    let (effect, magnitude) = effect;
-
-    Ok(Some((
-        Movement {
-            instance: instance_id,
-            magnitude: match effect {
-                Effect::Increase => magnitude,
-                Effect::Decrease => -magnitude,
-            },
-        },
-        constraint.clone(),
-    )))
+    bounded_movement_of(knowledge, commitment)
 }
