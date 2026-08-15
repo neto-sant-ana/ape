@@ -65,9 +65,9 @@ not the ones anticipated, and the ones that materialised were sharper.
 
 **A refusal dates a decision** (Observation 1). The genesis's cut cannot be reconstructed today
 by any public path, which proves it was taken before the cancellation was recorded. The rules
-that produce this exist to stop a world from setting aside facts it knew; that they also make a
-backdated world unconstructible is a consequence nobody wrote them for. The limit is recorded
-beside it: a quiet day dates nothing.
+that produce this are written against retraction, and they serve a goal the engine held from the
+start; what had not been named is that the refusal is *evidence* afterwards, and not only a
+guard at construction. The limit is recorded beside it: a quiet day dates nothing.
 
 **The counterfactual and the process audit are different audits** (Observation 3), and only one
 is available. This is the question experiment 01 left open, answered.

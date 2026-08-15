@@ -27,8 +27,17 @@ it. Naming a head directly is a refinement *within one instant* and is refused o
 because a cut that held a current instant beside an old head would express retraction, which
 the layer states a cut must not be able to say.
 
-The rules exist to prevent a world from setting aside facts it already knew. That they also
-make a backdated world unconstructible is a consequence nobody wrote them for.
+The rules are written against retraction: preventing a world from setting aside facts it already
+knew. That a backdated world becomes unconstructible is a further consequence, and it would be
+wrong to call it accidental.
+
+An auditable history was among the engine's goals from the beginning, and these rules serve it.
+What had not been named is this particular consequence — that the refusal is not only a
+guard at construction but *evidence* afterwards, and that a Thesis can therefore be dated by
+what can no longer be built.
+
+The experiment did not find an accident. It found a consequence the design was already aiming
+at, arriving somewhere nobody had looked for it.
 
 ---
 
