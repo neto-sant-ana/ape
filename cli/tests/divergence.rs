@@ -17,8 +17,16 @@ use ape_cli::history::ResidentHistory;
 use ape_cli::journal::{self, Admission};
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision};
+use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading};
 use ape_cli::repository::Repository;
 use ape_cli::subject::divergence::{self, Constructed};
+
+/// The instant every world is interpreted at, from Phase 5 on.
+///
+/// It sits past the deadline the first two commitments carry and inside the one the
+/// alternative carries, so a comparison of conditions has something to disagree about beyond
+/// settlement.
+const EFFECTIVE: &str = "2026-01-25";
 
 fn scratch(name: &str) -> std::path::PathBuf {
     let path = std::env::temp_dir().join("ape-divergence").join(name);
@@ -569,4 +577,216 @@ fn phase_4_persist() {
         ],
         "a decision records an instant and an intention, and nothing that places it"
     );
+}
+
+/// Phases 5 to 7 — Terminate, Reload, Reconstruct.
+///
+/// The original process is dead, and here that is literal: the lineage is rebuilt by the
+/// `ape-cli` binary in an operating-system process of its own, which shares no memory with
+/// the one that reasoned. What it is given is a repository path, a resource instance and an
+/// instant — nothing the original process computed can reach it, because none of it can
+/// cross.
+///
+/// What these phases establish is narrower than agreement, and has to come first: a process
+/// that shared nothing produced *three* worlds. Whether they are the three that were reasoned
+/// about is Phase 8.
+#[test]
+fn phase_5_terminate() {
+    let reasoned = reasoned();
+    let repository = Repository::open(scratch("phase-5"));
+    persist(&repository, &reasoned);
+
+    let dead = std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli"));
+
+    let refused =
+        rebuild_in_fresh_process(dead, &scratch("phase-5-absent"), reasoned.subject.instance);
+
+    assert!(
+        !refused.status.success(),
+        "a fresh process with no repository must not produce a world"
+    );
+
+    let survived = rebuild_in_fresh_process(dead, repository.root(), reasoned.subject.instance);
+
+    assert!(
+        survived.status.success(),
+        "the fresh process failed: {}",
+        String::from_utf8_lossy(&survived.stderr)
+    );
+
+    let rebuilt: Vec<Reading> =
+        serde_json::from_slice(&survived.stdout).expect("a lineage came back");
+
+    assert_eq!(
+        rebuilt.len(),
+        3,
+        "the repository yields every world it holds decisions for, not only the last"
+    );
+
+    // Ancestry survived as a chain rather than as three unrelated worlds. This says nothing
+    // yet about whether they are the right three.
+    assert_eq!(
+        rebuilt[0].thesis_parent, None,
+        "the lineage begins at a genesis"
+    );
+    assert_eq!(
+        rebuilt[1].thesis_parent.as_deref(),
+        Some(rebuilt[0].thesis.as_str())
+    );
+    assert_eq!(
+        rebuilt[2].thesis_parent.as_deref(),
+        Some(rebuilt[1].thesis.as_str())
+    );
+
+    assert_eq!(rebuilt[2].effective_at, EFFECTIVE);
+}
+
+/// Phase 8 — Compare.
+///
+/// Each reconstructed world against the one it reproduces. What this records is a refutation
+/// of the naive form, which the protocol names in advance as the expected result and as a
+/// finding rather than a defeat.
+///
+/// The assertions therefore state what the run produced. They are written to fail the moment
+/// the experiment establishes what makes the divergence stop, so that the answer shows up as
+/// a change to this test rather than as a paragraph claiming one.
+#[test]
+fn phase_8_compare() {
+    let reasoned = reasoned();
+    let repository = Repository::open(scratch("phase-8"));
+    persist(&repository, &reasoned);
+
+    let effective = Date::parse(EFFECTIVE).expect("the effective instant is a date");
+
+    let before = reading::all(
+        reasoned.canon.history(),
+        &reasoned.lineage,
+        reasoned.subject.instance,
+        &effective,
+    )
+    .expect("the living lineage reads");
+
+    let rebuilt = rebuild_in_fresh_process(
+        std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli")),
+        repository.root(),
+        reasoned.subject.instance,
+    );
+
+    let after: Vec<Reading> = serde_json::from_slice(&rebuilt.stdout).expect("a lineage came back");
+
+    assert_eq!(after.len(), before.len(), "three worlds either way");
+
+    // Not one of them survives. Two of the three are reproduced in every coordinate that
+    // describes them and still come back as different worlds, because a Thesis is identified
+    // by its ancestry as well as by its content — so a genesis that re-derives differently
+    // carries its whole lineage with it.
+    for (position, (before, after)) in before.iter().zip(&after).enumerate() {
+        assert_ne!(
+            before.thesis, after.thesis,
+            "world {position} was expected to come back under a different identity"
+        );
+    }
+
+    // The genesis is the only one that changed meaning, and it changed all of it. The instant
+    // it names has acquired a head, so the world it denotes has a settled past it did not
+    // have, a partition that reflects that past, and no reason left to be refused.
+    let (genesis_before, genesis_after) = (&before[0], &after[0]);
+
+    assert_eq!(
+        genesis_before.known_at, genesis_after.known_at,
+        "same instant"
+    );
+    assert_eq!(genesis_before.event_head, None);
+    assert_eq!(
+        genesis_after.event_head, genesis_after.canonical_head,
+        "the instant now addresses the end of the chain"
+    );
+
+    assert!(genesis_before.frozen.is_empty());
+    assert_eq!(
+        genesis_after.frozen,
+        BTreeSet::from([reasoned.subject.overspend.to_string()]),
+        "what was open when the decision was taken comes back unavoidable"
+    );
+
+    let overspend = reasoned.subject.overspend.to_string();
+
+    assert_eq!(
+        genesis_before.conditions[&overspend].outcome,
+        OutcomeRecord::Unsettled
+    );
+    assert_eq!(
+        genesis_after.conditions[&overspend].outcome,
+        OutcomeRecord::Cancelled,
+        "the reconstruction knows an Event the decision could not have known"
+    );
+
+    assert_eq!(
+        genesis_before.conflicts,
+        [ConflictRecord::OutOfBounds {
+            instance: reasoned.subject.instance.to_string(),
+            level: -70.0,
+        }],
+    );
+    assert!(
+        genesis_after.conflicts.is_empty(),
+        "the refused world comes back unrefused — Criterion 6, refuted"
+    );
+
+    // The advancement and the fork are reproduced whole. Everything a world says about
+    // itself survives; only who it descends from does not, and that is enough to make it a
+    // different world.
+    let without_ancestry = |reading: &Reading| Reading {
+        thesis: String::new(),
+        thesis_parent: None,
+        ..reading.clone()
+    };
+
+    for position in [1, 2] {
+        assert_eq!(
+            without_ancestry(&before[position]),
+            without_ancestry(&after[position]),
+            "world {position} differs in nothing but ancestry"
+        );
+    }
+
+    // Written down before the run, and the half that does the work when a defect sits in code
+    // both sides share.
+    assert_eq!(before[2].level, 0.0, "nothing was ever fulfilled");
+    assert_eq!(after[2].effective_at, EFFECTIVE);
+    assert_eq!(
+        after[2].open,
+        BTreeSet::from([
+            reasoned.subject.inflow.to_string(),
+            reasoned.alternative.to_string(),
+        ]),
+        "the world the application forked to selects what it chose"
+    );
+    assert!(
+        after[2].conflicts.is_empty(),
+        "and the account it describes ends inside its bounds"
+    );
+}
+
+/// Leave the reasoned lineage on disk, exactly as Phase 4 does.
+fn persist(repository: &Repository, reasoned: &Reasoned) {
+    repository
+        .write_journal(&reasoned.journal)
+        .expect("the repository is writable");
+    repository
+        .write_lineage(&reasoned.decisions)
+        .expect("the repository is writable");
+}
+
+fn rebuild_in_fresh_process(
+    binary: &std::path::Path,
+    repository: &std::path::Path,
+    instance: ape::kernel::entities::ResourceInstanceId,
+) -> std::process::Output {
+    std::process::Command::new(binary)
+        .arg(repository)
+        .arg(instance.to_string())
+        .arg(EFFECTIVE)
+        .output()
+        .expect("the binary runs")
 }
