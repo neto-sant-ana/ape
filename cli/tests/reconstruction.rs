@@ -17,7 +17,7 @@ use ape_cli::level;
 use ape_cli::lineage::{self, Decision};
 use ape_cli::reading::{self, OutcomeRecord, Reading};
 use ape_cli::repository::Repository;
-use ape_cli::subject::{self, Constructed};
+use ape_cli::subject::reconstruction::{self as subject, Constructed};
 
 fn day(day: u8) -> Date {
     Date::from_ymd(2026, 1, day).expect("a real date in January 2026")

@@ -1,4 +1,4 @@
-//! The experimental subject: the smallest operational graph that exercises both intended
+//! The reconstruction subject: the smallest operational graph that exercises both intended
 //! and observed reality.
 //!
 //! ```text
