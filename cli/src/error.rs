@@ -17,6 +17,18 @@ pub enum JournalError {
     /// long after it was written, and "invalid" alone sends the reader back to the bytes.
     #[error("{field} in the journal is not admissible: {cause}")]
     Malformed { field: &'static str, cause: String },
+
+    /// An address naming an entry the journal does not hold. Something referred to this
+    /// journal and meant a different one, and admitting everything instead would answer with
+    /// a world that was never reasoned about.
+    #[error("the journal holds no entry {0}")]
+    UnknownEntry(crate::journal::EntryId),
+
+    /// An address the replay is already past. The sequence being replayed alongside the
+    /// journal disagrees with it about order, and continuing would hand out knowledge the
+    /// coordinate says had not arrived.
+    #[error("entry {0} was admitted before the point the journal has reached")]
+    EntryAlreadyPassed(crate::journal::EntryId),
 }
 
 impl JournalError {
@@ -57,6 +69,11 @@ pub enum ReadingError {
 pub enum LineageError {
     #[error(transparent)]
     Thesis(#[from] ape::engine::thesis::ThesisError),
+
+    /// Rebuilding a lineage admits the journal in step with it, so a journal that refuses to
+    /// replay is a lineage that cannot be reached.
+    #[error(transparent)]
+    Journal(#[from] JournalError),
 
     #[error("{0:?} is not readable as an instant")]
     UnreadableInstant(String),

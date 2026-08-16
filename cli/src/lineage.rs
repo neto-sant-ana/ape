@@ -14,17 +14,30 @@
 //! identity, and a repository that keeps the decisions resolves them by replaying instead.
 //! That is a consequence of this experiment's boundary rather than a claim about the port:
 //! ancestry walked across processes may well want one, and nothing here has needed it.
+//!
+//! # A decision is not enough to place a decision
+//!
+//! An instant is what a decision *names*; the knowledge that instant resolves against is
+//! whatever the journal held when it was applied. Those are one body only while nothing was
+//! admitted after the decision and within the instant it names — and where something was, the
+//! same decision applied later builds a world nobody decided.
+//!
+//! So a persisted decision is a [`Taken`]: the decision, plus the entry that was the journal's
+//! most recent one when it was taken. [`rebuild`] is what reads it, admitting the journal in
+//! step with the lineage rather than wholly before it.
 
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
-use ape::canon::CanonicalKnowledge;
+use ape::canon::{Canon, CanonicalKnowledge};
 use ape::engine::thesis::{ForkInput, GenesisInput, KnowledgeCut, Thesis};
 use ape::kernel::entities::CommitmentId;
 use ape::kernel::value_objects::Date;
 
 use crate::error::LineageError;
+use crate::history::ResidentHistory;
+use crate::journal::{self, Admission, EntryId, Replayed};
 
 /// One decision about which world is being reasoned about.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +65,28 @@ pub enum Decision {
         omitted: BTreeSet<CommitmentId>,
         introduced: BTreeSet<CommitmentId>,
     },
+}
+
+/// A decision, and the point in the sequence of admissions at which it was taken.
+///
+/// `after` addresses the journal entry that was the most recent one at that point. It is a
+/// reference to knowledge, not a cached derivation of one: a cut, a partition and an identity
+/// are all still recomputed, and what this supplies is the only thing that cannot be — *which*
+/// knowledge to recompute them against.
+///
+/// It is not the resolved head, and could not be. The genesis of this experiment resolves an
+/// empty chain, which `KnowledgeCut::within` cannot be handed; and the entry a decision
+/// follows is frequently not an Event at all. What is recorded is a position in the sequence
+/// that produces knowledge, and the head is derived from it like everything else.
+///
+/// The two halves are flattened into one object on purpose. A decision and where it was taken
+/// are one record — a decision filed under a coordinate it did not have would be a lineage
+/// that reads back as a different lineage.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Taken {
+    #[serde(flatten)]
+    pub decision: Decision,
+    pub after: EntryId,
 }
 
 /// Extend a lineage by one decision, returning what history imposed on the world it makes.
@@ -118,10 +153,12 @@ pub fn decide<K: CanonicalKnowledge>(
     Ok(imposed)
 }
 
-/// Rebuild the lineage, oldest first.
+/// Apply a whole lineage against knowledge as it stands, oldest first.
 ///
-/// The last Thesis is the world the repository currently reasons about; the ones before it
-/// are how it got there, and every one of them is a world that was reasoned about.
+/// Sound only where nothing was admitted between the first decision and the last within an
+/// instant one of them names. Where something was, every decision after it resolves against
+/// more knowledge than it had, and what comes back is a lineage of worlds that were never
+/// decided. [`rebuild`] is what a repository is read through for that reason.
 pub fn replay<K: CanonicalKnowledge>(
     knowledge: &K,
     decisions: &[Decision],
@@ -131,6 +168,36 @@ pub fn replay<K: CanonicalKnowledge>(
     for decision in decisions {
         decide(knowledge, &mut lineage, decision)?;
     }
+
+    Ok(lineage)
+}
+
+/// Rebuild a lineage from the two sequences a repository holds, oldest first.
+///
+/// The journal is admitted *in step with* the lineage: up to the entry each decision was
+/// taken after, then the decision, then on. That is the whole of the repair, and it is a
+/// statement about the order between two files rather than about either of them — replaying
+/// one entirely and then the other is what resolved a cut against knowledge its decision
+/// never had.
+///
+/// The rest of the journal is admitted at the end, so that what a caller reads the lineage
+/// against is canonical history entire. A world does not learn from it: its cut is a value,
+/// fixed when the decision was applied.
+pub fn rebuild(
+    canon: &mut Canon<ResidentHistory>,
+    journal: &[Admission],
+    decisions: &[Taken],
+) -> Result<Vec<Thesis>, LineageError> {
+    let mut admitted = Replayed::default();
+    let mut lineage: Vec<Thesis> = Vec::new();
+
+    for taken in decisions {
+        journal::replay_through(canon, journal, &mut admitted, &taken.after)?;
+
+        decide(canon.history(), &mut lineage, &taken.decision)?;
+    }
+
+    journal::replay_remaining(canon, journal, &mut admitted)?;
 
     Ok(lineage)
 }

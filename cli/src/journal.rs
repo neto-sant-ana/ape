@@ -19,6 +19,18 @@
 //! Only what the subject admits is modelled. A constraint form the experiment does not use
 //! is absent rather than approximated, so reaching for one fails to compile instead of
 //! being quietly rewritten as something else.
+//!
+//! # Addressing an entry
+//!
+//! A journal is replayed as a whole only when nothing has to be said about *where* in it
+//! something happened. Once something does — a decision taken while the journal was shorter
+//! than it is now — an entry has to be nameable, and [`EntryId`] is how. Replay therefore
+//! hands back one address per admission, including the two that previously produced nothing
+//! a caller could hold: an eligibility and an Event.
+//!
+//! [`replay_through`] is what a reconstruction uses instead of [`replay`]: it admits up to a
+//! named entry and stops, so that something else can happen against exactly the knowledge
+//! that stood then.
 
 use std::collections::BTreeSet;
 
@@ -133,10 +145,40 @@ pub enum ResourceKindRecord {
     Between { lower: f64, upper: f64 },
 }
 
+/// The address of one journal entry: the identity admitting it produced.
+///
+/// It is content-addressed, because every identity in the engine is, so it names an entry
+/// rather than a place. A journal reordered, split across files or re-encoded still holds the
+/// entry this addresses; an offset would hold none of them. Storing one is not caching a
+/// derivation for the reason the module already gives — replay re-derives every identity from
+/// content, and comparing the two is what makes a stored address checkable at all.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntryId(String);
+
+impl EntryId {
+    /// Address an entry by what admitting it produced.
+    ///
+    /// The `AsRef` bound is what keeps this to identities. Everything else an admission
+    /// carries is content, and content is not unique to the entry that carries it.
+    pub fn of(id: impl AsRef<[u8; 32]> + std::fmt::Display) -> Self {
+        Self(id.to_string())
+    }
+}
+
+impl std::fmt::Display for EntryId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 /// The identities replay produced, in the order they were admitted.
 ///
 /// Replay does not carry names, so what it hands back is what it made. A caller that knows
 /// which admission it wrote knows which identity to take.
+///
+/// `entries` is the same information without the types, one address per admission, and it
+/// doubles as the cursor: its length is how much of a journal has been admitted, so a partial
+/// replay can be resumed from the value that records it.
 #[derive(Debug, Default)]
 pub struct Replayed {
     pub roles: Vec<RoleId>,
@@ -146,6 +188,7 @@ pub struct Replayed {
     pub actions: Vec<ActionId>,
     pub statements: Vec<StatementId>,
     pub commitments: Vec<CommitmentId>,
+    pub entries: Vec<EntryId>,
 }
 
 /// Admit every entry in order, through the same public path that produced it.
@@ -159,19 +202,78 @@ pub fn replay(
 ) -> Result<Replayed, JournalError> {
     let mut replayed = Replayed::default();
 
-    for entry in journal {
-        admit(canon, entry, &mut replayed)?;
-    }
+    replay_remaining(canon, journal, &mut replayed)?;
 
     Ok(replayed)
+}
+
+/// Admit whatever `replayed` has not reached yet.
+pub fn replay_remaining(
+    canon: &mut Canon<ResidentHistory>,
+    journal: &[Admission],
+    replayed: &mut Replayed,
+) -> Result<(), JournalError> {
+    while replayed.entries.len() < journal.len() {
+        step(canon, journal, replayed)?;
+    }
+
+    Ok(())
+}
+
+/// Admit up to and including `entry`, and no further.
+///
+/// What stops is the *admitting*, so the caller is left holding knowledge as it stood when
+/// that entry was the most recent one. Naming the entry already admitted last admits nothing
+/// further, which is what lets two things happen against one body of knowledge — planning
+/// advances and then forks, and nothing is admitted in between.
+///
+/// Two disagreements are refused rather than absorbed, because either would answer with a
+/// world nobody reasoned about. An entry the journal does not hold is not the end of it. And
+/// an entry admitted *before* the last one is a caller whose order contradicts the journal's,
+/// which admitting nothing would silently answer with too much knowledge.
+pub fn replay_through(
+    canon: &mut Canon<ResidentHistory>,
+    journal: &[Admission],
+    replayed: &mut Replayed,
+    entry: &EntryId,
+) -> Result<(), JournalError> {
+    if replayed.entries.last() == Some(entry) {
+        return Ok(());
+    }
+
+    if replayed.entries.contains(entry) {
+        return Err(JournalError::EntryAlreadyPassed(entry.clone()));
+    }
+
+    while replayed.entries.len() < journal.len() {
+        step(canon, journal, replayed)?;
+
+        if replayed.entries.last() == Some(entry) {
+            return Ok(());
+        }
+    }
+
+    Err(JournalError::UnknownEntry(entry.clone()))
+}
+
+fn step(
+    canon: &mut Canon<ResidentHistory>,
+    journal: &[Admission],
+    replayed: &mut Replayed,
+) -> Result<(), JournalError> {
+    let address = admit(canon, &journal[replayed.entries.len()], replayed)?;
+
+    replayed.entries.push(address);
+
+    Ok(())
 }
 
 fn admit(
     canon: &mut Canon<ResidentHistory>,
     entry: &Admission,
     replayed: &mut Replayed,
-) -> Result<(), JournalError> {
-    match entry {
+) -> Result<EntryId, JournalError> {
+    let address = match entry {
         Admission::Role { label, recorded_at } => {
             let id = canon.admit_role(
                 RoleInput {
@@ -180,6 +282,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.roles.push(id);
+            EntryId::of(id)
         }
 
         Admission::Agent {
@@ -198,6 +301,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.agents.push(id);
+            EntryId::of(id)
         }
 
         Admission::Eligibility {
@@ -206,7 +310,7 @@ fn admit(
             effective_from,
             recorded_at,
         } => {
-            canon.admit_eligibility(
+            let id = canon.admit_eligibility(
                 EligibilityAssignmentInput {
                     agent: *agent,
                     roles: roles.clone(),
@@ -214,6 +318,7 @@ fn admit(
                 },
                 date(recorded_at)?,
             )?;
+            EntryId::of(id)
         }
 
         Admission::Resource {
@@ -237,6 +342,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.resources.push(id);
+            EntryId::of(id)
         }
 
         Admission::ResourceInstance {
@@ -252,6 +358,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.instances.push(id);
+            EntryId::of(id)
         }
 
         Admission::Action {
@@ -277,6 +384,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.actions.push(id);
+            EntryId::of(id)
         }
 
         Admission::Statement {
@@ -301,6 +409,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.statements.push(id);
+            EntryId::of(id)
         }
 
         Admission::Commitment {
@@ -337,6 +446,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.commitments.push(id);
+            EntryId::of(id)
         }
 
         Admission::Event {
@@ -348,7 +458,7 @@ fn admit(
             // `previous_event` is absent on purpose: the Canon reads the head it is
             // extending. Replaying in order is what makes the chain rebuild itself, and
             // writing the link down would be storing a derivation that could disagree.
-            canon.admit_event(
+            let id = canon.admit_event(
                 EventSubmission {
                     commitment_id: *commitment,
                     observation: observation_of(observation, "event observation")?,
@@ -356,10 +466,11 @@ fn admit(
                 },
                 date(recorded_at)?,
             )?;
+            EntryId::of(id)
         }
-    }
+    };
 
-    Ok(())
+    Ok(address)
 }
 
 fn date(value: &str) -> Result<Date, JournalError> {

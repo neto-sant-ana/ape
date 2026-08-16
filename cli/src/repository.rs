@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 
 use crate::error::RepositoryError;
 use crate::journal::Admission;
-use crate::lineage::Decision;
+use crate::lineage::Taken;
 
 const JOURNAL: &str = "journal.json";
 const LINEAGE: &str = "lineage.json";
@@ -63,12 +63,14 @@ impl Repository {
         self.root.join(LINEAGE)
     }
 
-    /// Write the decisions a Thesis was reached by.
+    /// Write the decisions a Thesis was reached by, each with the entry it was taken after.
     ///
     /// Kept apart from the journal because the two answer to different authorities: what
     /// became known is not revisable, and which world is being reasoned about is a choice
-    /// that may be made again.
-    pub fn write_lineage(&self, lineage: &[Decision]) -> Result<(), RepositoryError> {
+    /// that may be made again. Nothing holds the relation between the two files, so each
+    /// decision carries its own: the sequence that may be decided again is the one that says
+    /// where in the other it belongs.
+    pub fn write_lineage(&self, lineage: &[Taken]) -> Result<(), RepositoryError> {
         fs::create_dir_all(&self.root)?;
 
         let encoded = serde_json::to_string_pretty(lineage)?;
@@ -78,7 +80,7 @@ impl Repository {
         Ok(())
     }
 
-    pub fn read_lineage(&self) -> Result<Vec<Decision>, RepositoryError> {
+    pub fn read_lineage(&self) -> Result<Vec<Taken>, RepositoryError> {
         let encoded = fs::read_to_string(self.lineage_path())?;
 
         Ok(serde_json::from_str(&encoded)?)

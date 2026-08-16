@@ -187,6 +187,10 @@ pub fn all(
 /// fresh process opens the repository, replays what it finds, and interprets. Nothing here
 /// consults a value the original process computed, and nothing here can — the repository is
 /// the only source.
+///
+/// The two sequences are replayed together rather than one after the other. Which is not a
+/// detail of this function: it is what the repository now records, and reading it any other
+/// way resolves a decision against knowledge it was not taken against.
 pub fn reconstruct(
     repository: &Repository,
     instance: ResourceInstanceId,
@@ -194,9 +198,11 @@ pub fn reconstruct(
 ) -> Result<Vec<Reading>, ReadingError> {
     let mut canon = ape::canon::Canon::new(ResidentHistory::new());
 
-    crate::journal::replay(&mut canon, &repository.read_journal()?)?;
-
-    let lineage = lineage::replay(canon.history(), &repository.read_lineage()?)?;
+    let lineage = lineage::rebuild(
+        &mut canon,
+        &repository.read_journal()?,
+        &repository.read_lineage()?,
+    )?;
 
     all(canon.history(), &lineage, instance, effective_at)
 }
