@@ -76,13 +76,43 @@ It is *where in the sequence of admissions the decision was applied*.
 
 ---
 
+## The obvious repair is not available
+
+The first thing to reach for is to record the head alongside the instant, and the engine
+appears to offer it: `KnowledgeCut::within` takes both coordinates explicitly.
+
+It does not close this, for two reasons that hold independently.
+
+```text
+within(knowledge, known_at, event_head: EventId)
+                             ↑ not Option
+```
+
+The genesis cut is `(2026-01-10, ∅)`. An absent head is not something the constructor can be
+handed, and `KnowledgeCut` offers no other way in — its fields are private and `at` and
+`within` are the whole of the public surface. The world Phase 1 reasoned about cannot be
+named through the boundary at all.
+
+And a present head would not fare better. `within` refuses `HeadPrecedesCut` when the named
+Event is not the last of the group its instant addresses, because naming an earlier one is
+retraction — a world claiming to know a day while omitting Events recorded within it. The cut
+module states that as something a cut must not be able to express.
+
+So the boundary refuses, deliberately and by documented design, the exact shape a naive
+repair would need. That is not a gap to be filled: what the experiment has to answer is what
+a *repository* records such that a fresh process asks the right question, and an instant plus
+a head is not it.
+
+---
+
 ## Consequences to carry
 
 * The remaining phases must not treat a repository round-trip as the thing under test. The
   defect is reachable without one, and a fix that only works across a process boundary would
   be fixing the symptom.
 * Whatever a decision records to close this must be resolvable by a fresh process holding
-  nothing but the journal and the lineage. An instant is not, on its own, such a record.
+  nothing but the journal and the lineage. An instant is not, on its own, such a record — and
+  neither, per the section above, is an instant paired with a head.
 * The cascade is not yet measured. The genesis is the parent of the advancement, so a genesis
   that re-derives differently should carry every descendant with it. Phase 3 forks, and Phase
   8 is where the whole lineage is compared.
