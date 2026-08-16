@@ -16,10 +16,7 @@ pub enum JournalError {
     /// A journal the engine refuses to admit. The field is named because a journal is read
     /// long after it was written, and "invalid" alone sends the reader back to the bytes.
     #[error("{field} in the journal is not admissible: {cause}")]
-    Malformed {
-        field: &'static str,
-        cause: String,
-    },
+    Malformed { field: &'static str, cause: String },
 }
 
 impl JournalError {
@@ -54,10 +51,6 @@ pub enum ReadingError {
     /// A repository whose lineage decides nothing. There is no world to read.
     #[error("the lineage is empty")]
     EmptyLineage,
-
-    /// The world was rebuilt, and does not contain what the reading was asked about.
-    #[error("commitment {0} is not projected by this world")]
-    UnprojectedCommitment(CommitmentId),
 }
 
 #[derive(Debug, thiserror::Error)]

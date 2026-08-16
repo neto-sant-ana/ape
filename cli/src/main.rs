@@ -3,14 +3,17 @@
 //! Reads arguments, writes output, and delegates every decision to [`ape_cli`]. Logic that
 //! accumulates here is logic no test can reach.
 //!
-//! Its one job is to be the fresh process the reconstruction experiment terminates into. It
-//! is given a repository, a commitment, a resource instance and an instant, and it is given
-//! nothing else — no value the original process computed reaches it except through the
-//! repository it opens.
+//! Its one job is to be the fresh process an experiment terminates into. It is given a
+//! repository, a resource instance and an instant, and it is given nothing else — no value
+//! the original process computed reaches it except through the repository it opens.
+//!
+//! It prints the whole lineage rather than its tip. Which world an application ended at is a
+//! smaller question than which worlds it considered, and only the second is worth a
+//! repository that keeps decisions.
 
 use std::process::ExitCode;
 
-use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
+use ape::kernel::entities::ResourceInstanceId;
 use ape::kernel::value_objects::Date;
 
 use ape_cli::reading;
@@ -35,18 +38,18 @@ fn run() -> Result<String, String> {
     let mut next = |name: &str| {
         arguments
             .next()
-            .ok_or_else(|| format!("usage: ape-cli <repository> <commitment> <instance> <date>\nmissing {name}"))
+            .ok_or_else(|| format!("usage: ape-cli <repository> <instance> <date>\nmissing {name}"))
     };
 
     let repository = Repository::open(next("repository")?);
-    let commitment = identity(&next("commitment")?).map(CommitmentId::from)?;
     let instance = identity(&next("instance")?).map(ResourceInstanceId::from)?;
-    let effective_at = Date::parse(next("date")?).map_err(|_| "date is not YYYY-MM-DD".to_owned())?;
+    let effective_at =
+        Date::parse(next("date")?).map_err(|_| "date is not YYYY-MM-DD".to_owned())?;
 
-    let reading = reading::reconstruct(&repository, commitment, instance, &effective_at)
+    let lineage = reading::reconstruct(&repository, instance, &effective_at)
         .map_err(|reason| reason.to_string())?;
 
-    serde_json::to_string_pretty(&reading).map_err(|reason| reason.to_string())
+    serde_json::to_string_pretty(&lineage).map_err(|reason| reason.to_string())
 }
 
 /// A 32-byte identity written as hex, which is the form every APE id renders itself in.
