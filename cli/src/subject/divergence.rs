@@ -21,7 +21,7 @@
 //! Every quantity is an integer, for the reason [`super::reconstruction`] gives.
 
 use ape::canon::Canon;
-use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
+use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId, StatementId};
 
 use crate::error::JournalError;
 use crate::history::ResidentHistory;
@@ -41,6 +41,16 @@ pub struct Constructed {
     pub overspend: CommitmentId,
     pub instance: ResourceInstanceId,
     pub journal: Vec<Admission>,
+    /// What Phase 3 needs to word an outflow of its own, since a commitment refers to a
+    /// statement and to agents by identity and those exist only once admitted.
+    spending: Spending,
+}
+
+/// The vocabulary an outflow is worded from.
+struct Spending {
+    payer: AgentId,
+    payee: AgentId,
+    statement: StatementId,
 }
 
 /// Admit the subject, accumulating the journal that describes it.
@@ -176,6 +186,11 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         overspend: committed.commitments[1],
         instance,
         journal,
+        spending: Spending {
+            payer: merchant,
+            payee: customer,
+            statement: outflow,
+        },
     })
 }
 
@@ -209,6 +224,37 @@ pub fn cancellation(overspend: CommitmentId) -> Admission {
 /// The advancement Phase 2 decides, at an instant later than the genesis.
 pub fn advancement() -> Decision {
     Decision::Advance { known_at: day(15) }
+}
+
+/// `C` — an outflow the account can afford, admitted after the cancellation.
+///
+/// It is recorded within the advanced world's cut, so a fork may introduce it. Nothing
+/// selects it until one does: an admission is knowledge, and knowledge is not intention.
+pub fn alternative(subject: &Constructed) -> Admission {
+    Admission::Commitment {
+        accountable: subject.spending.payer,
+        executors: [subject.spending.payer].into(),
+        beneficiaries: [subject.spending.payee].into(),
+        statement: subject.spending.statement,
+        resource: subject.instance,
+        committed_at: day(11),
+        due_date: day(25),
+        magnitude: Some(30.0),
+        dependencies: [].into(),
+        recorded_at: day(11),
+    }
+}
+
+/// The fork Phase 3 decides: the same cut, spending what the account can carry.
+///
+/// Nothing is omitted. The overspend the parent selects is frozen by the cancellation, so
+/// omitting it is not available — the alternative is reached by adding an intention rather
+/// than by withdrawing one.
+pub fn fork(alternative: CommitmentId) -> Decision {
+    Decision::Fork {
+        omitted: [].into(),
+        introduced: [alternative].into(),
+    }
 }
 
 fn day(day: u8) -> String {
