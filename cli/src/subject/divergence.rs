@@ -191,6 +191,26 @@ pub fn genesis(inflow: CommitmentId, overspend: CommitmentId) -> Decision {
     }
 }
 
+/// The Event that cancels the overspend, recorded within the instant the genesis names.
+///
+/// Nothing about it is irregular. Knowledge arrives when it arrives, and an application does
+/// not stop deciding while a day is still in progress. What it costs is that the instant
+/// `2026-01-10` no longer addresses one body of knowledge: it addresses an empty chain
+/// before this admission and a chain ending here afterwards.
+pub fn cancellation(overspend: CommitmentId) -> Admission {
+    Admission::Event {
+        commitment: overspend,
+        observation: CANCELLING.into(),
+        occurred_at: day(10),
+        recorded_at: day(10),
+    }
+}
+
+/// The advancement Phase 2 decides, at an instant later than the genesis.
+pub fn advancement() -> Decision {
+    Decision::Advance { known_at: day(15) }
+}
+
 fn day(day: u8) -> String {
     format!("2026-01-{day:02}")
 }
