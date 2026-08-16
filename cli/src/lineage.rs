@@ -43,11 +43,57 @@ pub enum Decision {
     Advance { known_at: String },
 }
 
+/// Extend a lineage by one decision, returning what history imposed on the world it makes.
+///
+/// An application calls this as each decision is taken; a reconstruction calls it for every
+/// decision at once, through [`replay`]. Which is to say the two run the same code and
+/// differ only in *when* — and a decision resolves its cut against the knowledge standing at
+/// the moment it is applied.
+///
+/// A genesis imposes nothing, and that is a statement about the report rather than about the
+/// world: whatever its cut froze is absorbed into the selection with no one told, because
+/// there is no prior intention for it to have been absent from.
+pub fn decide<K: CanonicalKnowledge>(
+    knowledge: &K,
+    lineage: &mut Vec<Thesis>,
+    decision: &Decision,
+) -> Result<BTreeSet<CommitmentId>, LineageError> {
+    let (thesis, imposed) = match decision {
+        Decision::Genesis {
+            known_at,
+            selection,
+        } => (
+            Thesis::genesis(
+                knowledge,
+                GenesisInput {
+                    cut: KnowledgeCut::at(knowledge, date(known_at)?),
+                    selection: selection.clone(),
+                },
+            )?,
+            BTreeSet::new(),
+        ),
+
+        Decision::Advance { known_at } => {
+            let advancement = lineage
+                .last()
+                .ok_or(LineageError::AdvancedWithoutGenesis)?
+                .advance(knowledge, KnowledgeCut::at(knowledge, date(known_at)?))?;
+
+            let imposed = advancement.imposed().collect();
+
+            (advancement.into_thesis(), imposed)
+        }
+    };
+
+    lineage.push(thesis);
+
+    Ok(imposed)
+}
+
 /// Rebuild the lineage, oldest first.
 ///
 /// The last Thesis is the world the repository currently reasons about; the ones before it
-/// are how it got there, and Phase 2 needs the genesis to still be readable to show that a
-/// cut cannot recognize what it predates.
+/// are how it got there, and every one of them is a world that was reasoned about.
 pub fn replay<K: CanonicalKnowledge>(
     knowledge: &K,
     decisions: &[Decision],
@@ -55,26 +101,7 @@ pub fn replay<K: CanonicalKnowledge>(
     let mut lineage: Vec<Thesis> = Vec::new();
 
     for decision in decisions {
-        let thesis = match decision {
-            Decision::Genesis {
-                known_at,
-                selection,
-            } => Thesis::genesis(
-                knowledge,
-                GenesisInput {
-                    cut: KnowledgeCut::at(knowledge, date(known_at)?),
-                    selection: selection.clone(),
-                },
-            )?,
-
-            Decision::Advance { known_at } => lineage
-                .last()
-                .ok_or(LineageError::AdvancedWithoutGenesis)?
-                .advance(knowledge, KnowledgeCut::at(knowledge, date(known_at)?))?
-                .into_thesis(),
-        };
-
-        lineage.push(thesis);
+        decide(knowledge, &mut lineage, decision)?;
     }
 
     Ok(lineage)
