@@ -9,17 +9,16 @@ use std::collections::BTreeSet;
 
 use ape::canon::{Canon, CanonicalHistory};
 use ape::engine::hermeneia::{Conflict, Hypothesis, Outcome, Timeliness};
-use ape::engine::thesis::{Interpretation, KnowledgeCut, Thesis};
-use ape::kernel::entities::CommitmentId;
+use ape::engine::thesis::{Interpretation, KnowledgeCut};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::history::ResidentHistory;
-use ape_cli::journal::{self, Admission, EntryId};
+use ape_cli::journal;
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision, Taken};
 use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading};
 use ape_cli::repository::Repository;
-use ape_cli::subject::divergence::{self, Constructed};
+use ape_cli::subject::divergence::{self, Begun, Reasoned};
 
 /// The instant every world is interpreted at, from Phase 5 on.
 ///
@@ -45,99 +44,23 @@ fn day(day: u8) -> Date {
     Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
 }
 
-/// The last entry a replay admitted, which is the entry a decision taken now follows.
-fn entry(admitted: &journal::Replayed) -> EntryId {
-    admitted
-        .entries
-        .last()
-        .expect("the replay admitted something")
-        .clone()
-}
-
 /// The world as Phase 1 leaves it: the subject admitted, and a Genesis Thesis selecting both
 /// commitments at a cut taken before any Event exists.
 ///
 /// The Thesis comes from applying a decision rather than from a call written here. That is a
 /// finding of the previous experiment rather than a preference: what a later process gets is
 /// the decision, so the decision is what every phase must go through.
-///
-/// The lineage is carried on rather than the world alone, because an application holds the
-/// worlds it decided. Re-deriving them is what a reconstruction does, and this experiment is
-/// about whether the two agree.
-///
-/// Each decision is written down with the entry it was taken after, which an application
-/// knows because it is the one admitting. Here that is `B`, the last commitment the subject
-/// admits — the genesis is decided while the journal ends there.
-fn constructed() -> (Canon<ResidentHistory>, Constructed, Vec<Taken>, Vec<Thesis>) {
-    let mut canon = Canon::new(ResidentHistory::new());
-    let subject = divergence::construct(&mut canon).expect("the subject is admissible");
-
-    let decisions = vec![Taken {
-        decision: divergence::genesis(subject.inflow, subject.overspend),
-        after: EntryId::of(subject.overspend),
-    }];
-
-    let mut lineage = Vec::new();
-    lineage::decide(canon.history(), &mut lineage, &decisions[0].decision)
-        .expect("a genesis over admitted knowledge");
-
-    (canon, subject, decisions, lineage)
+fn constructed() -> Begun {
+    divergence::begun().expect("the subject is admissible")
 }
 
-/// Everything Phases 1 to 3 produced: three worlds, and the knowledge they were reasoned
-/// about against.
-struct Reasoned {
-    canon: Canon<ResidentHistory>,
-    subject: Constructed,
-    alternative: CommitmentId,
-    journal: Vec<Admission>,
-    decisions: Vec<Taken>,
-    lineage: Vec<Thesis>,
-}
-
-/// Run the procedure through Phase 3, in the order the subject prescribes.
+/// Run the procedure through Phase 3.
 ///
-/// The order is the subject rather than a detail of the harness: the genesis is decided
-/// before the cancellation is recorded, and the cancellation shares the instant the genesis
-/// named. Nothing downstream reproduces the experiment if that sequence is rearranged.
+/// The sequence lives beside the subject rather than here, because the order in which
+/// admissions and decisions interleave *is* the subject. A harness holding its own copy of it
+/// would be able to drift from the arrangement it claims to observe.
 fn reasoned() -> Reasoned {
-    let (mut canon, subject, decisions, lineage) = constructed();
-    let (mut decisions, mut lineage) = (decisions, lineage);
-    let mut journal = subject.journal.clone();
-
-    let cancellation = divergence::cancellation(subject.overspend);
-    let recorded =
-        journal::replay(&mut canon, std::slice::from_ref(&cancellation)).expect("the Event admits");
-    journal.push(cancellation);
-
-    decisions.push(Taken {
-        decision: divergence::advancement(),
-        after: entry(&recorded),
-    });
-    lineage::decide(canon.history(), &mut lineage, &decisions[1].decision)
-        .expect("the world advances");
-
-    let alternative = divergence::alternative(&subject);
-    let admitted = journal::replay(&mut canon, std::slice::from_ref(&alternative))
-        .expect("an affordable outflow admits");
-    journal.push(alternative);
-
-    decisions.push(Taken {
-        decision: divergence::fork(admitted.commitments[0]),
-        after: entry(&admitted),
-    });
-    let alternative = admitted.commitments[0];
-    lineage::decide(canon.history(), &mut lineage, &decisions[2].decision)
-        .expect("the world forks");
-
-    Reasoned {
-        canon,
-        subject,
-        alternative,
-        journal,
-        decisions,
-        lineage,
-    }
+    divergence::reasoned().expect("the arrangement holds")
 }
 
 /// Phase 1 — Construct.
@@ -148,7 +71,12 @@ fn reasoned() -> Reasoned {
 /// feasibility comparison could only compare two absences.
 #[test]
 fn phase_1_construct() {
-    let (canon, subject, _, lineage) = constructed();
+    let Begun {
+        canon,
+        subject,
+        lineage,
+        ..
+    } = constructed();
     let thesis = lineage.last().expect("the genesis");
 
     // The cut names an instant the day is not finished with, and resolves an empty chain
@@ -239,7 +167,12 @@ fn phase_1_construct() {
 /// resolved to then.
 #[test]
 fn phase_2_observe() {
-    let (mut canon, subject, decisions, lineage) = constructed();
+    let Begun {
+        mut canon,
+        subject,
+        decisions,
+        lineage,
+    } = constructed();
     let genesis = lineage.last().expect("the genesis").clone();
 
     journal::replay(&mut canon, &[divergence::cancellation(subject.overspend)])

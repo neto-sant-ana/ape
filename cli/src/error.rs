@@ -40,6 +40,21 @@ impl JournalError {
     }
 }
 
+/// A subject that could not be arranged. Fatal to any experiment using it: there is nothing
+/// to observe, because what was supposed to be observed was never built.
+#[derive(Debug, thiserror::Error)]
+pub enum SubjectError {
+    #[error(transparent)]
+    Journal(#[from] JournalError),
+
+    #[error(transparent)]
+    Lineage(#[from] LineageError),
+
+    /// A replay that admitted nothing, asked for the entry it ended at.
+    #[error("a decision was taken after a replay that admitted nothing")]
+    NothingAdmitted,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ReadingError {
     #[error(transparent)]

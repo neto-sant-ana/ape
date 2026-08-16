@@ -21,14 +21,16 @@
 //! Every quantity is an integer, for the reason [`super::reconstruction`] gives.
 
 use ape::canon::Canon;
+use ape::engine::thesis::Thesis;
 use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId, StatementId};
 
-use crate::error::JournalError;
+use crate::error::{JournalError, SubjectError};
 use crate::history::ResidentHistory;
 use crate::journal::{
-    ActionKindRecord, Admission, AgentKindRecord, EffectRecord, ResourceKindRecord, replay,
+    self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, EntryId, Replayed,
+    ResourceKindRecord, replay,
 };
-use crate::lineage::Decision;
+use crate::lineage::{self, Decision, Taken};
 
 pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";
@@ -255,6 +257,108 @@ pub fn fork(alternative: CommitmentId) -> Decision {
         omitted: [].into(),
         introduced: [alternative].into(),
     }
+}
+
+/// Everything the arrangement produces: three worlds, and the knowledge and decisions that
+/// produced them.
+pub struct Reasoned {
+    pub canon: Canon<ResidentHistory>,
+    pub subject: Constructed,
+    pub alternative: CommitmentId,
+    pub journal: Vec<Admission>,
+    pub decisions: Vec<Taken>,
+    pub lineage: Vec<Thesis>,
+}
+
+/// The arrangement at its first decision: the subject admitted, and the genesis decided.
+pub struct Begun {
+    pub canon: Canon<ResidentHistory>,
+    pub subject: Constructed,
+    pub decisions: Vec<Taken>,
+    pub lineage: Vec<Thesis>,
+}
+
+/// Admit the subject and decide the genesis over it.
+///
+/// The decision is written down with the entry it was taken after, which an application knows
+/// because it is the one admitting. Here that is `B`, the last commitment the subject admits —
+/// the genesis is decided while the journal ends there.
+pub fn begun() -> Result<Begun, SubjectError> {
+    let mut canon = Canon::new(ResidentHistory::new());
+    let subject = construct(&mut canon)?;
+
+    let decisions = vec![Taken {
+        decision: genesis(subject.inflow, subject.overspend),
+        after: EntryId::of(subject.overspend),
+    }];
+
+    let mut lineage = Vec::new();
+    lineage::decide(canon.history(), &mut lineage, &decisions[0].decision)?;
+
+    Ok(Begun {
+        canon,
+        subject,
+        decisions,
+        lineage,
+    })
+}
+
+/// Run the arrangement whole: admit, decide, and interleave the two as prescribed.
+///
+/// This lives beside the subject rather than in a harness because **the order is the
+/// subject** — the genesis is decided before the cancellation is recorded, and the
+/// cancellation shares the instant the genesis named. An experiment holding its own copy of
+/// that sequence would be observing a different arrangement while believing it observed this
+/// one.
+pub fn reasoned() -> Result<Reasoned, SubjectError> {
+    let Begun {
+        mut canon,
+        subject,
+        mut decisions,
+        mut lineage,
+    } = begun()?;
+
+    let mut journal = subject.journal.clone();
+
+    let cancellation = cancellation(subject.overspend);
+    let recorded = journal::replay(&mut canon, std::slice::from_ref(&cancellation))?;
+    journal.push(cancellation);
+
+    decisions.push(Taken {
+        decision: advancement(),
+        after: last_entry(&recorded)?,
+    });
+    lineage::decide(canon.history(), &mut lineage, &decisions[1].decision)?;
+
+    let admission = alternative(&subject);
+    let admitted = journal::replay(&mut canon, std::slice::from_ref(&admission))?;
+    journal.push(admission);
+
+    let alternative = admitted.commitments[0];
+
+    decisions.push(Taken {
+        decision: fork(alternative),
+        after: last_entry(&admitted)?,
+    });
+    lineage::decide(canon.history(), &mut lineage, &decisions[2].decision)?;
+
+    Ok(Reasoned {
+        canon,
+        subject,
+        alternative,
+        journal,
+        decisions,
+        lineage,
+    })
+}
+
+/// The last entry a replay admitted, which is the entry a decision taken now follows.
+fn last_entry(admitted: &Replayed) -> Result<EntryId, SubjectError> {
+    admitted
+        .entries
+        .last()
+        .cloned()
+        .ok_or(SubjectError::NothingAdmitted)
 }
 
 fn day(day: u8) -> String {
