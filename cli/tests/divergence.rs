@@ -292,3 +292,109 @@ fn phase_2_observe() {
         "an inflow of 50 alone stays within 0..100"
     );
 }
+
+/// Phase 3 — Diverge.
+///
+/// An affordable outflow is admitted, and a fork of the advanced world introduces it. What
+/// the fork adds to the lineage is a selection reached by choice: an advancement recognizes
+/// what history did, and this is the application answering it.
+///
+/// Three worlds have now been reasoned about. Each is a result, and Phase 8 asks for each.
+#[test]
+fn phase_3_diverge() {
+    let (mut canon, subject, decisions, lineage) = constructed();
+    let mut lineage = lineage;
+    let mut decisions = decisions;
+
+    journal::replay(&mut canon, &[divergence::cancellation(subject.overspend)])
+        .expect("the cancellation admits");
+
+    decisions.push(divergence::advancement());
+    lineage::decide(canon.history(), &mut lineage, &decisions[1]).expect("the world advances");
+
+    let advanced = lineage.last().expect("the advanced world").clone();
+
+    // Admitted after the cancellation and before the advanced cut, so a fork may introduce
+    // it. Admitting it selects nothing: knowledge is not intention.
+    let admitted = journal::replay(&mut canon, &[divergence::alternative(&subject)])
+        .expect("an affordable outflow admits");
+    let alternative = admitted.commitments[0];
+
+    assert!(
+        !advanced.selection().contains(alternative),
+        "admitting a commitment does not enter it into a world"
+    );
+
+    decisions.push(divergence::fork(alternative));
+    let imposed = lineage::decide(canon.history(), &mut lineage, &decisions[2])
+        .expect("a fork over the parent's cut");
+
+    assert!(imposed.is_empty(), "a fork recognizes no new history");
+    assert_eq!(lineage.len(), 3, "genesis, advancement, fork");
+
+    let forked = lineage.last().expect("the forked world");
+
+    // A fork moves one axis. The cut is the parent's — the same instant and the same head —
+    // so whatever differs between the two worlds is intention rather than knowledge.
+    assert_eq!(forked.parent(), &Some(advanced.id()));
+    assert_eq!(forked.cut(), advanced.cut());
+
+    assert_eq!(
+        forked.selection().frozen().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.overspend]),
+        "a fork inherits its parent's frozen past unchanged"
+    );
+    assert_eq!(
+        forked.selection().open().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.inflow, alternative]),
+        "and revises only what was open"
+    );
+
+    let interpretation =
+        Interpretation::of(forked, canon.history()).expect("the forked world interprets");
+
+    let projected = interpretation
+        .conditions_at(&day(15))
+        .expect("conditions project at an instant");
+
+    for (label, id) in [("inflow", subject.inflow), ("alternative", alternative)] {
+        let condition = projected
+            .condition(id)
+            .expect("a selected commitment has a condition");
+
+        assert_eq!(condition.outcome(), &Outcome::Unsettled, "{label}");
+        assert_eq!(
+            condition.timeliness(),
+            Some(&Timeliness::WithinDeadline),
+            "{label}"
+        );
+    }
+
+    assert_eq!(
+        projected
+            .condition(subject.overspend)
+            .expect("the frozen commitment has a condition")
+            .outcome(),
+        &Outcome::Cancelled,
+        "the fork carries its parent's settled past"
+    );
+
+    assert_eq!(
+        level::settled(canon.history(), &projected, subject.instance)
+            .expect("the world reads whole"),
+        0.0,
+        "choosing an intention lands nothing",
+    );
+
+    // 50 in, 30 out, and the cancelled overspend moving nothing: the account ends at 20. The
+    // world the application forked to is one its own bounds admit, which is what the fork was
+    // for.
+    assert!(
+        interpretation
+            .feasibility_under(Hypothesis::FinalState)
+            .expect("feasibility is derivable")
+            .conflicts()
+            .is_empty(),
+        "an inflow of 50 against an outflow of 30 stays within 0..100"
+    );
+}
