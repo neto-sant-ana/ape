@@ -27,9 +27,16 @@ consequence is not the one the previous experiment's framing predicted:
 
 > *The process boundary is where re-derivation becomes unavoidable, not where it originates.*
 
-A reconstruction has no alternative — it holds no worlds, so it must re-derive all of them.
-A living application does have one, and the divergence appears the moment it declines to take
-it.
+A reconstruction *under this experiment's constraint* has no alternative — it holds no worlds,
+so it must re-derive all of them. A living application does have one, and the divergence
+appears the moment it declines to take it.
+
+The constraint is worth naming rather than assuming, because the engine does offer the other
+road. `ThesisArchive` is a port for storing decided worlds, and its conformance suite pins the
+two coordinates that moved here — a Thesis resolving under another cut, or with its frozen
+past come back as open, is called a different world wearing the same id. This experiment does
+not use it, on a rule published by another experiment, and that is a boundary it inherited
+rather than a limit of the engine.
 
 ---
 
