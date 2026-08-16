@@ -72,6 +72,11 @@ pub enum LineageError {
     /// which no sequence of decisions could have produced.
     #[error("the lineage advances before it begins")]
     AdvancedWithoutGenesis,
+
+    /// The same, for a fork. Kept distinct because the two say which decision was orphaned,
+    /// and a lineage read long after it was written is read by someone who was not there.
+    #[error("the lineage forks before it begins")]
+    ForkedWithoutParent,
 }
 
 #[derive(Debug, thiserror::Error)]

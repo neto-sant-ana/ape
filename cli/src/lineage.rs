@@ -20,7 +20,7 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 
 use ape::canon::CanonicalKnowledge;
-use ape::engine::thesis::{GenesisInput, KnowledgeCut, Thesis};
+use ape::engine::thesis::{ForkInput, GenesisInput, KnowledgeCut, Thesis};
 use ape::kernel::entities::CommitmentId;
 use ape::kernel::value_objects::Date;
 
@@ -41,6 +41,17 @@ pub enum Decision {
 
     /// Recognizing later history, up to an instant.
     Advance { known_at: String },
+
+    /// A different intention under the cut already recognized.
+    ///
+    /// Both halves state an outcome rather than a transition, which is the engine's own
+    /// tolerance and the reason they are written down as asked for. What a fork changed is
+    /// not recoverable by comparing two selections: a commitment absent from a child was
+    /// either omitted by this decision or never open to begin with.
+    Fork {
+        omitted: BTreeSet<CommitmentId>,
+        introduced: BTreeSet<CommitmentId>,
+    },
 }
 
 /// Extend a lineage by one decision, returning what history imposed on the world it makes.
@@ -83,6 +94,23 @@ pub fn decide<K: CanonicalKnowledge>(
 
             (advancement.into_thesis(), imposed)
         }
+
+        Decision::Fork {
+            omitted,
+            introduced,
+        } => (
+            lineage
+                .last()
+                .ok_or(LineageError::ForkedWithoutParent)?
+                .fork(
+                    knowledge,
+                    ForkInput {
+                        omitted: omitted.clone(),
+                        introduced: introduced.clone(),
+                    },
+                )?,
+            BTreeSet::new(),
+        ),
     };
 
     lineage.push(thesis);
