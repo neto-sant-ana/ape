@@ -12,9 +12,9 @@ use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::history::ResidentHistory;
-use ape_cli::journal;
+use ape_cli::journal::{self, EntryId};
 use ape_cli::level;
-use ape_cli::lineage::{self, Decision};
+use ape_cli::lineage::{self, Decision, Taken};
 use ape_cli::reading::{self, OutcomeRecord, Reading};
 use ape_cli::repository::Repository;
 use ape_cli::subject::reconstruction::{self as subject, Constructed};
@@ -23,19 +23,34 @@ fn day(day: u8) -> Date {
     Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
 }
 
+/// The decisions alone, with the coordinate that places each of them dropped.
+///
+/// Dropping it is what [`lineage::replay`] does, and doing it at the call site is so that it
+/// is visible. This subject admits nothing within an instant one of its decisions names, so
+/// the two forms agree here — which is the condition, and the reason the divergence
+/// experiment needed a subject of its own to find that out.
+fn intentions(lineage: &[Taken]) -> Vec<Decision> {
+    lineage.iter().map(|taken| taken.decision.clone()).collect()
+}
+
 /// The world as Phase 1 leaves it: the subject admitted, and a Genesis Thesis selecting it
 /// at a cut taken before any Event exists.
 ///
 /// The Thesis comes from replaying a decision rather than from a call written here, for the
 /// same reason the subject comes from a journal: what a later process gets is the decision,
 /// so the decision is what every phase must go through.
-fn constructed() -> (Canon<ResidentHistory>, Constructed, Vec<Decision>, Thesis) {
+fn constructed() -> (Canon<ResidentHistory>, Constructed, Vec<Taken>, Thesis) {
     let mut canon = Canon::new(ResidentHistory::new());
     let subject = subject::construct(&mut canon).expect("the subject is admissible");
 
-    let decisions = vec![subject::genesis(subject.commitment)];
-    let lineage =
-        lineage::replay(canon.history(), &decisions).expect("a genesis over admitted knowledge");
+    // The commitment is the last thing the subject admits, so it is the entry the genesis is
+    // taken after.
+    let decisions = vec![Taken {
+        decision: subject::genesis(subject.commitment),
+        after: EntryId::of(subject.commitment),
+    }];
+    let lineage = lineage::replay(canon.history(), &intentions(&decisions))
+        .expect("a genesis over admitted knowledge");
 
     let thesis = lineage.into_iter().next_back().expect("one Thesis");
 
@@ -175,9 +190,12 @@ fn phase_2_observe() {
     // permits when the procedure itself demands it. It is a decision like the genesis was,
     // and it goes into the lineage rather than being taken here.
     let mut decisions = decisions;
-    decisions.push(subject::advancement());
+    decisions.push(Taken {
+        decision: subject::advancement(),
+        after: EntryId::of(event),
+    });
 
-    let lineage = lineage::replay(canon.history(), &decisions)
+    let lineage = lineage::replay(canon.history(), &intentions(&decisions))
         .expect("a lineage the canonical knowledge supports");
 
     assert_eq!(
@@ -267,14 +285,22 @@ fn phase_3_persist() {
 
     let mut journal = subject.journal;
     let settlement = subject::settlement(subject.commitment);
-    journal::replay(&mut canon, std::slice::from_ref(&settlement)).expect("the Event admits");
+    let admitted =
+        journal::replay(&mut canon, std::slice::from_ref(&settlement)).expect("the Event admits");
     journal.push(settlement);
 
     // The lineage the experiment reached: the world it first reasoned about, and the
     // recognition of the Event. Both are decisions, and neither is recoverable from
     // canonical knowledge — history says what became known, not which of it a world selects.
     let mut decisions = decisions;
-    decisions.push(subject::advancement());
+    decisions.push(Taken {
+        decision: subject::advancement(),
+        after: admitted
+            .entries
+            .last()
+            .expect("the Event was admitted")
+            .clone(),
+    });
 
     let repository = Repository::open(scratch("phase-3"));
     repository
@@ -332,7 +358,8 @@ fn phase_3_persist() {
 
     let written = std::fs::read_to_string(repository.lineage_path()).expect("the file is there");
 
-    let reached = lineage::replay(canon.history(), &decisions).expect("the lineage rebuilds");
+    let reached =
+        lineage::replay(canon.history(), &intentions(&decisions)).expect("the lineage rebuilds");
 
     for thesis in [&genesis, reached.last().expect("the advanced Thesis")] {
         assert!(
@@ -479,6 +506,20 @@ fn phase_7_compare() {
         after.conflicts.is_empty(),
         "the world stays within the resource bounds"
     );
+
+    // The partition, which this experiment never asserted and which equality alone cannot
+    // defend: both readings come from one implementation, so a `reading` that reported the
+    // two halves the wrong way round would agree with itself. Added while the divergence
+    // experiment was measuring exactly that.
+    assert_eq!(
+        after.frozen,
+        std::collections::BTreeSet::from([living.commitment.to_string()]),
+        "the settled commitment is what history made unavoidable"
+    );
+    assert!(
+        after.open.is_empty(),
+        "and nothing is left for a fork to revise"
+    );
     assert_eq!(
         after.known_at, "2026-01-15",
         "the world recognizes history up to the instant the advancement decided"
@@ -511,13 +552,22 @@ fn persisted(repository: &Repository) -> Living {
 
     let mut journal = subject.journal;
     let settlement = subject::settlement(subject.commitment);
-    journal::replay(&mut canon, std::slice::from_ref(&settlement)).expect("the Event admits");
+    let admitted =
+        journal::replay(&mut canon, std::slice::from_ref(&settlement)).expect("the Event admits");
     journal.push(settlement);
 
     let mut decisions = decisions;
-    decisions.push(subject::advancement());
+    decisions.push(Taken {
+        decision: subject::advancement(),
+        after: admitted
+            .entries
+            .last()
+            .expect("the Event was admitted")
+            .clone(),
+    });
 
-    let lineage = lineage::replay(canon.history(), &decisions).expect("the lineage holds");
+    let lineage =
+        lineage::replay(canon.history(), &intentions(&decisions)).expect("the lineage holds");
 
     let reading = reading::of(
         canon.history(),
@@ -550,8 +600,11 @@ fn reconstruct_in_fresh_process(
         .expect("the binary runs")
 }
 
+/// A repository path no other process shares. See the divergence harness for why.
 fn scratch(name: &str) -> std::path::PathBuf {
-    let path = std::env::temp_dir().join("ape-reconstruction").join(name);
+    let path = std::env::temp_dir()
+        .join(format!("ape-reconstruction-{}", std::process::id()))
+        .join(name);
     let _ = std::fs::remove_dir_all(&path);
     path
 }
