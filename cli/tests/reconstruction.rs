@@ -180,9 +180,16 @@ fn phase_2_observe() {
     let lineage = lineage::replay(canon.history(), &decisions)
         .expect("a lineage the canonical knowledge supports");
 
-    assert_eq!(lineage.len(), 2, "the genesis, and the world that succeeded it");
+    assert_eq!(
+        lineage.len(),
+        2,
+        "the genesis, and the world that succeeded it"
+    );
 
-    let advanced = lineage.into_iter().next_back().expect("the advanced Thesis");
+    let advanced = lineage
+        .into_iter()
+        .next_back()
+        .expect("the advanced Thesis");
 
     assert_ne!(
         advanced.id(),
@@ -356,14 +363,14 @@ fn phase_4_terminate() {
 
     let dead = std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli"));
 
-    let refused = reconstruct_in_fresh_process(dead, &scratch("phase-4-absent"), commitment, instance);
+    let refused = reconstruct_in_fresh_process(dead, &scratch("phase-4-absent"), instance);
 
     assert!(
         !refused.status.success(),
         "a fresh process with no repository must not produce a world"
     );
 
-    let survived = reconstruct_in_fresh_process(dead, repository.root(), commitment, instance);
+    let survived = reconstruct_in_fresh_process(dead, repository.root(), instance);
 
     assert!(
         survived.status.success(),
@@ -371,12 +378,17 @@ fn phase_4_terminate() {
         String::from_utf8_lossy(&survived.stderr)
     );
 
-    let reading: Reading = serde_json::from_slice(&survived.stdout).expect("a reading came back");
+    let rebuilt: Vec<Reading> =
+        serde_json::from_slice(&survived.stdout).expect("a lineage came back");
+    let reading = rebuilt.last().expect("the world the lineage reached");
 
     // Phase 7 is what weighs these against the living world. What Phase 4 establishes is
     // narrower and has to come first: a process that shared nothing produced a world at all.
     assert_eq!(reading.effective_at, "2026-01-15");
-    assert_eq!(reading.outcome, OutcomeRecord::Fulfilled);
+    assert_eq!(
+        reading.conditions[&commitment.to_string()].outcome,
+        OutcomeRecord::Fulfilled
+    );
 }
 
 /// Phase 7 — Compare.
@@ -399,7 +411,6 @@ fn phase_7_compare() {
     let rebuilt = reconstruct_in_fresh_process(
         std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli")),
         repository.root(),
-        living.commitment,
         living.instance,
     );
 
@@ -409,7 +420,12 @@ fn phase_7_compare() {
         String::from_utf8_lossy(&rebuilt.stderr)
     );
 
-    let after: Reading = serde_json::from_slice(&rebuilt.stdout).expect("a reading came back");
+    let rebuilt: Vec<Reading> =
+        serde_json::from_slice(&rebuilt.stdout).expect("a lineage came back");
+    let after = rebuilt
+        .last()
+        .expect("the world the lineage reached")
+        .clone();
     let before = living.reading;
 
     assert_eq!(
@@ -426,18 +442,7 @@ fn phase_7_compare() {
         "the Knowledge Cut addresses the same moment"
     );
     assert_eq!(
-        (
-            &before.outcome,
-            &before.timeliness,
-            before.pending_dependencies,
-            before.unfulfillable_dependencies
-        ),
-        (
-            &after.outcome,
-            &after.timeliness,
-            after.pending_dependencies,
-            after.unfulfillable_dependencies
-        ),
+        before.conditions, after.conditions,
         "the projected condition is the same condition"
     );
     assert_eq!(
@@ -458,17 +463,22 @@ fn phase_7_compare() {
     // defect is in code both sides share. Equality compares two readings produced by one
     // implementation, so it survives that implementation moving; these do not, because they
     // were written down before it ran.
+    let condition = &after.conditions[&living.commitment.to_string()];
+
     assert_eq!(
-        after.outcome,
+        condition.outcome,
         OutcomeRecord::Fulfilled,
         "the Event settled the commitment"
     );
     assert_eq!(
-        after.timeliness, None,
+        condition.timeliness, None,
         "a settled commitment is under no deadline"
     );
     assert_eq!(after.level, 10.0, "the increase of 10 landed");
-    assert_eq!(after.conflicts, 0, "the world stays within the resource bounds");
+    assert!(
+        after.conflicts.is_empty(),
+        "the world stays within the resource bounds"
+    );
     assert_eq!(
         after.known_at, "2026-01-15",
         "the world recognizes history up to the instant the advancement decided"
@@ -511,8 +521,7 @@ fn persisted(repository: &Repository) -> Living {
 
     let reading = reading::of(
         canon.history(),
-        &lineage,
-        subject.commitment,
+        lineage.last().expect("the world the lineage reached"),
         subject.instance,
         &day(15),
     )
@@ -531,12 +540,10 @@ fn persisted(repository: &Repository) -> Living {
 fn reconstruct_in_fresh_process(
     binary: &std::path::Path,
     repository: &std::path::Path,
-    commitment: CommitmentId,
     instance: ResourceInstanceId,
 ) -> std::process::Output {
     std::process::Command::new(binary)
         .arg(repository)
-        .arg(commitment.to_string())
         .arg(instance.to_string())
         .arg("2026-01-15")
         .output()
