@@ -5,12 +5,15 @@
 //! under comparison — a lineage rather than a world — so a phase records what it leaves
 //! behind for *every* world it produced.
 
-use ape::canon::Canon;
+use std::collections::BTreeSet;
+
+use ape::canon::{Canon, CanonicalHistory};
 use ape::engine::hermeneia::{Conflict, Hypothesis, Outcome, Timeliness};
-use ape::engine::thesis::{Interpretation, Thesis};
+use ape::engine::thesis::{Interpretation, KnowledgeCut, Thesis};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::history::ResidentHistory;
+use ape_cli::journal;
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision};
 use ape_cli::subject::divergence::{self, Constructed};
@@ -22,20 +25,29 @@ fn day(day: u8) -> Date {
 /// The world as Phase 1 leaves it: the subject admitted, and a Genesis Thesis selecting both
 /// commitments at a cut taken before any Event exists.
 ///
-/// The Thesis comes from replaying a decision rather than from a call written here. That is
-/// a finding of the previous experiment rather than a preference: what a later process gets
-/// is the decision, so the decision is what every phase must go through.
-fn constructed() -> (Canon<ResidentHistory>, Constructed, Vec<Decision>, Thesis) {
+/// The Thesis comes from applying a decision rather than from a call written here. That is a
+/// finding of the previous experiment rather than a preference: what a later process gets is
+/// the decision, so the decision is what every phase must go through.
+///
+/// The lineage is carried on rather than the world alone, because an application holds the
+/// worlds it decided. Re-deriving them is what a reconstruction does, and this experiment is
+/// about whether the two agree.
+fn constructed() -> (
+    Canon<ResidentHistory>,
+    Constructed,
+    Vec<Decision>,
+    Vec<Thesis>,
+) {
     let mut canon = Canon::new(ResidentHistory::new());
     let subject = divergence::construct(&mut canon).expect("the subject is admissible");
 
     let decisions = vec![divergence::genesis(subject.inflow, subject.overspend)];
-    let lineage =
-        lineage::replay(canon.history(), &decisions).expect("a genesis over admitted knowledge");
 
-    let thesis = lineage.into_iter().next_back().expect("one Thesis");
+    let mut lineage = Vec::new();
+    lineage::decide(canon.history(), &mut lineage, &decisions[0])
+        .expect("a genesis over admitted knowledge");
 
-    (canon, subject, decisions, thesis)
+    (canon, subject, decisions, lineage)
 }
 
 /// Phase 1 — Construct.
@@ -46,7 +58,8 @@ fn constructed() -> (Canon<ResidentHistory>, Constructed, Vec<Decision>, Thesis)
 /// feasibility comparison could only compare two absences.
 #[test]
 fn phase_1_construct() {
-    let (canon, subject, _, thesis) = constructed();
+    let (canon, subject, _, lineage) = constructed();
+    let thesis = lineage.last().expect("the genesis");
 
     // The cut names an instant the day is not finished with, and resolves an empty chain
     // because nothing has been recorded within it yet. Both halves are recorded: the second
@@ -68,17 +81,13 @@ fn phase_1_construct() {
         "an empty chain makes nothing unavoidable"
     );
     assert_eq!(
-        thesis.selection().open().collect::<Vec<_>>(),
-        [subject.inflow, subject.overspend]
-            .into_iter()
-            .collect::<std::collections::BTreeSet<_>>()
-            .into_iter()
-            .collect::<Vec<_>>(),
+        thesis.selection().open().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.inflow, subject.overspend]),
         "both commitments are open"
     );
 
     let interpretation =
-        Interpretation::of(&thesis, canon.history()).expect("the Thesis is interpretable");
+        Interpretation::of(thesis, canon.history()).expect("the Thesis is interpretable");
 
     let projected = interpretation
         .conditions_at(&day(10))
@@ -127,4 +136,159 @@ fn phase_1_construct() {
         "receiving 50 and spending 120 leaves the account outside 0..100"
     );
     assert_eq!(feasibility.event_head(), None);
+}
+
+/// Phase 2 — Observe.
+///
+/// An Event cancels the overspend, recorded within the instant the genesis names and after
+/// the genesis was decided. The world is then advanced to recognize it, and what the
+/// advancement produces is recorded alongside what history imposed.
+///
+/// The phase also records what the arrangement costs, because it is already visible here and
+/// no process has died: the instant the genesis decided at no longer resolves to the cut it
+/// resolved to then.
+#[test]
+fn phase_2_observe() {
+    let (mut canon, subject, decisions, lineage) = constructed();
+    let genesis = lineage.last().expect("the genesis").clone();
+
+    journal::replay(&mut canon, &[divergence::cancellation(subject.overspend)])
+        .expect("an observation the statement can cancel with");
+
+    let event = canon
+        .history()
+        .head()
+        .expect("the cancelling Event is now the head");
+
+    // The world the application decided is unmoved. A cut is a value and holds the head it
+    // resolved, so an Event recorded *within its own instant* is no more visible to it than
+    // one recorded later — sharing the instant was never what let a cut recognize an Event.
+    let held = Interpretation::of(&genesis, canon.history())
+        .expect("a Thesis stays interpretable after history moves");
+
+    assert_eq!(
+        held.conditions_at(&day(10))
+            .expect("conditions project at an instant")
+            .condition(subject.overspend)
+            .expect("the selected commitment has a condition")
+            .outcome(),
+        &Outcome::Unsettled,
+        "the world that was decided does not learn"
+    );
+
+    assert_eq!(
+        held.feasibility_under(Hypothesis::FinalState)
+            .expect("feasibility is derivable")
+            .conflicts(),
+        [Conflict::OutOfBounds {
+            instance: subject.instance,
+            level: -70.0,
+        }],
+        "and stays refused, because what refused it has not changed"
+    );
+
+    // What did change is the instant. The decision names `2026-01-10`, and that instant now
+    // resolves a different cut than the one it resolved when the decision was taken.
+    assert_eq!(
+        KnowledgeCut::at(canon.history(), day(10)).event_head(),
+        Some(event),
+        "the instant the genesis named has since acquired a head"
+    );
+
+    // So applying the same decision again builds a different world. Nothing has been
+    // persisted and no process has died: re-deriving a decision against knowledge that moved
+    // is sufficient on its own.
+    let mut rederived = Vec::new();
+    lineage::decide(canon.history(), &mut rederived, &decisions[0])
+        .expect("the genesis decision still applies");
+    let rederived = rederived.pop().expect("the world it produced");
+
+    assert_ne!(
+        rederived.id(),
+        genesis.id(),
+        "the same decision produced a different world"
+    );
+    assert_eq!(
+        rederived.selection().frozen().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.overspend]),
+        "what was open when the decision was taken comes back unavoidable"
+    );
+    assert_eq!(
+        rederived.selection().open().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.inflow]),
+    );
+    assert!(
+        Interpretation::of(&rederived, canon.history())
+            .expect("the rederived world interprets")
+            .feasibility_under(Hypothesis::FinalState)
+            .expect("feasibility is derivable")
+            .conflicts()
+            .is_empty(),
+        "and the world that was refused comes back unrefused"
+    );
+
+    // The advancement, decided the way an application decides: against the lineage it holds,
+    // at the moment it takes it.
+    let mut lineage = lineage;
+    let imposed = lineage::decide(canon.history(), &mut lineage, &divergence::advancement())
+        .expect("a later cut over the same intention");
+
+    // Recorded rather than established. History settled nothing the genesis had not already
+    // selected, so this subject cannot make an imposition happen — hard-wiring the report to
+    // empty passes here. What losing it would cost is a question this experiment leaves open.
+    assert!(imposed.is_empty(), "nothing was imposed, found {imposed:?}");
+
+    let advanced = lineage.last().expect("the advanced world");
+
+    assert_eq!(advanced.parent(), &Some(genesis.id()));
+    assert_eq!(advanced.cut().known_at(), &day(15));
+    assert_eq!(advanced.cut().event_head(), Some(event));
+    assert_eq!(
+        advanced.selection().frozen().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.overspend]),
+        "recognizing the cancellation makes the overspend unavoidable"
+    );
+    assert_eq!(
+        advanced.selection().open().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.inflow]),
+    );
+
+    let interpretation =
+        Interpretation::of(advanced, canon.history()).expect("the advanced Thesis interprets");
+
+    let projected = interpretation
+        .conditions_at(&day(15))
+        .expect("conditions project at an instant");
+
+    let cancelled = projected
+        .condition(subject.overspend)
+        .expect("the selected commitment has a condition");
+
+    assert_eq!(cancelled.outcome(), &Outcome::Cancelled);
+    assert_eq!(cancelled.timeliness(), None);
+
+    let waiting = projected
+        .condition(subject.inflow)
+        .expect("the selected commitment has a condition");
+
+    assert_eq!(waiting.outcome(), &Outcome::Unsettled);
+    assert_eq!(waiting.timeliness(), Some(&Timeliness::WithinDeadline));
+
+    // Nothing was fulfilled, so the account still holds nothing. A cancellation settles a
+    // commitment without moving a level, which is what makes the refusal disappear without
+    // anything having landed.
+    assert_eq!(
+        level::settled(canon.history(), &projected, subject.instance)
+            .expect("the world reads whole"),
+        0.0,
+    );
+
+    assert!(
+        interpretation
+            .feasibility_under(Hypothesis::FinalState)
+            .expect("feasibility is derivable")
+            .conflicts()
+            .is_empty(),
+        "an inflow of 50 alone stays within 0..100"
+    );
 }
