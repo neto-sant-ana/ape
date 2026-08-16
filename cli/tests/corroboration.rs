@@ -288,7 +288,7 @@ fn phase_2_corrupt() {
         [
             (
                 "a coordinate repointed at an entry that exists",
-                Verdict::Silent
+                Verdict::Refused
             ),
             ("the genesis's intention narrowed", Verdict::Silent),
             ("two roles reordered", Verdict::Harmless),
@@ -299,20 +299,30 @@ fn phase_2_corrupt() {
         "the corruption table, as this experiment finds it"
     );
 
-    // What the silent rows actually produced. A row that stays silent while producing
-    // something else is a different finding, so the world is named rather than counted.
-    for (label, rebuilt) in [("repointed", &repointed), ("narrowed", &narrowed)] {
-        let genesis = &rebuilt.worlds()[0];
+    // What the row that still passes actually produced. A row that stays silent while
+    // producing something else is a different finding, so the world is named rather than
+    // counted.
+    let genesis = &narrowed.worlds()[0];
 
-        assert_ne!(
-            genesis.thesis, baseline[0].thesis,
-            "{label}: a different world came back"
-        );
-        assert!(
-            genesis.conflicts.is_empty(),
-            "{label}: and the refusal at -70 is gone"
-        );
-    }
+    assert_ne!(
+        genesis.thesis, baseline[0].thesis,
+        "a different world came back"
+    );
+    assert!(
+        genesis.conflicts.is_empty(),
+        "and the refusal at -70 is gone with the commitment that caused it"
+    );
+
+    // And what the row that stopped passing says. Half a refusal — one that reports the
+    // repository invalid without saying which datum disagrees — sends a reader back to the
+    // bytes, so the complaint names the entry.
+    assert!(
+        repointed
+            .complaint
+            .contains("was admitted, and the decision was not taken against it"),
+        "the refusal names what disagrees: {}",
+        repointed.complaint
+    );
 }
 
 fn position(journal: &[Admission], magnitude: f64) -> usize {
