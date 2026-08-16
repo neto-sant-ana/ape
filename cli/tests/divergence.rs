@@ -10,13 +10,21 @@ use std::collections::BTreeSet;
 use ape::canon::{Canon, CanonicalHistory};
 use ape::engine::hermeneia::{Conflict, Hypothesis, Outcome, Timeliness};
 use ape::engine::thesis::{Interpretation, KnowledgeCut, Thesis};
+use ape::kernel::entities::CommitmentId;
 use ape::kernel::value_objects::Date;
 
 use ape_cli::history::ResidentHistory;
-use ape_cli::journal;
+use ape_cli::journal::{self, Admission};
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision};
+use ape_cli::repository::Repository;
 use ape_cli::subject::divergence::{self, Constructed};
+
+fn scratch(name: &str) -> std::path::PathBuf {
+    let path = std::env::temp_dir().join("ape-divergence").join(name);
+    let _ = std::fs::remove_dir_all(&path);
+    path
+}
 
 fn day(day: u8) -> Date {
     Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
@@ -48,6 +56,53 @@ fn constructed() -> (
         .expect("a genesis over admitted knowledge");
 
     (canon, subject, decisions, lineage)
+}
+
+/// Everything Phases 1 to 3 produced: three worlds, and the knowledge they were reasoned
+/// about against.
+struct Reasoned {
+    canon: Canon<ResidentHistory>,
+    subject: Constructed,
+    alternative: CommitmentId,
+    journal: Vec<Admission>,
+    decisions: Vec<Decision>,
+    lineage: Vec<Thesis>,
+}
+
+/// Run the procedure through Phase 3, in the order the subject prescribes.
+///
+/// The order is the subject rather than a detail of the harness: the genesis is decided
+/// before the cancellation is recorded, and the cancellation shares the instant the genesis
+/// named. Nothing downstream reproduces the experiment if that sequence is rearranged.
+fn reasoned() -> Reasoned {
+    let (mut canon, subject, decisions, lineage) = constructed();
+    let (mut decisions, mut lineage) = (decisions, lineage);
+    let mut journal = subject.journal.clone();
+
+    let cancellation = divergence::cancellation(subject.overspend);
+    journal::replay(&mut canon, std::slice::from_ref(&cancellation)).expect("the Event admits");
+    journal.push(cancellation);
+
+    decisions.push(divergence::advancement());
+    lineage::decide(canon.history(), &mut lineage, &decisions[1]).expect("the world advances");
+
+    let alternative = divergence::alternative(&subject);
+    let admitted = journal::replay(&mut canon, std::slice::from_ref(&alternative))
+        .expect("an affordable outflow admits");
+    journal.push(alternative);
+    let alternative = admitted.commitments[0];
+
+    decisions.push(divergence::fork(alternative));
+    lineage::decide(canon.history(), &mut lineage, &decisions[2]).expect("the world forks");
+
+    Reasoned {
+        canon,
+        subject,
+        alternative,
+        journal,
+        decisions,
+        lineage,
+    }
 }
 
 /// Phase 1 — Construct.
@@ -302,37 +357,24 @@ fn phase_2_observe() {
 /// Three worlds have now been reasoned about. Each is a result, and Phase 8 asks for each.
 #[test]
 fn phase_3_diverge() {
-    let (mut canon, subject, decisions, lineage) = constructed();
-    let mut lineage = lineage;
-    let mut decisions = decisions;
+    let Reasoned {
+        canon,
+        subject,
+        alternative,
+        lineage,
+        ..
+    } = reasoned();
 
-    journal::replay(&mut canon, &[divergence::cancellation(subject.overspend)])
-        .expect("the cancellation admits");
+    assert_eq!(lineage.len(), 3, "genesis, advancement, fork");
 
-    decisions.push(divergence::advancement());
-    lineage::decide(canon.history(), &mut lineage, &decisions[1]).expect("the world advances");
+    let (advanced, forked) = (&lineage[1], &lineage[2]);
 
-    let advanced = lineage.last().expect("the advanced world").clone();
-
-    // Admitted after the cancellation and before the advanced cut, so a fork may introduce
-    // it. Admitting it selects nothing: knowledge is not intention.
-    let admitted = journal::replay(&mut canon, &[divergence::alternative(&subject)])
-        .expect("an affordable outflow admits");
-    let alternative = admitted.commitments[0];
-
+    // The affordable outflow was admitted after the advanced world was decided, and that
+    // world stays decided without it. Knowledge is not intention.
     assert!(
         !advanced.selection().contains(alternative),
         "admitting a commitment does not enter it into a world"
     );
-
-    decisions.push(divergence::fork(alternative));
-    let imposed = lineage::decide(canon.history(), &mut lineage, &decisions[2])
-        .expect("a fork over the parent's cut");
-
-    assert!(imposed.is_empty(), "a fork recognizes no new history");
-    assert_eq!(lineage.len(), 3, "genesis, advancement, fork");
-
-    let forked = lineage.last().expect("the forked world");
 
     // A fork moves one axis. The cut is the parent's — the same instant and the same head —
     // so whatever differs between the two worlds is intention rather than knowledge.
@@ -396,5 +438,135 @@ fn phase_3_diverge() {
             .conflicts()
             .is_empty(),
         "an inflow of 50 against an outflow of 30 stays within 0..100"
+    );
+}
+
+/// Phase 4 — Persist.
+///
+/// Only what a later process cannot derive is written down, which for a lineage of three
+/// worlds is still two sequences: what became known, and what was decided. Neither holds a
+/// world.
+///
+/// The discipline is the previous experiment's and is not relaxed here. What this phase adds
+/// is a third kind of datum to hold it against — a fork's request — and the first case where
+/// a repository can be complete by its own rule and still be insufficient.
+#[test]
+fn phase_4_persist() {
+    let Reasoned {
+        journal,
+        decisions,
+        lineage,
+        subject,
+        alternative,
+        ..
+    } = reasoned();
+
+    let repository = Repository::open(scratch("phase-4"));
+    repository
+        .write_journal(&journal)
+        .expect("the repository is writable");
+    repository
+        .write_lineage(&decisions)
+        .expect("the repository is writable");
+
+    let read = repository.read_journal().expect("the journal reads back");
+    assert_eq!(
+        read.len(),
+        journal.len(),
+        "every admission was kept, and none was invented"
+    );
+
+    let read = repository.read_lineage().expect("the lineage reads back");
+    assert_eq!(read.len(), 3, "the genesis, the advancement and the fork");
+
+    let written = std::fs::read_to_string(repository.journal_path()).expect("the file is there")
+        + &std::fs::read_to_string(repository.lineage_path()).expect("the file is there");
+
+    // Each of these is derived from what sits above it, and storing one would keep an answer
+    // beside the question it comes from. `frozen` and `open` join the list this experiment
+    // inherited, because a partition is a function of a cut and not a fact about a decision.
+    for derived in [
+        "level",
+        "outcome",
+        "fulfilled",
+        "cancelled",
+        "timeliness",
+        "breached",
+        "condition",
+        "feasib",
+        "conflict",
+        "thesis",
+        "previous_event",
+        "head",
+        "frozen",
+        "open",
+        "imposed",
+    ] {
+        assert!(
+            !written.to_lowercase().contains(derived),
+            "the repository holds {derived:?}, which is derived rather than supplied"
+        );
+    }
+
+    for thesis in &lineage {
+        assert!(
+            !written.contains(&thesis.id().to_string()),
+            "the repository holds a derived world identity"
+        );
+    }
+
+    // And what must be there. Each answers the phase's question with a reconstruction that
+    // becomes impossible without it.
+    for (datum, instant) in [
+        ("the commitments were recorded", "2026-01-05"),
+        ("the cancellation was recorded", "2026-01-10"),
+        ("the alternative was recorded", "2026-01-11"),
+        ("the advancement was decided", "2026-01-15"),
+    ] {
+        assert!(written.contains(instant), "{datum}");
+    }
+
+    assert!(
+        written.contains(&subject.inflow.to_string())
+            && written.contains(&subject.overspend.to_string()),
+        "the genesis records the selection it proposed"
+    );
+    assert!(
+        written.contains(&alternative.to_string()),
+        "the fork records the commitment it asked to introduce"
+    );
+
+    // The whole of what a decision records, named field by field. The phase's question is
+    // asked of every datum, so the set has to be closed rather than sampled — and a set this
+    // small is the finding: the journal knows the cancellation was recorded on the tenth, the
+    // lineage knows the genesis was decided on the tenth, and nothing in either says which
+    // came first.
+    //
+    // A repository can satisfy every rule above and still not be a record of what was
+    // reasoned about. Whatever closes that shows up here, as a field that has to answer the
+    // same question.
+    let recorded: Vec<BTreeSet<String>> = serde_json::from_str::<Vec<serde_json::Value>>(
+        &std::fs::read_to_string(repository.lineage_path()).expect("the file is there"),
+    )
+    .expect("the lineage is a list of objects")
+    .iter()
+    .map(|decision| {
+        decision
+            .as_object()
+            .expect("a decision is an object")
+            .keys()
+            .cloned()
+            .collect()
+    })
+    .collect();
+
+    assert_eq!(
+        recorded,
+        [
+            BTreeSet::from(["decides".to_owned(), "known_at".into(), "selection".into()]),
+            BTreeSet::from(["decides".to_owned(), "known_at".into()]),
+            BTreeSet::from(["decides".to_owned(), "omitted".into(), "introduced".into()]),
+        ],
+        "a decision records an instant and an intention, and nothing that places it"
     );
 }
