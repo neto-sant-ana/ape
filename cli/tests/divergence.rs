@@ -14,9 +14,9 @@ use ape::kernel::entities::CommitmentId;
 use ape::kernel::value_objects::Date;
 
 use ape_cli::history::ResidentHistory;
-use ape_cli::journal::{self, Admission};
+use ape_cli::journal::{self, Admission, EntryId};
 use ape_cli::level;
-use ape_cli::lineage::{self, Decision};
+use ape_cli::lineage::{self, Decision, Taken};
 use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading};
 use ape_cli::repository::Repository;
 use ape_cli::subject::divergence::{self, Constructed};
@@ -28,14 +28,30 @@ use ape_cli::subject::divergence::{self, Constructed};
 /// settlement.
 const EFFECTIVE: &str = "2026-01-25";
 
+/// A repository path no other process shares.
+///
+/// The process id is part of it because two runs of this laboratory once wrote to the same
+/// path and read each other's repositories back. A candidate repair measured against another
+/// candidate's file is not evidence about either.
 fn scratch(name: &str) -> std::path::PathBuf {
-    let path = std::env::temp_dir().join("ape-divergence").join(name);
+    let path = std::env::temp_dir()
+        .join(format!("ape-divergence-{}", std::process::id()))
+        .join(name);
     let _ = std::fs::remove_dir_all(&path);
     path
 }
 
 fn day(day: u8) -> Date {
     Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
+}
+
+/// The last entry a replay admitted, which is the entry a decision taken now follows.
+fn entry(admitted: &journal::Replayed) -> EntryId {
+    admitted
+        .entries
+        .last()
+        .expect("the replay admitted something")
+        .clone()
 }
 
 /// The world as Phase 1 leaves it: the subject admitted, and a Genesis Thesis selecting both
@@ -48,19 +64,21 @@ fn day(day: u8) -> Date {
 /// The lineage is carried on rather than the world alone, because an application holds the
 /// worlds it decided. Re-deriving them is what a reconstruction does, and this experiment is
 /// about whether the two agree.
-fn constructed() -> (
-    Canon<ResidentHistory>,
-    Constructed,
-    Vec<Decision>,
-    Vec<Thesis>,
-) {
+///
+/// Each decision is written down with the entry it was taken after, which an application
+/// knows because it is the one admitting. Here that is `B`, the last commitment the subject
+/// admits — the genesis is decided while the journal ends there.
+fn constructed() -> (Canon<ResidentHistory>, Constructed, Vec<Taken>, Vec<Thesis>) {
     let mut canon = Canon::new(ResidentHistory::new());
     let subject = divergence::construct(&mut canon).expect("the subject is admissible");
 
-    let decisions = vec![divergence::genesis(subject.inflow, subject.overspend)];
+    let decisions = vec![Taken {
+        decision: divergence::genesis(subject.inflow, subject.overspend),
+        after: EntryId::of(subject.overspend),
+    }];
 
     let mut lineage = Vec::new();
-    lineage::decide(canon.history(), &mut lineage, &decisions[0])
+    lineage::decide(canon.history(), &mut lineage, &decisions[0].decision)
         .expect("a genesis over admitted knowledge");
 
     (canon, subject, decisions, lineage)
@@ -73,7 +91,7 @@ struct Reasoned {
     subject: Constructed,
     alternative: CommitmentId,
     journal: Vec<Admission>,
-    decisions: Vec<Decision>,
+    decisions: Vec<Taken>,
     lineage: Vec<Thesis>,
 }
 
@@ -88,20 +106,29 @@ fn reasoned() -> Reasoned {
     let mut journal = subject.journal.clone();
 
     let cancellation = divergence::cancellation(subject.overspend);
-    journal::replay(&mut canon, std::slice::from_ref(&cancellation)).expect("the Event admits");
+    let recorded =
+        journal::replay(&mut canon, std::slice::from_ref(&cancellation)).expect("the Event admits");
     journal.push(cancellation);
 
-    decisions.push(divergence::advancement());
-    lineage::decide(canon.history(), &mut lineage, &decisions[1]).expect("the world advances");
+    decisions.push(Taken {
+        decision: divergence::advancement(),
+        after: entry(&recorded),
+    });
+    lineage::decide(canon.history(), &mut lineage, &decisions[1].decision)
+        .expect("the world advances");
 
     let alternative = divergence::alternative(&subject);
     let admitted = journal::replay(&mut canon, std::slice::from_ref(&alternative))
         .expect("an affordable outflow admits");
     journal.push(alternative);
-    let alternative = admitted.commitments[0];
 
-    decisions.push(divergence::fork(alternative));
-    lineage::decide(canon.history(), &mut lineage, &decisions[2]).expect("the world forks");
+    decisions.push(Taken {
+        decision: divergence::fork(admitted.commitments[0]),
+        after: entry(&admitted),
+    });
+    let alternative = admitted.commitments[0];
+    lineage::decide(canon.history(), &mut lineage, &decisions[2].decision)
+        .expect("the world forks");
 
     Reasoned {
         canon,
@@ -262,7 +289,7 @@ fn phase_2_observe() {
     // persisted and no process has died: re-deriving a decision against knowledge that moved
     // is sufficient on its own.
     let mut rederived = Vec::new();
-    lineage::decide(canon.history(), &mut rederived, &decisions[0])
+    lineage::decide(canon.history(), &mut rederived, &decisions[0].decision)
         .expect("the genesis decision still applies");
     let rederived = rederived.pop().expect("the world it produced");
 
@@ -456,17 +483,22 @@ fn phase_3_diverge() {
 /// world.
 ///
 /// The discipline is the previous experiment's and is not relaxed here. What this phase adds
-/// is a third kind of datum to hold it against — a fork's request — and the first case where
-/// a repository can be complete by its own rule and still be insufficient.
+/// is a third kind of datum to hold it against — a fork's request — and a fourth the rule
+/// could never have asked for: the entry each decision was taken after.
+///
+/// That is the answer to Observation 2, and the observation stands. "Nothing derived is
+/// persisted" is a rule about what is written and says nothing about what is missing; the
+/// coordinate was found by a world failing to come back, not by auditing the fields that
+/// were there. Both audits are asserted below, and the second is the closed field set.
 #[test]
 fn phase_4_persist() {
     let Reasoned {
+        canon,
         journal,
         decisions,
         lineage,
         subject,
         alternative,
-        ..
     } = reasoned();
 
     let repository = Repository::open(scratch("phase-4"));
@@ -544,15 +576,30 @@ fn phase_4_persist() {
         "the fork records the commitment it asked to introduce"
     );
 
+    // The coordinate, and the only datum here that nothing else in either file already says.
+    // The cancelling Event's identity appears in no admission — an Event's record names the
+    // commitment it settles, and the identity is derived by admitting it — so a lineage
+    // holding it is a lineage saying *when* the advancement was taken. Without it, that
+    // decision resolves against a journal that has since grown.
+    let cancellation = canon
+        .history()
+        .head()
+        .expect("the cancelling Event is the chain");
+
+    assert!(
+        written.contains(&cancellation.to_string()),
+        "the advancement records the entry it was taken after"
+    );
+
     // The whole of what a decision records, named field by field. The phase's question is
-    // asked of every datum, so the set has to be closed rather than sampled — and a set this
-    // small is the finding: the journal knows the cancellation was recorded on the tenth, the
-    // lineage knows the genesis was decided on the tenth, and nothing in either says which
-    // came first.
+    // asked of every datum, so the set has to be closed rather than sampled.
     //
-    // A repository can satisfy every rule above and still not be a record of what was
-    // reasoned about. Whatever closes that shows up here, as a field that has to answer the
-    // same question.
+    // `after` is what the experiment added, and it answers the question the same way the
+    // recording instants do: without it the journal knows the cancellation was recorded on
+    // the tenth, the lineage knows the genesis was decided on the tenth, and nothing in
+    // either says which came first. It is a reference rather than a derivation — the entry
+    // it addresses is re-derived from content on every replay, and an address that named
+    // nothing would be refused instead of believed.
     let recorded: Vec<BTreeSet<String>> = serde_json::from_str::<Vec<serde_json::Value>>(
         &std::fs::read_to_string(repository.lineage_path()).expect("the file is there"),
     )
@@ -571,12 +618,49 @@ fn phase_4_persist() {
     assert_eq!(
         recorded,
         [
-            BTreeSet::from(["decides".to_owned(), "known_at".into(), "selection".into()]),
-            BTreeSet::from(["decides".to_owned(), "known_at".into()]),
-            BTreeSet::from(["decides".to_owned(), "omitted".into(), "introduced".into()]),
+            BTreeSet::from([
+                "decides".to_owned(),
+                "known_at".into(),
+                "selection".into(),
+                "after".into(),
+            ]),
+            BTreeSet::from(["decides".to_owned(), "known_at".into(), "after".into()]),
+            BTreeSet::from([
+                "decides".to_owned(),
+                "omitted".into(),
+                "introduced".into(),
+                "after".into(),
+            ]),
         ],
-        "a decision records an instant and an intention, and nothing that places it"
+        "a decision records an instant, an intention, and the entry it was taken after"
     );
+
+    // The other audit, which the rule above cannot perform: the coordinate has to *address*
+    // something. It is the one datum in either file that can dangle — an instant is read as
+    // an instant and a selection names commitments the engine refuses to select if absent,
+    // whereas an address naming nothing is a hex string like any other.
+    //
+    // So it is derived rather than compared to a copy: the journal is replayed, and what it
+    // produces is the closed set of entries a decision may follow.
+    let addressable = journal::replay(
+        &mut Canon::new(ResidentHistory::new()),
+        &repository.read_journal().expect("the journal reads back"),
+    )
+    .expect("the journal admits")
+    .entries;
+
+    for (position, taken) in repository
+        .read_lineage()
+        .expect("the lineage reads back")
+        .iter()
+        .enumerate()
+    {
+        assert!(
+            addressable.contains(&taken.after),
+            "decision {position} follows {}, which the journal never admits",
+            taken.after
+        );
+    }
 }
 
 /// Phases 5 to 7 — Terminate, Reload, Reconstruct.
@@ -643,13 +727,18 @@ fn phase_5_terminate() {
 
 /// Phase 8 — Compare.
 ///
-/// Each reconstructed world against the one it reproduces. What this records is a refutation
-/// of the naive form, which the protocol names in advance as the expected result and as a
-/// finding rather than a defeat.
+/// Each reconstructed world against the one it reproduces. Every coordinate the protocol
+/// names is asserted by name, so a divergence says which one moved rather than that something
+/// did, and then the readings are compared whole — a coordinate nobody thought to list is
+/// exactly the kind a list misses.
 ///
-/// The assertions therefore state what the run produced. They are written to fail the moment
-/// the experiment establishes what makes the divergence stop, so that the answer shows up as
-/// a change to this test rather than as a paragraph claiming one.
+/// Three worlds, not one. Observation 3 established that a Thesis is identified by its
+/// ancestry too, so the genesis carries its descendants: the identity of the third world is
+/// evidence about the first, and comparing only the tip would have measured nothing.
+///
+/// The literals written down before the run are asserted separately, and they answer a
+/// different question. Equality compares two readings produced by one implementation and
+/// survives that implementation drifting; the literals do not.
 #[test]
 fn phase_8_compare() {
     let reasoned = reasoned();
@@ -672,99 +761,178 @@ fn phase_8_compare() {
         reasoned.subject.instance,
     );
 
+    // Asked before the output is parsed, so that a fresh process which refused says why. A
+    // reconstruction that fails outright is a different finding from one that disagrees, and
+    // reading empty stdout as malformed JSON would report neither.
+    assert!(
+        rebuilt.status.success(),
+        "the fresh process failed: {}",
+        String::from_utf8_lossy(&rebuilt.stderr)
+    );
+
     let after: Vec<Reading> = serde_json::from_slice(&rebuilt.stdout).expect("a lineage came back");
 
     assert_eq!(after.len(), before.len(), "three worlds either way");
 
-    // Not one of them survives. Two of the three are reproduced in every coordinate that
-    // describes them and still come back as different worlds, because a Thesis is identified
-    // by its ancestry as well as by its content — so a genesis that re-derives differently
-    // carries its whole lineage with it.
+    // Every world, coordinate by coordinate. Identity is asserted first and separately
+    // because it is the only one that reports ancestry: two worlds can agree about
+    // everything they say and still be different worlds.
     for (position, (before, after)) in before.iter().zip(&after).enumerate() {
-        assert_ne!(
+        assert_eq!(
             before.thesis, after.thesis,
-            "world {position} was expected to come back under a different identity"
+            "world {position} comes back under the identity it had"
+        );
+        assert_eq!(
+            before.thesis_parent, after.thesis_parent,
+            "world {position} descends from the world it descended from"
+        );
+        assert_eq!(
+            (&before.known_at, &before.event_head),
+            (&after.known_at, &after.event_head),
+            "world {position} recognizes the same instant and the same head"
+        );
+        assert_eq!(
+            (&before.frozen, &before.open),
+            (&after.frozen, &after.open),
+            "world {position} partitions the same commitments into the same halves"
+        );
+        assert_eq!(
+            before.conditions, after.conditions,
+            "world {position} projects the same conditions"
+        );
+        assert_eq!(
+            before.level, after.level,
+            "world {position} folds to the same level"
+        );
+        assert_eq!(
+            before.conflicts, after.conflicts,
+            "world {position} reaches the same verdict"
+        );
+        assert_eq!(
+            before, after,
+            "world {position} agrees in every coordinate, including the ones not named above"
         );
     }
 
-    // The genesis is the only one that changed meaning, and it changed all of it. The instant
-    // it names has acquired a head, so the world it denotes has a settled past it did not
-    // have, a partition that reflects that past, and no reason left to be refused.
-    let (genesis_before, genesis_after) = (&before[0], &after[0]);
+    // The genesis, written down before the run. It is the world the arrangement aimed at: an
+    // Event was recorded within the instant it names, after it was decided, and it comes back
+    // at the empty chain it was decided against rather than at the one that instant addresses
+    // now.
+    let (genesis, overspend) = (&after[0], reasoned.subject.overspend.to_string());
 
+    assert_eq!(genesis.thesis_parent, None, "a genesis descends from none");
+    assert_eq!(genesis.known_at, "2026-01-10");
     assert_eq!(
-        genesis_before.known_at, genesis_after.known_at,
-        "same instant"
+        genesis.event_head, None,
+        "the instant addresses a head now, and the world decided at it does not"
     );
-    assert_eq!(genesis_before.event_head, None);
-    assert_eq!(
-        genesis_after.event_head, genesis_after.canonical_head,
-        "the instant now addresses the end of the chain"
-    );
-
-    assert!(genesis_before.frozen.is_empty());
-    assert_eq!(
-        genesis_after.frozen,
-        BTreeSet::from([reasoned.subject.overspend.to_string()]),
-        "what was open when the decision was taken comes back unavoidable"
+    assert_ne!(
+        genesis.event_head, genesis.canonical_head,
+        "canonical history moved past it, which is the whole arrangement"
     );
 
-    let overspend = reasoned.subject.overspend.to_string();
-
-    assert_eq!(
-        genesis_before.conditions[&overspend].outcome,
-        OutcomeRecord::Unsettled
+    assert!(
+        genesis.frozen.is_empty(),
+        "nothing had settled, so nothing is unavoidable"
     );
     assert_eq!(
-        genesis_after.conditions[&overspend].outcome,
-        OutcomeRecord::Cancelled,
-        "the reconstruction knows an Event the decision could not have known"
+        genesis.open,
+        BTreeSet::from([
+            reasoned.subject.inflow.to_string(),
+            reasoned.subject.overspend.to_string(),
+        ]),
+        "both commitments are still open to a fork"
     );
-
     assert_eq!(
-        genesis_before.conflicts,
+        genesis.conditions[&overspend].outcome,
+        OutcomeRecord::Unsettled,
+        "the reconstruction does not learn an Event the decision could not have known"
+    );
+    assert_eq!(genesis.level, 0.0, "nothing was ever fulfilled");
+    assert_eq!(
+        genesis.conflicts,
         [ConflictRecord::OutOfBounds {
             instance: reasoned.subject.instance.to_string(),
             level: -70.0,
         }],
+        "the refused world comes back refused, by the same instance at the same level"
+    );
+
+    // The advancement: the one world whose cut is supposed to have moved.
+    let advanced = &after[1];
+
+    assert_eq!(
+        advanced.thesis_parent.as_deref(),
+        Some(genesis.thesis.as_str())
+    );
+    assert_eq!(advanced.known_at, "2026-01-15");
+    assert_eq!(
+        advanced.event_head, advanced.canonical_head,
+        "recognizing later history means recognizing the cancellation"
+    );
+    assert_eq!(
+        advanced.frozen,
+        BTreeSet::from([reasoned.subject.overspend.to_string()]),
+        "which makes the overspend unavoidable"
+    );
+    assert_eq!(
+        advanced.open,
+        BTreeSet::from([reasoned.subject.inflow.to_string()])
     );
     assert!(
-        genesis_after.conflicts.is_empty(),
-        "the refused world comes back unrefused — Criterion 6, refuted"
+        advanced.conflicts.is_empty(),
+        "and a cancelled commitment moves no level, so the refusal is gone"
     );
 
-    // The advancement and the fork are reproduced whole. Everything a world says about
-    // itself survives; only who it descends from does not, and that is enough to make it a
-    // different world.
-    let without_ancestry = |reading: &Reading| Reading {
-        thesis: String::new(),
-        thesis_parent: None,
-        ..reading.clone()
+    // The fork: the same cut, and what the repository says it asked for. A fork's request is
+    // an outcome rather than a transition, so it is read from the decision rather than
+    // inferred by comparing two selections.
+    let forked = &after[2];
+
+    let Taken {
+        decision: Decision::Fork {
+            omitted,
+            introduced,
+        },
+        ..
+    } = &repository.read_lineage().expect("the lineage reads back")[2]
+    else {
+        panic!("the third decision is the fork");
     };
 
-    for position in [1, 2] {
-        assert_eq!(
-            without_ancestry(&before[position]),
-            without_ancestry(&after[position]),
-            "world {position} differs in nothing but ancestry"
-        );
-    }
-
-    // Written down before the run, and the half that does the work when a defect sits in code
-    // both sides share.
-    assert_eq!(before[2].level, 0.0, "nothing was ever fulfilled");
-    assert_eq!(after[2].effective_at, EFFECTIVE);
+    assert!(omitted.is_empty(), "the fork withdrew no intention");
     assert_eq!(
-        after[2].open,
+        introduced,
+        &BTreeSet::from([reasoned.alternative]),
+        "and asked for exactly the affordable outflow"
+    );
+
+    assert_eq!(
+        forked.thesis_parent.as_deref(),
+        Some(advanced.thesis.as_str())
+    );
+    assert_eq!(
+        (&forked.known_at, &forked.event_head),
+        (&advanced.known_at, &advanced.event_head),
+        "a fork inherits its parent's cut"
+    );
+    assert_eq!(
+        forked.frozen, advanced.frozen,
+        "and its parent's frozen past unchanged"
+    );
+    assert_eq!(
+        forked.open,
         BTreeSet::from([
             reasoned.subject.inflow.to_string(),
             reasoned.alternative.to_string(),
         ]),
-        "the world the application forked to selects what it chose"
+        "revising only what was open, by what the decision introduced"
     );
+    assert_eq!(forked.level, 0.0, "choosing an intention lands nothing");
+    assert_eq!(forked.effective_at, EFFECTIVE);
     assert!(
-        after[2].conflicts.is_empty(),
-        "and the account it describes ends inside its bounds"
+        forked.conflicts.is_empty(),
+        "and the account the application forked to ends inside its bounds"
     );
 }
 
