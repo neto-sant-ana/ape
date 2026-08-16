@@ -7,8 +7,11 @@
 //! So this harness does something none of the others do: it edits a persisted repository. The
 //! phases that follow Phase 2 are claims about which of those edits stop being accepted.
 
+use ape::canon::CanonicalHistory;
 use ape::kernel::value_objects::Date;
 
+use ape_cli::journal::{Admission, EntryId};
+use ape_cli::lineage::{Decision, Taken};
 use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading};
 use ape_cli::repository::Repository;
 use ape_cli::subject::divergence::{self, Reasoned};
@@ -165,4 +168,158 @@ fn phase_1_construct() {
         living, worlds,
         "the baseline holds across the process boundary"
     );
+}
+
+/// What a fresh process did with a repository that had been edited.
+#[derive(Debug, PartialEq)]
+enum Verdict {
+    /// It refused, and named something.
+    Refused,
+    /// A lineage came back, and it is the one an intact repository gives.
+    Harmless,
+    /// A lineage came back, and it is not the one that was reasoned about.
+    Silent,
+}
+
+/// Persist the arrangement with one edit applied, and read it back in a fresh process.
+///
+/// The edit is expressed as a value rather than as surgery on the file, and written through
+/// the repository's own writer. That is the realistic shape of this failure: not someone with
+/// a text editor, but a writer that recorded something other than what happened.
+fn corrupted(
+    name: &str,
+    baseline: &[Reading],
+    edit: impl Fn(&mut Vec<Admission>, &mut Vec<Taken>, &Reasoned),
+) -> (Verdict, Rebuilt) {
+    let reasoned = divergence::reasoned().expect("the arrangement holds");
+    let (mut journal, mut decisions) = (reasoned.journal.clone(), reasoned.decisions.clone());
+
+    edit(&mut journal, &mut decisions, &reasoned);
+
+    let repository = Repository::open(scratch(name));
+    repository.write_journal(&journal).expect("writable");
+    repository.write_lineage(&decisions).expect("writable");
+
+    let rebuilt = rebuild(&repository, reasoned.subject.instance);
+
+    let verdict = match &rebuilt.lineage {
+        _ if rebuilt.refused => Verdict::Refused,
+        Some(worlds) if worlds == baseline => Verdict::Harmless,
+        Some(_) => Verdict::Silent,
+        None => Verdict::Refused,
+    };
+
+    (verdict, rebuilt)
+}
+
+/// Phase 2 — Corrupt.
+///
+/// Six edits, each well-formed and each false, and what each one produces. Nothing here is
+/// repaired: this is the instrument the later phases are measured against, and its value
+/// depends on being recorded before anything is done about it.
+///
+/// The table is asserted whole rather than row by row, so that a phase which moves a row says
+/// which row moved.
+///
+/// Everything refused here is refused by an invariant that exists for another reason — a
+/// commitment must be selectable, an agent must be eligible, an address must resolve. Nothing
+/// in the repository is looking for corruption; three of these tripped something on the way
+/// past. The two that pass in silence are the two that alter what was *decided*.
+#[test]
+fn phase_2_corrupt() {
+    let repository = Repository::open(scratch("phase-2-baseline"));
+    let reasoned = persisted(&repository);
+    let baseline = rebuild(&repository, reasoned.subject.instance)
+        .worlds()
+        .to_vec();
+
+    // Repointed at an entry that exists, whose prefix still admits everything the genesis
+    // selects. Every check the repository has passes.
+    let (coordinate, repointed) = corrupted("repointed", &baseline, |_, decisions, reasoned| {
+        let head = reasoned.canon.history().head().expect("a head");
+        decisions[0].after = EntryId::of(head);
+    });
+
+    // The intention itself, altered. The journal is untouched and every address resolves.
+    let (intention, narrowed) = corrupted("narrowed", &baseline, |_, decisions, reasoned| {
+        decisions[0].decision = Decision::Genesis {
+            known_at: "2026-01-10".into(),
+            selection: [reasoned.subject.inflow].into(),
+        };
+    });
+
+    // The control. Two roles are admitted on the same day and neither refers to the other, so
+    // their order carries nothing — an entry's identity comes from its content. A check that
+    // refuses this is refusing variation the record legitimately admits.
+    let (harmless, _) = corrupted("roles-reordered", &baseline, |journal, _, _| {
+        journal.swap(0, 1);
+    });
+
+    let (commitments, _) = corrupted("commitments-reordered", &baseline, |journal, _, _| {
+        let (first, second) = (position(journal, 50.0), position(journal, 120.0));
+        journal.swap(first, second);
+    });
+
+    let (eligibility, _) = corrupted("eligibility-removed", &baseline, |journal, _, _| {
+        let at = journal
+            .iter()
+            .position(|entry| matches!(entry, Admission::Eligibility { .. }))
+            .expect("the subject grants eligibility");
+        journal.remove(at);
+    });
+
+    let (event, _) = corrupted("event-removed", &baseline, |journal, _, _| {
+        let at = journal
+            .iter()
+            .position(|entry| matches!(entry, Admission::Event { .. }))
+            .expect("the subject records an Event");
+        journal.remove(at);
+    });
+
+    assert_eq!(
+        [
+            ("a coordinate repointed at an entry that exists", coordinate),
+            ("the genesis's intention narrowed", intention),
+            ("two roles reordered", harmless),
+            ("two commitments reordered", commitments),
+            ("an eligibility removed", eligibility),
+            ("the cancelling Event removed", event),
+        ],
+        [
+            (
+                "a coordinate repointed at an entry that exists",
+                Verdict::Silent
+            ),
+            ("the genesis's intention narrowed", Verdict::Silent),
+            ("two roles reordered", Verdict::Harmless),
+            ("two commitments reordered", Verdict::Refused),
+            ("an eligibility removed", Verdict::Refused),
+            ("the cancelling Event removed", Verdict::Refused),
+        ],
+        "the corruption table, as this experiment finds it"
+    );
+
+    // What the silent rows actually produced. A row that stays silent while producing
+    // something else is a different finding, so the world is named rather than counted.
+    for (label, rebuilt) in [("repointed", &repointed), ("narrowed", &narrowed)] {
+        let genesis = &rebuilt.worlds()[0];
+
+        assert_ne!(
+            genesis.thesis, baseline[0].thesis,
+            "{label}: a different world came back"
+        );
+        assert!(
+            genesis.conflicts.is_empty(),
+            "{label}: and the refusal at -70 is gone"
+        );
+    }
+}
+
+fn position(journal: &[Admission], magnitude: f64) -> usize {
+    journal
+        .iter()
+        .position(|entry| {
+            matches!(entry, Admission::Commitment { magnitude: Some(found), .. } if *found == magnitude)
+        })
+        .expect("the subject commits that magnitude")
 }
