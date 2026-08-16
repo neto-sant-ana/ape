@@ -33,7 +33,7 @@ use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 use crate::error::JournalError;
 use crate::history::ResidentHistory;
 use crate::journal::{
-    ActionKindRecord, Admission, AgentKindRecord, EffectRecord, ResourceKindRecord, replay,
+    self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, Replayed, ResourceKindRecord,
 };
 use crate::lineage::Decision;
 
@@ -44,6 +44,10 @@ pub const CANCELLING: &str = "Cancelled";
 pub struct Constructed {
     pub commitment: CommitmentId,
     pub instance: ResourceInstanceId,
+    /// Every entry admitted, accumulated through one reading. A decision written down carries
+    /// the knowledge it was taken against, and that has to come from the reading that produced
+    /// its coordinate.
+    pub admitted: Replayed,
     /// Every admission made, in order. Replaying this into a fresh history reproduces the
     /// world exactly, which is what makes it the thing worth persisting.
     pub journal: Vec<Admission>,
@@ -52,6 +56,7 @@ pub struct Constructed {
 /// Admit the subject, accumulating the journal that describes it.
 pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, JournalError> {
     let mut journal = Vec::new();
+    let mut admitted = Replayed::default();
 
     let vocabulary = vec![
         Admission::Role {
@@ -81,12 +86,12 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
             recorded_at: day(1),
         },
     ];
-    let named = replay(canon, &vocabulary)?;
     journal.extend(vocabulary);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    let (supplier, buyer) = (named.roles[0], named.roles[1]);
-    let (shipper, receiver) = (named.agents[0], named.agents[1]);
-    let inventory = named.resources[0];
+    let (supplier, buyer) = (admitted.roles[0], admitted.roles[1]);
+    let (shipper, receiver) = (admitted.agents[0], admitted.agents[1]);
+    let inventory = admitted.resources[0];
 
     let bound = vec![
         Admission::Eligibility {
@@ -113,27 +118,27 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
             recorded_at: day(1),
         },
     ];
-    let placed = replay(canon, &bound)?;
     journal.extend(bound);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    let instance = placed.instances[0];
+    let instance = admitted.instances[0];
 
     let proposed = vec![Admission::Statement {
         actors: [supplier].into(),
         recipients: [buyer].into(),
-        action: placed.actions[0],
+        action: admitted.actions[0],
         fulfills: [FULFILLING.to_owned()].into(),
         cancels: [CANCELLING.to_owned()].into(),
         recorded_at: day(1),
     }];
-    let stated = replay(canon, &proposed)?;
     journal.extend(proposed);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
     let intended = vec![Admission::Commitment {
         accountable: shipper,
         executors: [shipper].into(),
         beneficiaries: [receiver].into(),
-        statement: stated.statements[0],
+        statement: admitted.statements[0],
         resource: instance,
         committed_at: day(5),
         due_date: day(20),
@@ -141,13 +146,14 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         dependencies: [].into(),
         recorded_at: day(5),
     }];
-    let committed = replay(canon, &intended)?;
     journal.extend(intended);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
     Ok(Constructed {
-        commitment: committed.commitments[0],
+        commitment: admitted.commitments[0],
         instance,
         journal,
+        admitted,
     })
 }
 

@@ -27,8 +27,7 @@ use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId, Statement
 use crate::error::{JournalError, SubjectError};
 use crate::history::ResidentHistory;
 use crate::journal::{
-    self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, EntryId, Replayed,
-    ResourceKindRecord, replay,
+    self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, Replayed, ResourceKindRecord,
 };
 use crate::lineage::{self, Decision, Taken};
 
@@ -43,6 +42,12 @@ pub struct Constructed {
     pub overspend: CommitmentId,
     pub instance: ResourceInstanceId,
     pub journal: Vec<Admission>,
+    /// Every entry admitted so far, accumulated through one reading rather than several.
+    ///
+    /// A decision written down carries the knowledge it was taken against, and that has to
+    /// come from the same reading that produced the coordinate — two readings could disagree
+    /// about the prefix while the writer believed it had recorded one.
+    pub admitted: Replayed,
     /// What Phase 3 needs to word an outflow of its own, since a commitment refers to a
     /// statement and to agents by identity and those exist only once admitted.
     spending: Spending,
@@ -58,6 +63,7 @@ struct Spending {
 /// Admit the subject, accumulating the journal that describes it.
 pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, JournalError> {
     let mut journal = Vec::new();
+    let mut admitted = Replayed::default();
 
     let vocabulary = vec![
         Admission::Role {
@@ -87,12 +93,12 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
             recorded_at: day(1),
         },
     ];
-    let named = replay(canon, &vocabulary)?;
     journal.extend(vocabulary);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    let (payer, payee) = (named.roles[0], named.roles[1]);
-    let (customer, merchant) = (named.agents[0], named.agents[1]);
-    let cash = named.resources[0];
+    let (payer, payee) = (admitted.roles[0], admitted.roles[1]);
+    let (customer, merchant) = (admitted.agents[0], admitted.agents[1]);
+    let cash = admitted.resources[0];
 
     let bound = vec![
         Admission::Eligibility {
@@ -125,11 +131,11 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
             recorded_at: day(1),
         },
     ];
-    let placed = replay(canon, &bound)?;
     journal.extend(bound);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    let instance = placed.instances[0];
-    let (receive, spend) = (placed.actions[0], placed.actions[1]);
+    let instance = admitted.instances[0];
+    let (receive, spend) = (admitted.actions[0], admitted.actions[1]);
 
     let proposed = vec![
         Admission::Statement {
@@ -149,10 +155,10 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
             recorded_at: day(1),
         },
     ];
-    let stated = replay(canon, &proposed)?;
     journal.extend(proposed);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    let (inflow, outflow) = (stated.statements[0], stated.statements[1]);
+    let (inflow, outflow) = (admitted.statements[0], admitted.statements[1]);
 
     let intended = vec![
         Admission::Commitment {
@@ -180,14 +186,15 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
             recorded_at: day(5),
         },
     ];
-    let committed = replay(canon, &intended)?;
     journal.extend(intended);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
     Ok(Constructed {
-        inflow: committed.commitments[0],
-        overspend: committed.commitments[1],
+        inflow: admitted.commitments[0],
+        overspend: admitted.commitments[1],
         instance,
         journal,
+        admitted,
         spending: Spending {
             payer: merchant,
             payee: customer,
@@ -287,10 +294,10 @@ pub fn begun() -> Result<Begun, SubjectError> {
     let mut canon = Canon::new(ResidentHistory::new());
     let subject = construct(&mut canon)?;
 
-    let decisions = vec![Taken {
-        decision: genesis(subject.inflow, subject.overspend),
-        after: EntryId::of(subject.overspend),
-    }];
+    let decisions = vec![Taken::now(
+        genesis(subject.inflow, subject.overspend),
+        &subject.admitted,
+    )?];
 
     let mut lineage = Vec::new();
     lineage::decide(canon.history(), &mut lineage, &decisions[0].decision)?;
@@ -319,27 +326,23 @@ pub fn reasoned() -> Result<Reasoned, SubjectError> {
     } = begun()?;
 
     let mut journal = subject.journal.clone();
+    let mut admitted = subject.admitted.clone();
 
-    let cancellation = cancellation(subject.overspend);
-    let recorded = journal::replay(&mut canon, std::slice::from_ref(&cancellation))?;
-    journal.push(cancellation);
+    journal.push(cancellation(subject.overspend));
+    journal::replay_remaining(&mut canon, &journal, &mut admitted)?;
 
-    decisions.push(Taken {
-        decision: advancement(),
-        after: last_entry(&recorded)?,
-    });
+    decisions.push(Taken::now(advancement(), &admitted)?);
     lineage::decide(canon.history(), &mut lineage, &decisions[1].decision)?;
 
-    let admission = alternative(&subject);
-    let admitted = journal::replay(&mut canon, std::slice::from_ref(&admission))?;
-    journal.push(admission);
+    journal.push(alternative(&subject));
+    journal::replay_remaining(&mut canon, &journal, &mut admitted)?;
 
-    let alternative = admitted.commitments[0];
+    let alternative = *admitted
+        .commitments
+        .last()
+        .ok_or(SubjectError::NothingAdmitted)?;
 
-    decisions.push(Taken {
-        decision: fork(alternative),
-        after: last_entry(&admitted)?,
-    });
+    decisions.push(Taken::now(fork(alternative), &admitted)?);
     lineage::decide(canon.history(), &mut lineage, &decisions[2].decision)?;
 
     Ok(Reasoned {
@@ -350,15 +353,6 @@ pub fn reasoned() -> Result<Reasoned, SubjectError> {
         decisions,
         lineage,
     })
-}
-
-/// The last entry a replay admitted, which is the entry a decision taken now follows.
-fn last_entry(admitted: &Replayed) -> Result<EntryId, SubjectError> {
-    admitted
-        .entries
-        .last()
-        .cloned()
-        .ok_or(SubjectError::NothingAdmitted)
 }
 
 fn day(day: u8) -> String {

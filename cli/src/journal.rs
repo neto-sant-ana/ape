@@ -152,7 +152,7 @@ pub enum ResourceKindRecord {
 /// entry this addresses; an offset would hold none of them. Storing one is not caching a
 /// derivation for the reason the module already gives — replay re-derives every identity from
 /// content, and comparing the two is what makes a stored address checkable at all.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct EntryId(String);
 
 impl EntryId {
@@ -179,7 +179,7 @@ impl std::fmt::Display for EntryId {
 /// `entries` is the same information without the types, one address per admission, and it
 /// doubles as the cursor: its length is how much of a journal has been admitted, so a partial
 /// replay can be resumed from the value that records it.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Replayed {
     pub roles: Vec<RoleId>,
     pub agents: Vec<AgentId>,
@@ -331,12 +331,10 @@ fn admit(
                     label: identifier(label, "resource label")?,
                     kind: match kind {
                         ResourceKindRecord::Discrete => ResourceKind::Discrete,
-                        ResourceKindRecord::Between { lower, upper } => {
-                            ResourceKind::Quantifiable(
-                                Constraint::between(*lower, *upper)
-                                    .map_err(|e| JournalError::malformed("constraint", e))?,
-                            )
-                        }
+                        ResourceKindRecord::Between { lower, upper } => ResourceKind::Quantifiable(
+                            Constraint::between(*lower, *upper)
+                                .map_err(|e| JournalError::malformed("constraint", e))?,
+                        ),
                     },
                 },
                 date(recorded_at)?,

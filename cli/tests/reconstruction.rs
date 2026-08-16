@@ -12,7 +12,7 @@ use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::history::ResidentHistory;
-use ape_cli::journal::{self, EntryId};
+use ape_cli::journal;
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision, Taken};
 use ape_cli::reading::{self, OutcomeRecord, Reading};
@@ -21,6 +21,18 @@ use ape_cli::subject::reconstruction::{self as subject, Constructed};
 
 fn day(day: u8) -> Date {
     Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
+}
+
+/// The prefix a decision taken now stands on: what the subject admitted, and what has been
+/// admitted since.
+///
+/// The two arrive separately here because this experiment admits its settlement outside the
+/// subject, which was harmless while a decision recorded only where it fell. A decision now
+/// carries the knowledge it was taken against, so the halves have to be put back together.
+fn prefix(subject: &Constructed, since: &journal::Replayed) -> journal::Replayed {
+    let mut admitted = subject.admitted.clone();
+    admitted.entries.extend(since.entries.iter().cloned());
+    admitted
 }
 
 /// The decisions alone, with the coordinate that places each of them dropped.
@@ -44,11 +56,11 @@ fn constructed() -> (Canon<ResidentHistory>, Constructed, Vec<Taken>, Thesis) {
     let subject = subject::construct(&mut canon).expect("the subject is admissible");
 
     // The commitment is the last thing the subject admits, so it is the entry the genesis is
-    // taken after.
-    let decisions = vec![Taken {
-        decision: subject::genesis(subject.commitment),
-        after: EntryId::of(subject.commitment),
-    }];
+    // taken after — and the whole of what it was admitted alongside is what witnesses it.
+    let decisions = vec![
+        Taken::now(subject::genesis(subject.commitment), &subject.admitted)
+            .expect("the subject admitted something"),
+    ];
     let lineage = lineage::replay(canon.history(), &intentions(&decisions))
         .expect("a genesis over admitted knowledge");
 
@@ -155,7 +167,7 @@ fn phase_2_observe() {
 
     // The settlement is a journal entry like every other admission, so the world stays
     // described in one place rather than in a journal plus a call this test made.
-    journal::replay(&mut canon, &[subject::settlement(subject.commitment)])
+    let admitted = journal::replay(&mut canon, &[subject::settlement(subject.commitment)])
         .expect("an observation the statement can settle with");
 
     let event = canon
@@ -190,10 +202,10 @@ fn phase_2_observe() {
     // permits when the procedure itself demands it. It is a decision like the genesis was,
     // and it goes into the lineage rather than being taken here.
     let mut decisions = decisions;
-    decisions.push(Taken {
-        decision: subject::advancement(),
-        after: EntryId::of(event),
-    });
+    decisions.push(
+        Taken::now(subject::advancement(), &prefix(&subject, &admitted))
+            .expect("the Event was admitted"),
+    );
 
     let lineage = lineage::replay(canon.history(), &intentions(&decisions))
         .expect("a lineage the canonical knowledge supports");
@@ -283,7 +295,7 @@ fn phase_2_observe() {
 fn phase_3_persist() {
     let (mut canon, subject, decisions, genesis) = constructed();
 
-    let mut journal = subject.journal;
+    let mut journal = subject.journal.clone();
     let settlement = subject::settlement(subject.commitment);
     let admitted =
         journal::replay(&mut canon, std::slice::from_ref(&settlement)).expect("the Event admits");
@@ -293,14 +305,10 @@ fn phase_3_persist() {
     // recognition of the Event. Both are decisions, and neither is recoverable from
     // canonical knowledge — history says what became known, not which of it a world selects.
     let mut decisions = decisions;
-    decisions.push(Taken {
-        decision: subject::advancement(),
-        after: admitted
-            .entries
-            .last()
-            .expect("the Event was admitted")
-            .clone(),
-    });
+    decisions.push(
+        Taken::now(subject::advancement(), &prefix(&subject, &admitted))
+            .expect("the Event was admitted"),
+    );
 
     let repository = Repository::open(scratch("phase-3"));
     repository
@@ -550,21 +558,17 @@ struct Living {
 fn persisted(repository: &Repository) -> Living {
     let (mut canon, subject, decisions, _) = constructed();
 
-    let mut journal = subject.journal;
+    let mut journal = subject.journal.clone();
     let settlement = subject::settlement(subject.commitment);
     let admitted =
         journal::replay(&mut canon, std::slice::from_ref(&settlement)).expect("the Event admits");
     journal.push(settlement);
 
     let mut decisions = decisions;
-    decisions.push(Taken {
-        decision: subject::advancement(),
-        after: admitted
-            .entries
-            .last()
-            .expect("the Event was admitted")
-            .clone(),
-    });
+    decisions.push(
+        Taken::now(subject::advancement(), &prefix(&subject, &admitted))
+            .expect("the Event was admitted"),
+    );
 
     let lineage =
         lineage::replay(canon.history(), &intentions(&decisions)).expect("the lineage holds");

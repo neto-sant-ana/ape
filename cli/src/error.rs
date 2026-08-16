@@ -102,6 +102,22 @@ pub enum LineageError {
     /// and a lineage read long after it was written is read by someone who was not there.
     #[error("the lineage forks before it begins")]
     ForkedWithoutParent,
+
+    /// A decision written down before anything had been admitted, which no application takes:
+    /// a world selects commitments, and a commitment is knowledge.
+    #[error("a decision was taken before anything was admitted")]
+    DecidedBeforeAnythingWasAdmitted,
+
+    /// The journal offered knowledge the decision does not say it was taken against.
+    ///
+    /// Kept apart from its mirror because the two say different things about the repository:
+    /// one has a journal that grew under a coordinate, the other a coordinate that outran its
+    /// journal.
+    #[error("entry {entry} was admitted, and the decision was not taken against it")]
+    UnwitnessedKnowledge { entry: crate::journal::EntryId },
+
+    #[error("the decision was taken against entry {entry}, which the journal does not offer")]
+    WitnessedKnowledgeAbsent { entry: crate::journal::EntryId },
 }
 
 #[derive(Debug, thiserror::Error)]

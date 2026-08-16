@@ -87,6 +87,38 @@ pub struct Taken {
     #[serde(flatten)]
     pub decision: Decision,
     pub after: EntryId,
+    /// Every entry that had been admitted when the decision was taken.
+    ///
+    /// This is [`Taken::after`] written a second time, in a form that says the same thing
+    /// about the whole prefix rather than about its end — and a second representation of one
+    /// fact is the only thing a reader can compare. A repository holding only what produces
+    /// its worlds cannot contradict itself, which is another way of saying it cannot notice
+    /// anything.
+    ///
+    /// It is a set rather than a sequence on purpose. An entry's identity is its content, so
+    /// two admissions that refer to nothing of each other's carry nothing in their order; a
+    /// witness over the ordered prefix would refuse a repository whose worlds are identical.
+    /// What it must disagree with is a prefix that is not the one the decision was taken
+    /// against, which is a question about membership.
+    pub witness: BTreeSet<EntryId>,
+}
+
+impl Taken {
+    /// A decision, witnessed by the entries that stood when it was taken.
+    ///
+    /// Both halves come from one reading of one journal, so they cannot disagree at the
+    /// moment they are written. Corroboration is a property of the read.
+    pub fn now(decision: Decision, admitted: &Replayed) -> Result<Self, LineageError> {
+        Ok(Self {
+            decision,
+            after: admitted
+                .entries
+                .last()
+                .cloned()
+                .ok_or(LineageError::DecidedBeforeAnythingWasAdmitted)?,
+            witness: admitted.entries.iter().cloned().collect(),
+        })
+    }
 }
 
 /// Extend a lineage by one decision, returning what history imposed on the world it makes.
@@ -194,12 +226,39 @@ pub fn rebuild(
     for taken in decisions {
         journal::replay_through(canon, journal, &mut admitted, &taken.after)?;
 
+        corroborate(&admitted, taken)?;
+
         decide(canon.history(), &mut lineage, &taken.decision)?;
     }
 
     journal::replay_remaining(canon, journal, &mut admitted)?;
 
     Ok(lineage)
+}
+
+/// Weigh what the journal offered against what the decision says it was taken after.
+///
+/// The two are derived from the same journal by different routes — one by walking to an
+/// address, the other written down when the decision was taken — so a repository whose journal
+/// or whose coordinate has moved makes them disagree. What is named is the entry that
+/// disagrees, because "the repository is invalid" sends a reader back to the bytes.
+fn corroborate(admitted: &Replayed, taken: &Taken) -> Result<(), LineageError> {
+    let offered: BTreeSet<&EntryId> = admitted.entries.iter().collect();
+    let witnessed: BTreeSet<&EntryId> = taken.witness.iter().collect();
+
+    if let Some(unexpected) = offered.difference(&witnessed).next() {
+        return Err(LineageError::UnwitnessedKnowledge {
+            entry: (*unexpected).clone(),
+        });
+    }
+
+    if let Some(missing) = witnessed.difference(&offered).next() {
+        return Err(LineageError::WitnessedKnowledgeAbsent {
+            entry: (*missing).clone(),
+        });
+    }
+
+    Ok(())
 }
 
 fn date(value: &str) -> Result<Date, LineageError> {

@@ -556,16 +556,23 @@ fn phase_4_persist() {
                 "known_at".into(),
                 "selection".into(),
                 "after".into(),
+                "witness".into(),
             ]),
-            BTreeSet::from(["decides".to_owned(), "known_at".into(), "after".into()]),
+            BTreeSet::from([
+                "decides".to_owned(),
+                "known_at".into(),
+                "after".into(),
+                "witness".into(),
+            ]),
             BTreeSet::from([
                 "decides".to_owned(),
                 "omitted".into(),
                 "introduced".into(),
                 "after".into(),
+                "witness".into(),
             ]),
         ],
-        "a decision records an instant, an intention, and the entry it was taken after"
+        "a decision records an instant, an intention, and where in the sequence it was taken"
     );
 
     // The other audit, which the rule above cannot perform: the coordinate has to *address*
