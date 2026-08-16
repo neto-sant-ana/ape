@@ -74,6 +74,72 @@ pub enum ConflictRecord {
     },
 }
 
+/// What a world *is*, before anything is asked of it.
+///
+/// This is the second thing a repository writes down twice. The first — the entries a
+/// decision was taken against — corroborates the coordinate; this one corroborates the world
+/// the coordinate and the intention produce together, which is the only place an altered
+/// intention shows.
+///
+/// It is the application's vocabulary rather than the engine's serialized form, for the reason
+/// the journal already gives: none of the engine's types can be read back from bytes, so a
+/// record written in them would be a record only its writer can use. Here that argument has a
+/// second edge — a witness computed over an encoding makes the encoding load-bearing, and this
+/// one is computed over accessors instead.
+///
+/// A `Thesis` cannot be deserialized, so what crosses a process boundary is never a world. It
+/// is this: enough to say *that* a world came back different, and which coordinate of it did.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WorldRecord {
+    pub thesis: String,
+    pub thesis_parent: Option<String>,
+    pub known_at: String,
+    pub event_head: Option<String>,
+    pub frozen: BTreeSet<String>,
+    pub open: BTreeSet<String>,
+}
+
+impl WorldRecord {
+    pub fn of(thesis: &Thesis) -> Self {
+        Self {
+            thesis: thesis.id().to_string(),
+            thesis_parent: thesis.parent().map(|id| id.to_string()),
+            known_at: thesis.cut().known_at().to_iso(),
+            event_head: thesis.cut().event_head().map(|id| id.to_string()),
+            frozen: thesis
+                .selection()
+                .frozen()
+                .map(|id| id.to_string())
+                .collect(),
+            open: thesis.selection().open().map(|id| id.to_string()).collect(),
+        }
+    }
+
+    /// The coordinate that disagrees, or nothing where the two describe one world.
+    ///
+    /// Named rather than counted, and named field by field: a reader told only that a world
+    /// came back different has to go and find out how.
+    pub fn disagreement(&self, other: &Self) -> Option<&'static str> {
+        // Identity is weighed last because it is derived from the rest, so it differs
+        // whenever anything does and would mask what actually moved. Reaching it means every
+        // named coordinate agreed and the identity did not — which is not a corrupted
+        // repository but a changed derivation, and worth saying so.
+        [
+            ("the instant it recognizes", self.known_at != other.known_at),
+            (
+                "the chain it recognizes",
+                self.event_head != other.event_head,
+            ),
+            ("what history made unavoidable", self.frozen != other.frozen),
+            ("what it still proposes", self.open != other.open),
+            ("ancestry", self.thesis_parent != other.thesis_parent),
+            ("identity alone", self.thesis != other.thesis),
+        ]
+        .into_iter()
+        .find_map(|(coordinate, differs)| differs.then_some(coordinate))
+    }
+}
+
 /// One world, as the experiment compares it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Reading {
@@ -204,5 +270,71 @@ pub fn reconstruct(
         &repository.read_lineage()?,
     )?;
 
+    corroborate(&lineage, &repository.read_worlds()?)?;
+
     all(canon.history(), &lineage, instance, effective_at)
+}
+
+/// Weigh the worlds a repository says it decided against the worlds its decisions produce.
+///
+/// The stored side cannot become a `Thesis` again — the engine derives `Serialize` and not
+/// `Deserialize` — so this is a comparison and never a fallback. A repository whose decisions
+/// no longer produce the worlds it recorded is refused rather than silently believed on
+/// either side.
+fn corroborate(lineage: &[Thesis], recorded: &[WorldRecord]) -> Result<(), ReadingError> {
+    if lineage.len() != recorded.len() {
+        return Err(ReadingError::LineageLengthDisagrees {
+            derived: lineage.len(),
+            recorded: recorded.len(),
+        });
+    }
+
+    for (position, (thesis, recorded)) in lineage.iter().zip(recorded).enumerate() {
+        let derived = WorldRecord::of(thesis);
+
+        if let Some(coordinate) = derived.disagreement(recorded) {
+            return Err(ReadingError::WorldDisagrees {
+                position,
+                coordinate,
+            });
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The two field lists of this module describe one thing, and neither derives the other.
+    ///
+    /// They are adjacent so that anyone editing one sees the other, and this reads both to say
+    /// which coordinate stopped agreeing. A `Reading` that reported a world differently from
+    /// the record that witnesses it would make a repository refuse itself.
+    #[test]
+    fn a_reading_reports_the_world_its_witness_records() {
+        let (canon, subject, _, lineage) = {
+            let begun = crate::subject::divergence::begun().expect("the subject is admissible");
+            (begun.canon, begun.subject, begun.decisions, begun.lineage)
+        };
+
+        let thesis = lineage.last().expect("the genesis");
+        let record = WorldRecord::of(thesis);
+
+        let reading = of(
+            canon.history(),
+            thesis,
+            subject.instance,
+            &Date::parse("2026-01-10").expect("a date"),
+        )
+        .expect("the world reads");
+
+        assert_eq!(reading.thesis, record.thesis, "identity");
+        assert_eq!(reading.thesis_parent, record.thesis_parent, "ancestry");
+        assert_eq!(reading.known_at, record.known_at, "instant");
+        assert_eq!(reading.event_head, record.event_head, "chain");
+        assert_eq!(reading.frozen, record.frozen, "frozen");
+        assert_eq!(reading.open, record.open, "open");
+    }
 }

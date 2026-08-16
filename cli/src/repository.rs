@@ -5,9 +5,15 @@
 //! neighbour — that a `Constraint` cannot be read back off an admitted `Resource` — settled
 //! that the journal has to be captured as it is supplied rather than derived afterwards.
 //!
-//! Nothing derived is written. A level, a condition, a projection and a Thesis identity are
-//! all recomputed from the journal, and persisting any of them would be storing an answer
-//! next to the question it comes from, where the two can disagree.
+//! Derived values are written **only where something compares them**. A level, a condition
+//! and a projection are recomputed and never kept; what a decision was taken against, and the
+//! world it produced, are kept precisely so a reader has two representations to weigh. The
+//! objection to storing an answer beside its question was that the two can disagree, and that
+//! is the whole of what makes disagreement visible — a repository holding only its inputs
+//! cannot contradict itself, and cannot notice anything either.
+//!
+//! The rule that replaces it is narrower and stricter: a derived value that is written and not
+//! compared on every read is the liability the old one feared.
 //!
 //! The format is JSON, and it is a decision about *this experiment* rather than about APE.
 //! A laboratory whose repository cannot be read by eye hides half of what it is for; the
@@ -20,9 +26,11 @@ use std::path::{Path, PathBuf};
 use crate::error::RepositoryError;
 use crate::journal::Admission;
 use crate::lineage::Taken;
+use crate::reading::WorldRecord;
 
 const JOURNAL: &str = "journal.json";
 const LINEAGE: &str = "lineage.json";
+const WORLDS: &str = "worlds.json";
 
 pub struct Repository {
     root: PathBuf,
@@ -82,6 +90,32 @@ impl Repository {
 
     pub fn read_lineage(&self) -> Result<Vec<Taken>, RepositoryError> {
         let encoded = fs::read_to_string(self.lineage_path())?;
+
+        Ok(serde_json::from_str(&encoded)?)
+    }
+
+    pub fn worlds_path(&self) -> PathBuf {
+        self.root.join(WORLDS)
+    }
+
+    /// Write the worlds the decisions produced.
+    ///
+    /// Derived, all of them, and kept for exactly that reason. What is written is the
+    /// application's record of a world rather than the engine's serialized `Thesis`, because
+    /// a `Thesis` cannot be read back from bytes — so this is a witness and never a source,
+    /// and the boundary is what makes that true rather than a promise.
+    pub fn write_worlds(&self, worlds: &[WorldRecord]) -> Result<(), RepositoryError> {
+        fs::create_dir_all(&self.root)?;
+
+        let encoded = serde_json::to_string_pretty(worlds)?;
+
+        fs::write(self.worlds_path(), encoded)?;
+
+        Ok(())
+    }
+
+    pub fn read_worlds(&self) -> Result<Vec<WorldRecord>, RepositoryError> {
+        let encoded = fs::read_to_string(self.worlds_path())?;
 
         Ok(serde_json::from_str(&encoded)?)
     }

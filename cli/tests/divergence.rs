@@ -16,7 +16,7 @@ use ape_cli::history::ResidentHistory;
 use ape_cli::journal;
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision, Taken};
-use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading};
+use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::subject::divergence::{self, Begun, Reasoned};
 
@@ -883,6 +883,15 @@ fn persist(repository: &Repository, reasoned: &Reasoned) {
         .expect("the repository is writable");
     repository
         .write_lineage(&reasoned.decisions)
+        .expect("the repository is writable");
+    repository
+        .write_worlds(
+            &reasoned
+                .lineage
+                .iter()
+                .map(WorldRecord::of)
+                .collect::<Vec<_>>(),
+        )
         .expect("the repository is writable");
 }
 

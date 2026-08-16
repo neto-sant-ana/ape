@@ -12,7 +12,7 @@ use ape::kernel::value_objects::Date;
 
 use ape_cli::journal::{Admission, EntryId};
 use ape_cli::lineage::{Decision, Taken};
-use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading};
+use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::subject::divergence::{self, Reasoned};
 
@@ -42,8 +42,16 @@ fn persisted(repository: &Repository) -> Reasoned {
     repository
         .write_lineage(&reasoned.decisions)
         .expect("the repository is writable");
+    repository
+        .write_worlds(&worlds(&reasoned.lineage))
+        .expect("the repository is writable");
 
     reasoned
+}
+
+/// What the decisions produced, as the repository records it.
+fn worlds(lineage: &[ape::engine::thesis::Thesis]) -> Vec<WorldRecord> {
+    lineage.iter().map(WorldRecord::of).collect()
 }
 
 /// Rebuild in an operating-system process of its own, given the repository and nothing else.
@@ -199,6 +207,9 @@ fn corrupted(
     let repository = Repository::open(scratch(name));
     repository.write_journal(&journal).expect("writable");
     repository.write_lineage(&decisions).expect("writable");
+    repository
+        .write_worlds(&worlds(&reasoned.lineage))
+        .expect("writable");
 
     let rebuilt = rebuild(&repository, reasoned.subject.instance);
 
@@ -290,7 +301,7 @@ fn phase_2_corrupt() {
                 "a coordinate repointed at an entry that exists",
                 Verdict::Refused
             ),
-            ("the genesis's intention narrowed", Verdict::Silent),
+            ("the genesis's intention narrowed", Verdict::Refused),
             ("two roles reordered", Verdict::Harmless),
             ("two commitments reordered", Verdict::Refused),
             ("an eligibility removed", Verdict::Refused),
@@ -299,30 +310,33 @@ fn phase_2_corrupt() {
         "the corruption table, as this experiment finds it"
     );
 
-    // What the row that still passes actually produced. A row that stays silent while
-    // producing something else is a different finding, so the world is named rather than
-    // counted.
-    let genesis = &narrowed.worlds()[0];
-
-    assert_ne!(
-        genesis.thesis, baseline[0].thesis,
-        "a different world came back"
-    );
-    assert!(
-        genesis.conflicts.is_empty(),
-        "and the refusal at -70 is gone with the commitment that caused it"
-    );
-
-    // And what the row that stopped passing says. Half a refusal — one that reports the
-    // repository invalid without saying which datum disagrees — sends a reader back to the
-    // bytes, so the complaint names the entry.
+    // Nothing passes in silence any more, so what is left to assert is what the refusals
+    // *say*. Half a refusal — one that reports the repository invalid without naming which
+    // datum disagrees — sends a reader back to the bytes.
     assert!(
         repointed
             .complaint
             .contains("was admitted, and the decision was not taken against it"),
-        "the refusal names what disagrees: {}",
+        "the sequence disagrees, and the entry is named: {}",
         repointed.complaint
     );
+    assert!(
+        narrowed
+            .complaint
+            .contains("world 0 disagrees with what was recorded, in what it still proposes"),
+        "the world disagrees, and the coordinate is named: {}",
+        narrowed.complaint
+    );
+
+    // The two refusals come from different witnesses, and the second is the one this phase
+    // added. An altered intention leaves the journal untouched and every address resolving,
+    // so nothing about the sequence can see it — only the world it produces can.
+    assert_ne!(
+        repointed.complaint, narrowed.complaint,
+        "a corruption of the coordinate and a corruption of the intention are not one finding"
+    );
+
+    let _ = baseline;
 }
 
 fn position(journal: &[Admission], magnitude: f64) -> usize {

@@ -15,7 +15,7 @@ use ape_cli::history::ResidentHistory;
 use ape_cli::journal;
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision, Taken};
-use ape_cli::reading::{self, OutcomeRecord, Reading};
+use ape_cli::reading::{self, OutcomeRecord, Reading, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::subject::reconstruction::{self as subject, Constructed};
 
@@ -583,6 +583,9 @@ fn persisted(repository: &Repository) -> Living {
 
     repository.write_journal(&journal).expect("writable");
     repository.write_lineage(&decisions).expect("writable");
+    repository
+        .write_worlds(&lineage.iter().map(WorldRecord::of).collect::<Vec<_>>())
+        .expect("writable");
 
     Living {
         commitment: subject.commitment,

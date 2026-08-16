@@ -78,6 +78,20 @@ pub enum ReadingError {
     /// A repository whose lineage decides nothing. There is no world to read.
     #[error("the lineage is empty")]
     EmptyLineage,
+
+    /// The decisions produce a different number of worlds than the repository says it reached.
+    #[error("the decisions produce {derived} worlds, and {recorded} were recorded")]
+    LineageLengthDisagrees { derived: usize, recorded: usize },
+
+    /// A world the decisions produce is not the world recorded in its place.
+    ///
+    /// The coordinate is named because a reader told only that a world came back different
+    /// has to go and find out how, and the repository already knows.
+    #[error("world {position} disagrees with what was recorded, in {coordinate}")]
+    WorldDisagrees {
+        position: usize,
+        coordinate: &'static str,
+    },
 }
 
 #[derive(Debug, thiserror::Error)]
