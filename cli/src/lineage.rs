@@ -43,7 +43,7 @@ use ape::canon::{Canon, CanonicalKnowledge};
 use ape::engine::thesis::{
     ForkInput, GenesisInput, KnowledgeCut, Thesis, ThesisArchive, ThesisId, ThesisLookup,
 };
-use ape::kernel::entities::CommitmentId;
+use ape::kernel::entities::{AgentId, CommitmentId};
 use ape::kernel::value_objects::Date;
 
 use crate::archive::ResidentArchive;
@@ -129,6 +129,19 @@ pub struct Taken {
     /// What it must disagree with is a prefix that is not the one the decision was taken
     /// against, which is a question about membership.
     pub witness: BTreeSet<EntryId>,
+    /// The party that took it, where anything says.
+    ///
+    /// Optional, and that is not a choice made here. Four concluded experiments hold repositories
+    /// whose decisions name nobody, and a published result whose subject moved underneath it is a
+    /// result nobody can run again — so the field the coordination experiment needed had its shape
+    /// decided by the experiments before it.
+    ///
+    /// An [`AgentId`] rather than a label, because it is the strongest checkable thing available:
+    /// an identity resolves against the knowledge that stood when the decision was taken, and a
+    /// label resolves against nothing. What that buys and what it does not is the whole of the
+    /// experiment's second half.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub by: Option<AgentId>,
 }
 
 impl Taken {
@@ -145,6 +158,23 @@ impl Taken {
                 .cloned()
                 .ok_or(LineageError::DecidedBeforeAnythingWasAdmitted)?,
             witness: admitted.entries.iter().cloned().collect(),
+            by: None,
+        })
+    }
+
+    /// The same, attributed to the party that took it.
+    ///
+    /// A claim rather than a derivation. Nothing about the decision produces it, so nothing about
+    /// the decision can contradict it — which is why this is the only constructor whose name says
+    /// what the record is doing.
+    pub fn claimed(
+        decision: Decision,
+        by: AgentId,
+        admitted: &Replayed,
+    ) -> Result<Self, LineageError> {
+        Ok(Self {
+            by: Some(by),
+            ..Self::now(decision, admitted)?
         })
     }
 }
@@ -309,6 +339,7 @@ pub fn rebuild(
         journal::replay_through(canon, journal, &mut admitted, &taken.after)?;
 
         corroborate(&admitted, taken)?;
+        attributed(&admitted, taken)?;
 
         decide(canon.history(), &mut lineage, &taken.decision)?;
     }
@@ -338,6 +369,27 @@ fn corroborate(admitted: &Replayed, taken: &Taken) -> Result<(), LineageError> {
         return Err(LineageError::WitnessedKnowledgeAbsent {
             entry: (*missing).clone(),
         });
+    }
+
+    Ok(())
+}
+
+/// Weigh a decision's claim about who took it against the knowledge that stood when it was taken.
+///
+/// This is everything the record can check about a party, and it is all one thing: that the identity
+/// names an agent, and that the agent was **already known** at the coordinate. Both fall out of
+/// asking the replay rather than the whole journal — a decision attributed to a party admitted
+/// afterwards is a claim about somebody who did not exist yet.
+///
+/// What it does not check is the attribution. That the agent named is the agent that decided is
+/// witnessed by nothing but the writer who wrote it, and no amount of internal agreement reaches it.
+fn attributed(admitted: &Replayed, taken: &Taken) -> Result<(), LineageError> {
+    let Some(by) = taken.by else {
+        return Ok(());
+    };
+
+    if !admitted.agents.contains(&by) {
+        return Err(LineageError::DeciderNotKnown { agent: by });
     }
 
     Ok(())

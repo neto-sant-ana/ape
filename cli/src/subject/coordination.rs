@@ -37,7 +37,7 @@
 use ape::canon::Canon;
 use ape::engine::synthesis::{ApplicabilityStatus, synthesize};
 use ape::engine::thesis::{Thesis, ThesisId};
-use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
+use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId};
 
 use crate::error::{JournalError, SubjectError};
 use crate::history::ResidentHistory;
@@ -64,6 +64,14 @@ pub struct Constructed {
     pub grant: Admission,
     /// `R` — the same, for the other party, so that the two admit different knowledge.
     pub rebate: Admission,
+    /// The party that plans the hiring, held unadmitted.
+    ///
+    /// A party is knowledge before it is a claim. It arrives through the journal like every other
+    /// fact, and the append-only rule applies to it — which is what makes *that this party exists*
+    /// checkable and leaves *that it decided anything* not.
+    pub planner: Admission,
+    /// The party that plans the equipment, held the same way.
+    pub steward: Admission,
     pub instance: ResourceInstanceId,
     pub journal: Vec<Admission>,
     pub admitted: Replayed,
@@ -196,6 +204,8 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         equipment: admitted.commitments[2],
         grant: flowing(inflow, customer, merchant, 30.0, 4),
         rebate: flowing(inflow, customer, merchant, 10.0, 4),
+        planner: deciding("planner"),
+        steward: deciding("steward"),
         instance,
         journal,
         admitted,
@@ -245,6 +255,9 @@ pub fn founded() -> Result<Founded, SubjectError> {
     let subject = construct(&mut canon)?;
 
     let mut lineage = Lineage::new();
+    // Unattributed, as every experiment before this one wrote it. Which leaves the arrangement
+    // holding a repository where some decisions name a party and some do not — the realistic shape
+    // of an optional field, and one Phase 5 has to measure rather than tidy away.
     let taken = Taken::now(shared(subject.budget), &subject.admitted)?;
 
     lineage::decide(canon.history(), &mut lineage, &taken.decision)?;
@@ -280,8 +293,24 @@ pub fn read(repository: &Repository) -> Result<Corroborated, SubjectError> {
 /// hand, so a party that read an older repository decides in an older world — which is the
 /// arrangement rather than a defect of it.
 pub fn decide(working: &mut Corroborated, decision: Decision) -> Result<ThesisId, SubjectError> {
-    let taken = Taken::now(decision, &working.admitted)?;
+    taken(working, Taken::now(decision, &working.admitted)?)
+}
 
+/// The same, with the party that took it written down.
+///
+/// A second entry point rather than a parameter on the first, and that is the same constraint that
+/// made the field optional: Part A's measurements were published against decisions that name
+/// nobody, and a phase whose calls all changed would be a phase nobody can compare to what it
+/// reported.
+pub fn decided(
+    working: &mut Corroborated,
+    by: AgentId,
+    decision: Decision,
+) -> Result<ThesisId, SubjectError> {
+    taken(working, Taken::claimed(decision, by, &working.admitted)?)
+}
+
+fn taken(working: &mut Corroborated, taken: Taken) -> Result<ThesisId, SubjectError> {
     lineage::decide(
         working.canon.history(),
         &mut working.lineage,
@@ -321,6 +350,30 @@ pub fn adopt(
     source: ThesisId,
     target: ThesisId,
 ) -> Result<ThesisId, SubjectError> {
+    let carried = resolved(working, base, source, target)?;
+
+    decide(working, carried)
+}
+
+/// The same, with the party that took it up written down.
+pub fn adopted(
+    working: &mut Corroborated,
+    by: AgentId,
+    base: ThesisId,
+    source: ThesisId,
+    target: ThesisId,
+) -> Result<ThesisId, SubjectError> {
+    let carried = resolved(working, base, source, target)?;
+
+    decided(working, by, carried)
+}
+
+fn resolved(
+    working: &Corroborated,
+    base: ThesisId,
+    source: ThesisId,
+    target: ThesisId,
+) -> Result<Decision, SubjectError> {
     let report = synthesize(
         working.lineage.archive(),
         working.canon.history(),
@@ -333,7 +386,7 @@ pub fn adopt(
         return Err(SubjectError::TransferNotApplicable);
     };
 
-    decide(working, transfer::applied(target, transfer))
+    Ok(transfer::applied(target, transfer))
 }
 
 /// Put back everything this party holds, whole.
@@ -351,6 +404,20 @@ pub fn write(repository: &Repository, working: &Corroborated) -> Result<(), Subj
 /// The witnesses for every world a lineage produced.
 pub fn worlds(lineage: &Lineage) -> Vec<WorldRecord> {
     lineage.decided().iter().map(WorldRecord::of).collect()
+}
+
+/// A party that decides, and is a party to no commitment.
+///
+/// Which is the arrangement rather than an oversight: whoever selects a set of commitments need not
+/// appear in any of them, and Phase 4 measured that the two populations here are disjoint. Recorded
+/// on day 5, after everything the founded journal holds, so that a decision taken before it can be
+/// attributed to it and refused.
+fn deciding(label: &str) -> Admission {
+    Admission::Agent {
+        label: label.to_owned(),
+        kind: AgentKindRecord::Individual,
+        recorded_at: day(5),
+    }
 }
 
 fn day(day: u8) -> String {

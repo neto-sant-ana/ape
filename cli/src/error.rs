@@ -205,6 +205,16 @@ pub enum LineageError {
 
     #[error("the decision was taken against entry {entry}, which the journal does not offer")]
     WitnessedKnowledgeAbsent { entry: crate::journal::EntryId },
+
+    /// A decision attributed to a party the knowledge behind it does not hold.
+    ///
+    /// One refusal for two things, because at this coordinate they are one: an identity that names
+    /// no agent, and an agent admitted after the decision that claims it. Both are claims about
+    /// somebody the decision could not have known.
+    #[error("the decision is attributed to {agent}, whom nothing had admitted when it was taken")]
+    DeciderNotKnown {
+        agent: ape::kernel::entities::AgentId,
+    },
 }
 
 #[derive(Debug, thiserror::Error)]
