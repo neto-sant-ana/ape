@@ -10,6 +10,7 @@ use std::collections::BTreeSet;
 
 use ape::engine::synthesis::SynthesisError;
 use ape::engine::thesis::{ThesisError, ThesisId, descends_from};
+use ape::kernel::entities::AgentId;
 
 use ape_cli::converge;
 use ape_cli::error::{ConvergeError, JournalError, LineageError, ReadingError, TransferError};
@@ -1028,4 +1029,277 @@ fn the_repair_erased_the_only_accidental_signal() {
     );
 
     let _ = arrangement;
+}
+
+/// Two parties who exist in the record, each with a line, each decision claimed.
+///
+/// The parties are admitted before they are named, because a party is knowledge and an attribution
+/// is a claim. The genesis stays unattributed, as every experiment before this one wrote it — so the
+/// arrangement holds the realistic shape of an optional field rather than a tidy one.
+fn claimed(name: &str) -> (Repository, Founded, ThesisId, ThesisId, [AgentId; 2]) {
+    let (repository, arrangement) = founded(name);
+    let subject = &arrangement.subject;
+    let shared = arrangement.shared().id();
+
+    let mut one = coordination::read(&repository).expect("reconstructs");
+    coordination::admit(&mut one, subject.planner.clone()).expect("a party is admitted");
+    coordination::admit(&mut one, subject.steward.clone()).expect("and so is the other");
+
+    let planner = one.admitted.agents[2];
+    let steward = one.admitted.agents[3];
+
+    let staffing = coordination::decided(
+        &mut one,
+        planner,
+        coordination::also(shared, subject.hiring),
+    )
+    .expect("one party plans, and says so");
+
+    converge::converge(&repository, &one).expect("converges");
+
+    let mut other = coordination::read(&repository).expect("reconstructs");
+    let equipping = coordination::decided(
+        &mut other,
+        steward,
+        coordination::also(shared, subject.equipment),
+    )
+    .expect("and so does the other");
+
+    converge::converge(&repository, &other).expect("converges");
+
+    (
+        repository,
+        arrangement,
+        staffing,
+        equipping,
+        [planner, steward],
+    )
+}
+
+/// Phase 5 — Record it, and separate addressing from proof.
+///
+/// The corroboration experiment's two questions, answered against a record that holds a decider.
+/// The second has a known and uncomfortable answer, and the phase's job is to state where the
+/// checking stops rather than to soften it.
+#[test]
+fn phase_5_record_a_decider() {
+    let (repository, arrangement, staffing, equipping, [planner, steward]) = claimed("phase-5");
+
+    assert_eq!(
+        repository.read_journal().expect("readable").len(),
+        FOUNDED + 2,
+        "two parties, admitted as knowledge"
+    );
+
+    let decisions = repository.read_lineage().expect("readable");
+
+    assert_eq!(decisions.len(), 3);
+
+    // What the record now says, and what it still does not. The genesis names nobody, because the
+    // field is optional and had to be — so a reader cannot rely on the answer being there.
+    assert_eq!(decisions[0].by, None, "the genesis claims no author");
+    assert_eq!(
+        keys(&decisions[0]),
+        BTreeSet::from(["decides", "known_at", "selection", "after", "witness"].map(str::to_owned)),
+        "and does not carry the field at all"
+    );
+
+    let attributed: BTreeSet<Option<AgentId>> =
+        decisions[1..].iter().map(|taken| taken.by).collect();
+
+    assert_eq!(
+        attributed,
+        BTreeSet::from([Some(planner), Some(steward)]),
+        "and the two forks each name a party"
+    );
+    assert_eq!(
+        keys(&decisions[1]),
+        BTreeSet::from(
+            [
+                "decides",
+                "extends",
+                "omitted",
+                "introduced",
+                "after",
+                "witness",
+                "by"
+            ]
+            .map(str::to_owned)
+        ),
+        "one field, and it is the whole of what Part B adds"
+    );
+
+    // **What becomes impossible if this is not preserved.** A fresh process, holding no memory of
+    // either session, is asked whose line each world is. With the record it answers.
+    let worlds = repository.read_worlds().expect("readable");
+    let by = |party: AgentId| -> BTreeSet<String> {
+        decisions
+            .iter()
+            .zip(&worlds)
+            .filter(|(taken, _)| taken.by == Some(party))
+            .map(|(_, world)| world.thesis.clone())
+            .collect()
+    };
+
+    assert_eq!(by(planner), BTreeSet::from([staffing.to_string()]));
+    assert_eq!(by(steward), BTreeSet::from([equipping.to_string()]));
+
+    // And Phase 4's measurement stops holding, which is the gain stated as a measurement: two
+    // parties and one party are no longer one repository.
+    let alone = {
+        let (repository, arrangement) = founded("phase-5-alone");
+        let subject = &arrangement.subject;
+        let shared = arrangement.shared().id();
+
+        let mut alone = coordination::read(&repository).expect("reconstructs");
+        coordination::admit(&mut alone, subject.planner.clone()).expect("admitted");
+        coordination::admit(&mut alone, subject.steward.clone()).expect("admitted");
+
+        let one = alone.admitted.agents[2];
+
+        coordination::decided(&mut alone, one, coordination::also(shared, subject.hiring))
+            .expect("one mind");
+        coordination::decided(
+            &mut alone,
+            one,
+            coordination::also(shared, subject.equipment),
+        )
+        .expect("deciding both");
+
+        converge::converge(&repository, &alone).expect("converges");
+
+        repository
+    };
+
+    assert!(
+        differing(&bytes(&repository), &bytes(&alone)).is_some(),
+        "one party deciding both is now a different repository"
+    );
+
+    let _ = arrangement;
+}
+
+/// Everything the record can check about a party is about the reference.
+///
+/// Two refusals, and they are one check: the identity has to name an agent, and the agent has to
+/// have been known at the coordinate the decision was taken at. Both come from asking the replay
+/// rather than the whole journal.
+#[test]
+fn a_decider_is_checked_against_the_knowledge_that_stood() {
+    let (repository, arrangement, _, _, [planner, _]) = claimed("checked");
+    let subject = &arrangement.subject;
+
+    // An identity that names no agent. A commitment's, so that it is an identity the repository
+    // genuinely holds — a random one would be refused for being absent rather than for not being
+    // an agent.
+    let mut forged = repository.read_lineage().expect("readable");
+    forged[1].by = Some(AgentId::from(*subject.hiring.as_ref()));
+    repository.write_lineage(&forged).expect("writable");
+
+    match reading::corroborated(&repository) {
+        Err(ReadingError::Lineage(LineageError::DeciderNotKnown { agent })) => {
+            assert_eq!(agent.to_string(), subject.hiring.to_string());
+        }
+        Err(other) => panic!("refused, and for another reason: {other:?}"),
+        Ok(_) => panic!("expected a decider that is not an agent, and the repository read clean"),
+    }
+
+    // And a party that exists, attributed to a decision taken before it was admitted. Same
+    // refusal, because at that coordinate the two are the same thing.
+    let mut ahead = repository.read_lineage().expect("readable");
+    ahead[1].by = None;
+    ahead[0].by = Some(planner);
+    repository.write_lineage(&ahead).expect("writable");
+
+    match reading::corroborated(&repository) {
+        Err(ReadingError::Lineage(LineageError::DeciderNotKnown { agent })) => {
+            assert_eq!(
+                agent, planner,
+                "the party is real, and had not been admitted when the genesis was decided"
+            );
+        }
+        Err(other) => panic!("refused, and for another reason: {other:?}"),
+        Ok(_) => panic!("expected a party that did not exist yet, and the repository read clean"),
+    }
+}
+
+/// And nothing is about the attribution. This is where the checking stops.
+///
+/// Swapping the two parties' claims produces a repository that reconstructs, corroborates, and says
+/// the opposite of what happened. Every check passes, because every check is about the reference.
+#[test]
+fn a_false_attribution_is_not_refused() {
+    let (repository, _, _, _, [planner, steward]) = claimed("false");
+
+    let mut swapped = repository.read_lineage().expect("readable");
+
+    // Located by party rather than by position, because the canonical order now takes the claim into
+    // account — a decision's place in the file moved when it gained a party, which is a coupling
+    // worth naming: Part A's linearization read what the decisions say, and this adds who says it.
+    let at = |party: AgentId| {
+        swapped
+            .iter()
+            .position(|taken| taken.by == Some(party))
+            .expect("the party's decision is recorded")
+    };
+
+    let (here, there) = (at(planner), at(steward));
+
+    swapped[here].by = Some(steward);
+    swapped[there].by = Some(planner);
+
+    repository.write_lineage(&swapped).expect("writable");
+
+    let rebuilt = reading::corroborated(&repository).expect("the lie reconstructs");
+
+    assert_eq!(rebuilt.lineage.decided().len(), 3);
+    assert_eq!(
+        rebuilt.decisions[here].by,
+        Some(steward),
+        "and the record now attributes each line to the other party"
+    );
+}
+
+/// What the claim couples, measured as provenance measured its own.
+///
+/// Phase 2 established that deciding what is already decided adds nothing — one record and one
+/// world, because identity is derived from content. A decider is not derived from content, so that
+/// stops being true: two parties agreeing produce two records of one world.
+#[test]
+fn a_decider_makes_agreement_look_like_duplication() {
+    let (repository, arrangement, staffing, _, [_, steward]) = claimed("duplication");
+    let subject = &arrangement.subject;
+    let shared = arrangement.shared().id();
+
+    assert_eq!(repository.read_lineage().expect("readable").len(), 3);
+
+    let mut agreeing = coordination::read(&repository).expect("reconstructs");
+    let reached = coordination::decided(
+        &mut agreeing,
+        steward,
+        coordination::also(shared, subject.hiring),
+    )
+    .expect("the other party decides the same plan");
+
+    converge::converge(&repository, &agreeing).expect("converges");
+
+    assert_eq!(reached, staffing, "one world");
+    assert_eq!(
+        repository.read_lineage().expect("readable").len(),
+        4,
+        "and two records of it"
+    );
+
+    let worlds = repository.read_worlds().expect("readable");
+    let held = worlds
+        .iter()
+        .filter(|world| world.thesis == staffing.to_string())
+        .count();
+
+    assert_eq!(held, 2, "recorded twice, once per party that claims it");
+
+    // Which cuts both ways, and the honest reading is that this is the agreement record Phase 3
+    // said was missing — for the case where two parties decide the *same* fork, and only that case.
+    // The mutual adoption Phase 3 measured still produces two different worlds, because a parent is
+    // part of an identity and the two parties are on different branches.
 }
