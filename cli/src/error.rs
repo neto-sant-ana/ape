@@ -160,6 +160,30 @@ pub enum LineageError {
 
     #[error("the decision was taken against entry {entry}, which the journal does not offer")]
     WitnessedKnowledgeAbsent { entry: crate::journal::EntryId },
+
+    #[error(transparent)]
+    Synthesis(#[from] ape::engine::synthesis::SynthesisError),
+
+    /// A claim about where an intention came from, on a decision that carries no intention.
+    #[error("a decision that is not a fork claims to have adopted one")]
+    AdoptedWithoutForking,
+
+    /// A claim naming a Source whose transfer this Target refuses. Nobody could have taken it.
+    ///
+    /// The field is `donor` rather than `source` because `thiserror` reads that name as a chained
+    /// cause, and a world is not the cause of anything here.
+    #[error("the decision claims to have adopted from world {donor}, which cannot be applied here")]
+    AdoptedWhatWasRefused {
+        donor: ape::engine::thesis::ThesisId,
+    },
+
+    /// A claim naming a Source whose transfer is not the change the decision made.
+    #[error(
+        "the decision claims to have adopted from world {donor}, which asks for something else"
+    )]
+    AdoptionDisagrees {
+        donor: ape::engine::thesis::ThesisId,
+    },
 }
 
 #[derive(Debug, thiserror::Error)]

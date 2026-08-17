@@ -11,7 +11,7 @@ use ape::engine::synthesis::{ApplicabilityStatus, synthesize};
 use ape::engine::thesis::{ThesisId, descends_from};
 use ape::kernel::value_objects::Date;
 
-use ape_cli::lineage::{self, Decision, Lineage};
+use ape_cli::lineage::{self, Adoption, Decision, Lineage, Taken};
 use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::subject::provenance::{self, Adopted};
@@ -539,6 +539,266 @@ fn phase_3_consequence() {
     // So provenance would not merely add nothing here — it would answer a question nobody asked,
     // and under-report the one they did. What reaches a world is what that world selects, and
     // selection is derived.
+}
+
+/// Phase 4 — Record the claim.
+///
+/// Part A ended refuted, and Part B runs anyway to price what it declined. What it builds does not
+/// stay.
+///
+/// # Why the shape is `stated` and not `computed`
+///
+/// The protocol left two live. A decision that records only the question and **derives** what it
+/// introduced is rejected on principle rather than on taste: if the record holds no content, then
+/// whatever Synthesis answers *is* the content, and there is no second representation for a reader
+/// to disagree with. It is unfalsifiable by construction, which is the one thing the corroboration
+/// experiment's rule forbids outright.
+///
+/// So the fork stays as it is and the claim is an annotation beside it — which is also the only
+/// place Phase 2 left available.
+#[test]
+fn phase_4_record() {
+    let arrangement = provenance::attributed().expect("the arrangement holds");
+    let subject = &arrangement.subject;
+
+    let repository = Repository::open(scratch("phase-4"));
+    persist(&repository, &arrangement);
+
+    // What it added, named field by field. Only the decision chosen from a transfer carries it: a
+    // planner with their own reasons has nothing to say here, and saying nothing is not the same
+    // as claiming to have come from nowhere.
+    let written: Vec<serde_json::Value> = serde_json::from_str(
+        &std::fs::read_to_string(repository.lineage_path()).expect("the file is there"),
+    )
+    .expect("the lineage is a list");
+
+    let fields = |at: usize| -> BTreeSet<String> {
+        written[at]
+            .as_object()
+            .expect("a decision is an object")
+            .keys()
+            .cloned()
+            .collect()
+    };
+
+    let fork = BTreeSet::from([
+        "decides".to_owned(),
+        "extends".into(),
+        "omitted".into(),
+        "introduced".into(),
+        "after".into(),
+        "witness".into(),
+    ]);
+
+    for at in [1, 2, 3] {
+        assert_eq!(fields(at), fork, "decision {at} claims nothing");
+    }
+
+    let mut adopting = fork.clone();
+    adopting.insert("from".into());
+
+    assert_eq!(
+        fields(4),
+        adopting,
+        "and the adopted one carries the question"
+    );
+    assert_eq!(
+        written[4]["from"]["base"],
+        arrangement.ancestor().id().to_string()
+    );
+    assert_eq!(
+        written[4]["from"]["source"],
+        arrangement.broad().id().to_string(),
+        "which names the plan the intention actually came from"
+    );
+
+    // The first of the corroboration experiment's two questions, answered honestly.
+    //
+    // *What becomes impossible if this is not preserved?* Nothing. Part A measured that in three
+    // phases: the world reproduces, no reader's question depends on it, and an operator asking
+    // what a voided commitment reaches gets a better answer without it.
+    let unclaimed = provenance::adopted().expect("the arrangement holds");
+    let plain = Repository::open(scratch("phase-4-unclaimed"));
+    persist(&plain, &unclaimed);
+
+    assert_eq!(
+        reading::reconstruct(
+            &plain,
+            subject.instance,
+            &Date::parse(EFFECTIVE).expect("a real date")
+        )
+        .expect("the unclaimed repository reconstructs")[4]
+            .thesis,
+        reading::reconstruct(
+            &repository,
+            subject.instance,
+            &Date::parse(EFFECTIVE).expect("a real date")
+        )
+        .expect("the claimed repository reconstructs")[4]
+            .thesis,
+        "the same world either way, which is what makes the claim optional"
+    );
+
+    // The second question. *What compares it, on every read?* The claim names a Base and a Source;
+    // the decision names the Target and the change. So the question is asked again, inside
+    // reconstruction, and a Source whose transfer is not this change is refused by name.
+    let mut lying = arrangement.decisions.clone();
+    lying[4] = Taken::adopting(
+        lying[4].decision.clone(),
+        &subject.admitted,
+        Adoption {
+            base: arrangement.ancestor().id(),
+            source: arrangement.receiving().id(),
+        },
+    )
+    .expect("a claim is writable");
+
+    let refused = Repository::open(scratch("phase-4-detectable"));
+    persist(&refused, &arrangement);
+    refused.write_lineage(&lying).expect("writable");
+
+    let complaint = reading::corroborated(&refused)
+        .err()
+        .expect("a claim naming a world nothing could have been taken from is refused")
+        .to_string();
+
+    assert!(
+        complaint.contains(&arrangement.receiving().id().to_string())
+            && complaint.contains("cannot be applied here"),
+        "and the refusal names the world it could not have come from: {complaint}"
+    );
+
+    // Note which branch that was. Claiming the receiving line is refused because the transfer from
+    // it is **empty** — it already holds everything it decided — so the claim is impossible rather
+    // than merely wrong.
+    //
+    // The other branch, a claim that is possible and predicts a different change, is not exercised
+    // here and Phase 5 is why: in this arrangement there is no such claim.
+}
+
+/// Phase 5 — Refuse a false claim.
+///
+/// A claim nothing checks is a story. So every claim the record could carry is written, one at a
+/// time, and the read is asked what it makes of each — the whole space rather than a sample,
+/// because the question is how much the check discriminates and a sample cannot answer that.
+#[test]
+fn phase_5_refuse() {
+    let arrangement = provenance::attributed().expect("the arrangement holds");
+    let truth = arrangement.broad().id();
+
+    let worlds: Vec<_> = arrangement
+        .lineage
+        .decided()
+        .iter()
+        .map(|world| world.id())
+        .collect();
+
+    // Every Base and Source a claim could name, against the Target the decision already fixes.
+    let mut verdicts: Vec<(usize, usize, &str)> = Vec::new();
+
+    for (at_base, base) in worlds.iter().enumerate() {
+        for (at_source, source) in worlds.iter().enumerate() {
+            let mut claimed = arrangement.decisions.clone();
+            claimed[4] = Taken::adopting(
+                claimed[4].decision.clone(),
+                &arrangement.subject.admitted,
+                Adoption {
+                    base: *base,
+                    source: *source,
+                },
+            )
+            .expect("a claim is writable");
+
+            let repository = Repository::open(scratch(&format!("phase-5-{at_base}-{at_source}")));
+            persist(&repository, &arrangement);
+            repository.write_lineage(&claimed).expect("writable");
+
+            verdicts.push((
+                at_base,
+                at_source,
+                match reading::corroborated(&repository) {
+                    Ok(_) => "accepted",
+                    Err(refusal) if refusal.to_string().contains("not a common ancestor") => {
+                        "incoherent"
+                    }
+                    Err(refusal) if refusal.to_string().contains("cannot be applied here") => {
+                        "impossible"
+                    }
+                    Err(refusal) if refusal.to_string().contains("asks for something else") => {
+                        "contradicted"
+                    }
+                    // A claim naming the world the decision is about, or anything descending from
+                    // it. At the moment the check runs that world has not been decided, so it is
+                    // not in the archive to be named — which excludes every degenerate account
+                    // for free, by when things happen rather than by a rule anyone wrote.
+                    Err(refusal) if refusal.to_string().contains("absent from the archive") => {
+                        "unwritable"
+                    }
+                    Err(other) => panic!("an unclassified refusal: {other}"),
+                },
+            ));
+        }
+    }
+
+    let accepted: Vec<_> = verdicts
+        .iter()
+        .filter(|(_, _, verdict)| *verdict == "accepted")
+        .map(|(base, source, _)| (*base, *source))
+        .collect();
+
+    // Two claims are accepted, and only one of them is true.
+    assert_eq!(
+        accepted,
+        [(0, 1), (0, 2)],
+        "the narrow plan and the broad plan, over the ancestor"
+    );
+    assert!(
+        accepted.iter().any(|(_, source)| worlds[*source] == truth),
+        "the true claim is among them"
+    );
+    assert!(
+        accepted.len() > 1,
+        "and so is a claim that is false, with nothing to tell them apart"
+    );
+
+    // Which is exactly Phase 1's two non-degenerate accounts, and the degenerate ones needed no
+    // rule to exclude: naming the world a decision is about is unwritable, because that world does
+    // not exist when the claim is read.
+    let found = explanations(&arrangement, 4);
+    let non_degenerate: Vec<_> = found
+        .iter()
+        .filter(|(_, source)| {
+            !descends_from(
+                arrangement.lineage.archive(),
+                worlds[*source],
+                arrangement.adopting().id(),
+            )
+            .expect("ancestry walks")
+        })
+        .copied()
+        .collect();
+
+    assert_eq!(
+        accepted, non_degenerate,
+        "every rival account is an acceptable claim, and no more"
+    );
+    assert!(
+        verdicts
+            .iter()
+            .any(|(_, _, verdict)| *verdict == "unwritable"),
+        "and the degenerate accounts are refused without anyone having written a rule"
+    );
+
+    // So the possibility half is refuted, and precisely: a false claim naming a rival account
+    // passes, and there is no repository state that would catch it. Nothing was built wrong — the
+    // check does everything a check could do here, and the space it cannot enter is exactly the
+    // space provenance was for.
+    assert!(
+        !verdicts
+            .iter()
+            .any(|(_, _, verdict)| *verdict == "contradicted"),
+        "no claim in this arrangement is contradicted, because every possible one asks the same"
+    );
 }
 
 /// Pinning the Target is not bookkeeping, and this is what it changes.

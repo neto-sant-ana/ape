@@ -58,7 +58,7 @@ use crate::history::ResidentHistory;
 use crate::journal::{
     self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, Replayed, ResourceKindRecord,
 };
-use crate::lineage::{self, Decision, Lineage, Taken};
+use crate::lineage::{self, Adoption, Decision, Lineage, Taken};
 use crate::transfer;
 
 pub const FULFILLING: &str = "Settled";
@@ -400,6 +400,28 @@ pub fn adopted() -> Result<Adopted, SubjectError> {
         source,
         carried,
     })
+}
+
+/// The same arrangement, with the adopting decision carrying the question it answered.
+///
+/// A separate builder rather than a flag on [`adopted`], because Part A's three phases are about
+/// a repository that records no claim and must stay able to say so. What Part B adds is measured
+/// against that, not folded into it.
+pub fn attributed() -> Result<Adopted, SubjectError> {
+    let mut arrangement = adopted()?;
+
+    let from = Adoption {
+        base: arrangement.ancestor().id(),
+        source: arrangement.source,
+    };
+
+    arrangement.decisions[4] = Taken::adopting(
+        arrangement.decisions[4].decision.clone(),
+        &arrangement.subject.admitted,
+        from,
+    )?;
+
+    Ok(arrangement)
 }
 
 /// The Event that voids the tooling — the one commitment that ever travelled.

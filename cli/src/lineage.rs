@@ -40,6 +40,7 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 
 use ape::canon::{Canon, CanonicalKnowledge};
+use ape::engine::synthesis::{ApplicabilityStatus, synthesize};
 use ape::engine::thesis::{
     ForkInput, GenesisInput, KnowledgeCut, Thesis, ThesisArchive, ThesisId, ThesisLookup,
 };
@@ -114,6 +115,28 @@ pub struct Taken {
     /// What it must disagree with is a prefix that is not the one the decision was taken
     /// against, which is a question about membership.
     pub witness: BTreeSet<EntryId>,
+    /// The question a transfer answered, where the decision was chosen from one.
+    ///
+    /// Absent from every decision that was not, which is why it is optional rather than empty:
+    /// a planner who decided for their own reasons has nothing to say here, and saying nothing is
+    /// different from saying "from nowhere".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<Adoption>,
+}
+
+/// Where an intention came from: the two worlds a transfer was measured between.
+///
+/// The Target is absent because the decision already names it — `extends` is the Target, and a
+/// second copy of it would be a second place for one fact to live.
+///
+/// This is neither an instruction nor a witness in the corroboration experiment's sense. Nothing
+/// derives from it, so a reader that ignores it loses nothing; and it is not a second
+/// representation of what the decision produced, because the decision states that outright. It is
+/// a **claim**, and it is checkable only to the extent that it predicts something derivable.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Adoption {
+    pub base: ThesisId,
+    pub source: ThesisId,
 }
 
 impl Taken {
@@ -130,6 +153,19 @@ impl Taken {
                 .cloned()
                 .ok_or(LineageError::DecidedBeforeAnythingWasAdmitted)?,
             witness: admitted.entries.iter().cloned().collect(),
+            from: None,
+        })
+    }
+
+    /// The same, for a decision chosen from a transfer, carrying the question it answered.
+    pub fn adopting(
+        decision: Decision,
+        admitted: &Replayed,
+        from: Adoption,
+    ) -> Result<Self, LineageError> {
+        Ok(Self {
+            from: Some(from),
+            ..Self::now(decision, admitted)?
         })
     }
 }
@@ -290,6 +326,7 @@ pub fn rebuild(
         journal::replay_through(canon, journal, &mut admitted, &taken.after)?;
 
         corroborate(&admitted, taken)?;
+        corroborate_adoption(canon.history(), &lineage, taken)?;
 
         decide(canon.history(), &mut lineage, &taken.decision)?;
     }
@@ -319,6 +356,57 @@ fn corroborate(admitted: &Replayed, taken: &Taken) -> Result<(), LineageError> {
         return Err(LineageError::WitnessedKnowledgeAbsent {
             entry: (*missing).clone(),
         });
+    }
+
+    Ok(())
+}
+
+/// Weigh a claim about where an intention came from against what the decision says it asked for.
+///
+/// The claim names a Base and a Source; the decision names the Target and the change. So the
+/// question can be asked again, and a transfer that comes back different is a claim the record
+/// contradicts on its face.
+///
+/// What this cannot reach is a claim naming a **different Source whose transfer is the same**. Two
+/// worlds that resolve to one request against this Target are indistinguishable here for exactly
+/// the reason they are indistinguishable everywhere: the request is all that arrived.
+fn corroborate_adoption<K: CanonicalKnowledge>(
+    knowledge: &K,
+    lineage: &Lineage,
+    taken: &Taken,
+) -> Result<(), LineageError> {
+    let Some(from) = &taken.from else {
+        return Ok(());
+    };
+
+    let Decision::Fork {
+        extends,
+        omitted,
+        introduced,
+    } = &taken.decision
+    else {
+        return Err(LineageError::AdoptedWithoutForking);
+    };
+
+    let report = synthesize(
+        lineage.archive(),
+        knowledge,
+        from.base,
+        from.source,
+        *extends,
+    )?;
+
+    let ApplicabilityStatus::Applicable { transfer, .. } = report.status() else {
+        return Err(LineageError::AdoptedWhatWasRefused { donor: from.source });
+    };
+
+    let asked = (
+        transfer.remove().collect::<BTreeSet<_>>(),
+        transfer.introduce().collect::<BTreeSet<_>>(),
+    );
+
+    if asked != (omitted.clone(), introduced.clone()) {
+        return Err(LineageError::AdoptionDisagrees { donor: from.source });
     }
 
     Ok(())
