@@ -10,4 +10,5 @@
 
 pub mod convergence;
 pub mod divergence;
+pub mod provenance;
 pub mod reconstruction;
