@@ -366,6 +366,113 @@ fn position(journal: &[Admission], magnitude: f64) -> usize {
         .expect("the subject commits that magnitude")
 }
 
+/// Phase 6 — Terminate, reconstruct and compare.
+///
+/// Every rebuild in this harness already happens in a process of its own, and every refusal
+/// already arrives on that process's stderr — the comparison lives inside reconstruction and
+/// not inside a test, which is what the protocol asks and what a derived value checked only by
+/// a harness would fail.
+///
+/// What is left to establish is the other half: that the recorded worlds are a witness and
+/// never a source. A repository holding its journal and its worlds and no decisions describes
+/// three worlds perfectly well, and cannot produce one.
+#[test]
+fn phase_6_reconstruct() {
+    let repository = Repository::open(scratch("phase-6"));
+    let reasoned = persisted(&repository);
+
+    let intact = rebuild(&repository, reasoned.subject.instance);
+    assert_eq!(intact.worlds().len(), 3, "the lineage reads");
+
+    std::fs::remove_file(repository.lineage_path()).expect("the lineage file is there");
+
+    let without_decisions = rebuild(&repository, reasoned.subject.instance);
+
+    assert!(
+        without_decisions.refused,
+        "a repository that records its worlds and not its decisions produced worlds anyway"
+    );
+
+    // And the worlds it still holds are untouched, which is what makes the refusal a statement
+    // about derivation rather than about the file being gone.
+    assert_eq!(
+        repository
+            .read_worlds()
+            .expect("the worlds are still there")
+            .len(),
+        3,
+    );
+}
+
+/// Phase 7 — Forge.
+///
+/// The boundary of the result, measured rather than asserted. A repository edited *and* made
+/// consistent — every derived value recomputed to match the edit — is not a disagreement, and
+/// nothing here detects it.
+///
+/// This is not a defect to be repaired within this experiment. A record that checks itself
+/// proves internal agreement and nothing about who wrote it; the rest needs a signature and a
+/// key, which the boundary excludes.
+#[test]
+fn phase_7_forge() {
+    let repository = Repository::open(scratch("phase-7-baseline"));
+    let reasoned = persisted(&repository);
+    let baseline = rebuild(&repository, reasoned.subject.instance)
+        .worlds()
+        .to_vec();
+
+    // Half a forgery: the coordinate moved and the witness over the sequence made to agree
+    // with it, while the recorded worlds still describe what was actually decided.
+    let (half, _) = corrupted("forged-half", &baseline, |journal, decisions, r| {
+        decisions[0].after = EntryId::of(r.canon.history().head().expect("a head"));
+        witness_recomputed(journal, decisions);
+    });
+
+    assert_eq!(
+        half,
+        Verdict::Refused,
+        "a forgery that leaves one derived value alone is still a disagreement"
+    );
+
+    // The whole of it. Every derived value is recomputed from what was written down, which is
+    // what someone holding this code would do.
+    let reasoned = divergence::reasoned().expect("the arrangement holds");
+    let mut decisions = reasoned.decisions.clone();
+
+    decisions[0].after = EntryId::of(reasoned.canon.history().head().expect("a head"));
+    witness_recomputed(&reasoned.journal, &mut decisions);
+
+    let forged = Repository::open(scratch("forged-whole"));
+    forged.write_journal(&reasoned.journal).expect("writable");
+    forged.write_lineage(&decisions).expect("writable");
+    forged
+        .write_worlds(&worlds(&{
+            let mut canon = ape::canon::Canon::new(ResidentHistory::new());
+            ape_cli::lineage::rebuild(&mut canon, &reasoned.journal, &decisions)
+                .expect("the forged repository derives worlds of its own")
+        }))
+        .expect("writable");
+
+    let rebuilt = rebuild(&forged, reasoned.subject.instance);
+
+    assert!(
+        !rebuilt.refused,
+        "a consistent forgery is not a disagreement: {}",
+        rebuilt.complaint
+    );
+
+    let worlds = rebuilt.worlds();
+
+    assert_ne!(
+        worlds[0].thesis, baseline[0].thesis,
+        "and it is a different lineage than the one that was reasoned about"
+    );
+    assert!(
+        worlds[0].conflicts.is_empty(),
+        "the refusal at -70 is gone, and nothing in the repository says so"
+    );
+}
+
 /// Phase 5 — Subtract.
 ///
 /// With the worlds recorded, what does the rest of the repository still have to hold? Answered
