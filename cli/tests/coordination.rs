@@ -8,12 +8,16 @@
 
 use std::collections::BTreeSet;
 
+use ape::engine::synthesis::SynthesisError;
+use ape::engine::thesis::{ThesisError, ThesisId, descends_from};
+
 use ape_cli::converge;
-use ape_cli::error::{ConvergeError, JournalError, LineageError, ReadingError};
+use ape_cli::error::{ConvergeError, JournalError, LineageError, ReadingError, TransferError};
 use ape_cli::lineage::Decision;
 use ape_cli::reading;
 use ape_cli::repository::Repository;
 use ape_cli::subject::coordination::{self, Founded};
+use ape_cli::transfer::{self, StatusRecord};
 
 /// A repository path no other process shares.
 fn scratch(name: &str) -> std::path::PathBuf {
@@ -558,4 +562,238 @@ fn a_journal_reordered_makes_a_standing_decision_disagree() {
         Err(other) => panic!("refused, and for another reason: {other:?}"),
         Ok(_) => panic!("expected a standing decision to disagree, and the repository read clean"),
     }
+}
+
+/// Two parties, each with a line of its own in the repository.
+///
+/// The state Phase 2 ends in, which is where reaching each other can begin.
+fn converged(name: &str) -> (Repository, Founded, ThesisId, ThesisId) {
+    let (repository, arrangement) = founded(name);
+    let subject = &arrangement.subject;
+    let shared = arrangement.shared().id();
+
+    let mut one = coordination::read(&repository).expect("reconstructs");
+    let mut other = coordination::read(&repository).expect("reconstructs");
+
+    let staffing = coordination::decide(&mut one, coordination::also(shared, subject.hiring))
+        .expect("one party plans");
+    let equipping = coordination::decide(&mut other, coordination::also(shared, subject.equipment))
+        .expect("and so does the other");
+
+    converge::converge(&repository, &one).expect("converges");
+    converge::converge(&repository, &other).expect("converges");
+
+    (repository, arrangement, staffing, equipping)
+}
+
+/// The instant every world is interpreted at, past every deadline the subject carries.
+const EFFECTIVE: &str = "2026-01-28";
+
+/// Phase 3 — Reach each other.
+///
+/// One party takes up an intention out of the other's line, through the machinery convergence built
+/// and provenance left alone. What the phase is for is what a transfer between *parties* needs that
+/// a transfer between lines did not.
+#[test]
+fn phase_3_reach_each_other() {
+    let (repository, arrangement, staffing, equipping) = converged("phase-3");
+    let subject = &arrangement.subject;
+    let shared = arrangement.shared().id();
+
+    // The question is asked of the repository, by a party that read it and named what it found.
+    let report = transfer::reconstruct(&repository, shared, staffing, equipping)
+        .expect("the repository answers");
+
+    let StatusRecord::Applicable {
+        transfer: asked, ..
+    } = &report.status
+    else {
+        panic!("expected an applicable transfer, found {:?}", report.status);
+    };
+
+    assert!(asked.remove.is_empty(), "nothing is withdrawn");
+    assert_eq!(
+        asked.introduce,
+        BTreeSet::from([subject.hiring.to_string()]),
+        "the other party's plan, and only what the Target does not already hold"
+    );
+
+    // The report names three worlds and no party. Asserted as a closed set, because a field nothing
+    // looks at is how an unnecessary one survives.
+    let fields: BTreeSet<String> = serde_json::from_value::<serde_json::Map<_, _>>(
+        serde_json::to_value(&report).expect("a report serializes"),
+    )
+    .expect("an object")
+    .keys()
+    .cloned()
+    .collect();
+
+    assert_eq!(
+        fields,
+        BTreeSet::from(
+            [
+                "base",
+                "source",
+                "target",
+                "omitted",
+                "introduced",
+                "status"
+            ]
+            .map(str::to_owned)
+        ),
+        "a transfer between parties asks for nothing a transfer between lines did not"
+    );
+
+    // And the party takes it up, which is an ordinary fork of its own line.
+    let mut adopter = coordination::read(&repository).expect("reconstructs");
+    let adopted =
+        coordination::adopt(&mut adopter, shared, staffing, equipping).expect("takes it up");
+
+    converge::converge(&repository, &adopter).expect("converges");
+
+    let readings = reading::reconstruct(
+        &repository,
+        subject.instance,
+        &ape::kernel::value_objects::Date::parse(EFFECTIVE).expect("a real date"),
+    )
+    .expect("the repository reconstructs");
+
+    assert_eq!(readings.len(), 4);
+
+    let world = readings
+        .iter()
+        .find(|world| world.thesis == adopted.to_string())
+        .expect("the adopted world is there");
+
+    assert_eq!(
+        world.open,
+        BTreeSet::from([
+            subject.budget.to_string(),
+            subject.hiring.to_string(),
+            subject.equipment.to_string(),
+        ]),
+        "both parties' plans, in one world"
+    );
+    assert_eq!(
+        world.thesis_parent,
+        Some(equipping.to_string()),
+        "on the adopting party's branch, and not on the donor's"
+    );
+    // The account admits both plans together — 50 − 20 − 15 leaves 15, inside its bounds — and the
+    // settled level is nothing, because no Event has settled anything. Feasibility is about what
+    // the world proposes; the level is about what history has closed.
+    assert!(
+        world.conflicts.is_empty(),
+        "both plans in one world, and the account admits it: {:?}",
+        world.conflicts
+    );
+    assert_eq!(world.level, 0.0, "and nothing in this subject has settled");
+
+    // The donor's line is untouched, which is the whole of what a party gave up by donating.
+    assert!(
+        converge::holds(&repository, staffing).expect("reconstructs"),
+        "the world the intention came out of is still there"
+    );
+}
+
+/// What a transfer between parties needs that a transfer between lines did not.
+///
+/// A convergence experiment's writer held both lines because it decided both. A party holds only
+/// what it read, so naming another party's world is possible exactly when that party has converged.
+#[test]
+fn a_party_cannot_reach_a_line_that_has_not_arrived() {
+    let (repository, arrangement) = founded("unarrived");
+    let subject = &arrangement.subject;
+    let shared = arrangement.shared().id();
+
+    let mut donor = coordination::read(&repository).expect("reconstructs");
+    let mut adopter = coordination::read(&repository).expect("reconstructs");
+
+    let staffing = coordination::decide(&mut donor, coordination::also(shared, subject.hiring))
+        .expect("one party plans");
+    let equipping =
+        coordination::decide(&mut adopter, coordination::also(shared, subject.equipment))
+            .expect("and so does the other");
+
+    // Only the adopter converged. The donor is still thinking, so its line is nowhere.
+    converge::converge(&repository, &adopter).expect("converges");
+
+    match transfer::reconstruct(&repository, shared, staffing, equipping) {
+        Err(TransferError::Synthesis(SynthesisError::Thesis(ThesisError::UnknownThesis(
+            thesis,
+        )))) => {
+            assert_eq!(thesis, staffing, "the world that has not arrived is named");
+        }
+        Err(other) => panic!("refused, and for another reason: {other:?}"),
+        Ok(_) => panic!("expected a Source nothing holds, and the repository answered"),
+    }
+
+    // And once the donor converges, the same question has an answer. Nothing about the transfer
+    // changed; what changed is that both lines are in one repository.
+    converge::converge(&repository, &donor).expect("converges");
+
+    transfer::reconstruct(&repository, shared, staffing, equipping)
+        .expect("the same question, now answerable");
+}
+
+/// Reaching each other does not join two lines, and this is the cost of that.
+///
+/// Convergence concluded that Source and Target are roles rather than sides, and that the asymmetry
+/// is a gain. With two parties the gain has a price: both adopting from the other produces **two**
+/// worlds that select exactly the same commitments, and nothing in the repository says they are one
+/// plan.
+#[test]
+fn reaching_each_other_does_not_join_two_lines() {
+    let (repository, arrangement, staffing, equipping) = converged("mutual");
+    let shared = arrangement.shared().id();
+
+    let mut one = coordination::read(&repository).expect("reconstructs");
+    let mut other = coordination::read(&repository).expect("reconstructs");
+
+    let into_staffing =
+        coordination::adopt(&mut one, shared, equipping, staffing).expect("one direction");
+    let into_equipping =
+        coordination::adopt(&mut other, shared, staffing, equipping).expect("and the other");
+
+    converge::converge(&repository, &one).expect("converges");
+    converge::converge(&repository, &other).expect("converges");
+
+    assert_eq!(
+        repository.read_lineage().expect("readable").len(),
+        5,
+        "two parties, two lines, and two ways of holding both plans"
+    );
+
+    let worlds = repository.read_worlds().expect("readable");
+    let of = |id: ThesisId| {
+        worlds
+            .iter()
+            .find(|world| world.thesis == id.to_string())
+            .expect("the world is recorded")
+            .clone()
+    };
+
+    let (here, there) = (of(into_staffing), of(into_equipping));
+
+    assert_ne!(here.thesis, there.thesis, "two worlds");
+    assert_eq!(
+        here.open, there.open,
+        "selecting exactly the same commitments"
+    );
+    assert_eq!(here.frozen, there.frozen);
+    assert_eq!(here.known_at, there.known_at);
+    assert_ne!(
+        here.thesis_parent, there.thesis_parent,
+        "and differing in nothing but whose branch they are on"
+    );
+
+    // Neither is downstream of the other, so no later decision can prefer one by extending it.
+    let rebuilt = reading::corroborated(&repository).expect("reconstructs");
+    let archive = rebuilt.lineage.archive();
+
+    assert!(
+        !descends_from(archive, into_staffing, into_equipping).expect("ancestry walks")
+            && !descends_from(archive, into_equipping, into_staffing).expect("ancestry walks"),
+        "two tips, and no relation between them"
+    );
 }
