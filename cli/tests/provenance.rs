@@ -12,7 +12,7 @@ use ape::engine::thesis::{ThesisId, descends_from};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::lineage::{self, Decision, Lineage};
-use ape_cli::reading::{self, ConflictRecord, WorldRecord};
+use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::subject::provenance::{self, Adopted};
 use ape_cli::transfer::{self, Applicability, StatusRecord};
@@ -443,6 +443,102 @@ fn phase_2_exhaust() {
 
     // So a record can say more than a world can hold. Whatever provenance is, it is an annotation
     // on a decision — there is no room for it on the thing the decision produced.
+}
+
+/// Phase 3 — The consequence of not knowing.
+///
+/// A line of thinking is discredited by the only means this repository admits: an Event voids the
+/// one commitment that ever travelled out of it. Then the question is asked as an operator would
+/// ask it — *which worlds does this reach?* — and answered from the repository.
+///
+/// This is necessity's last chance. If a reader can find every affected world without knowing
+/// where anything came from, the necessity half is refuted.
+#[test]
+fn phase_3_consequence() {
+    let arrangement = provenance::discredited().expect("the arrangement holds");
+    let subject = &arrangement.subject;
+
+    let repository = Repository::open(scratch("phase-3"));
+    repository
+        .write_journal(&arrangement.journal)
+        .expect("writable");
+    repository
+        .write_lineage(&arrangement.decisions)
+        .expect("writable");
+    repository
+        .write_worlds(
+            &arrangement
+                .lineage
+                .decided()
+                .iter()
+                .map(WorldRecord::of)
+                .collect::<Vec<_>>(),
+        )
+        .expect("writable");
+
+    let readings = reading::reconstruct(
+        &repository,
+        subject.instance,
+        &Date::parse(EFFECTIVE).expect("a real date"),
+    )
+    .expect("the repository reconstructs");
+
+    assert_eq!(readings.len(), 6);
+
+    // The fact arrived, and the world that adopted the tooling recognizes it once advanced. The
+    // commitment is frozen now — history settled it — and its condition says what happened.
+    let recognizing = &readings[5];
+
+    assert_eq!(recognizing.known_at, "2026-01-15");
+    assert!(
+        recognizing.frozen.contains(&subject.tooling.to_string()),
+        "a settled commitment is no longer anyone's to revise"
+    );
+    assert_eq!(
+        recognizing.conditions[&subject.tooling.to_string()].outcome,
+        OutcomeRecord::Cancelled,
+        "the travelled intention is void"
+    );
+
+    // The question an operator actually asks. It is about the commitment, and the repository
+    // answers it: every world that selects the tooling is reached by what happened to it.
+    let reached: Vec<usize> = readings
+        .iter()
+        .enumerate()
+        .filter(|(_, world)| {
+            world.open.contains(&subject.tooling.to_string())
+                || world.frozen.contains(&subject.tooling.to_string())
+        })
+        .map(|(position, _)| position)
+        .collect();
+
+    assert_eq!(
+        reached,
+        [1, 2, 4, 5],
+        "the narrow plan, the broad plan, the world that adopted it, and its advancement"
+    );
+
+    // The question provenance would answer names a different set, and a smaller one. Only the
+    // adopted world took anything from the broad plan; the narrow plan holds the same tooling and
+    // donated nothing, and it is reached all the same.
+    let donated_to = [4, 5];
+
+    assert!(
+        donated_to.iter().all(|world| reached.contains(world)),
+        "everything provenance would name is already in the answer"
+    );
+    assert_ne!(
+        reached, donated_to,
+        "and the answer is larger than anything provenance would name"
+    );
+    assert!(
+        reached.contains(&1) && !donated_to.contains(&1),
+        "the narrow plan is affected and was never a donor"
+    );
+
+    // So provenance would not merely add nothing here — it would answer a question nobody asked,
+    // and under-report the one they did. What reaches a world is what that world selects, and
+    // selection is derived.
 }
 
 /// Pinning the Target is not bookkeeping, and this is what it changes.

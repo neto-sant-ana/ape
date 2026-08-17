@@ -402,6 +402,89 @@ pub fn adopted() -> Result<Adopted, SubjectError> {
     })
 }
 
+/// The Event that voids the tooling — the one commitment that ever travelled.
+///
+/// This is as close to *discrediting* a line of thinking as this repository admits. Nothing here
+/// can be wrong: knowledge is fact, and a plan is not refuted by argument. What can happen is that
+/// the world stops cooperating with it, and an Event is how that arrives.
+pub fn cancellation(tooling: CommitmentId) -> Admission {
+    Admission::Event {
+        commitment: tooling,
+        observation: CANCELLING.into(),
+        occurred_at: day(12),
+        recorded_at: day(12),
+    }
+}
+
+/// The advancement that lets the adopted world recognize it.
+pub fn recognizing(extends: ThesisId) -> Decision {
+    Decision::Advance {
+        extends,
+        known_at: day(15),
+    }
+}
+
+/// The arrangement after the travelled intention has been voided.
+pub struct Discredited {
+    pub canon: Canon<ResidentHistory>,
+    pub subject: Constructed,
+    pub journal: Vec<Admission>,
+    pub decisions: Vec<Taken>,
+    pub lineage: Lineage,
+}
+
+impl Discredited {
+    pub fn narrow(&self) -> &Thesis {
+        &self.lineage.decided()[1]
+    }
+
+    pub fn broad(&self) -> &Thesis {
+        &self.lineage.decided()[2]
+    }
+
+    pub fn receiving(&self) -> &Thesis {
+        &self.lineage.decided()[3]
+    }
+
+    pub fn adopting(&self) -> &Thesis {
+        &self.lineage.decided()[4]
+    }
+
+    /// The adopted world advanced far enough to see that the tooling was voided.
+    pub fn recognizing(&self) -> &Thesis {
+        &self.lineage.decided()[5]
+    }
+}
+
+/// Void the tooling, and let the world that adopted it recognize the fact.
+pub fn discredited() -> Result<Discredited, SubjectError> {
+    let Adopted {
+        mut canon,
+        subject,
+        mut journal,
+        mut decisions,
+        mut lineage,
+        ..
+    } = adopted()?;
+
+    let mut admitted = subject.admitted.clone();
+
+    journal.push(cancellation(subject.tooling));
+    journal::replay_remaining(&mut canon, &journal, &mut admitted)?;
+
+    let adopting = lineage.decided()[4].id();
+    decisions.push(Taken::now(recognizing(adopting), &admitted)?);
+    lineage::decide(canon.history(), &mut lineage, &decisions[5].decision)?;
+
+    Ok(Discredited {
+        canon,
+        subject,
+        journal,
+        decisions,
+        lineage,
+    })
+}
+
 fn day(day: u8) -> String {
     format!("2026-01-{day:02}")
 }
