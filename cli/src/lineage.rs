@@ -278,11 +278,15 @@ pub fn replay<K: CanonicalKnowledge>(
 /// The rest of the journal is admitted at the end, so that what a caller reads the lineage
 /// against is canonical history entire. A world does not learn from it: its cut is a value,
 /// fixed when the decision was applied.
+///
+/// What comes back includes the replay, because a caller that intends to *extend* the lineage
+/// needs it: a new decision is witnessed by the entries that stood when it was taken, and those
+/// are produced by admitting rather than by reading. A reader ignores it.
 pub fn rebuild(
     canon: &mut Canon<ResidentHistory>,
     journal: &[Admission],
     decisions: &[Taken],
-) -> Result<Lineage, LineageError> {
+) -> Result<(Lineage, Replayed), LineageError> {
     let mut admitted = Replayed::default();
     let mut lineage = Lineage::new();
 
@@ -296,7 +300,7 @@ pub fn rebuild(
 
     journal::replay_remaining(canon, journal, &mut admitted)?;
 
-    Ok(lineage)
+    Ok((lineage, admitted))
 }
 
 /// Weigh what the journal offered against what the decision says it was taken after.

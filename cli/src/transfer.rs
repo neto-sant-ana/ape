@@ -230,7 +230,7 @@ pub fn reconstruct(
     source: ThesisId,
     target: ThesisId,
 ) -> Result<Applicability, TransferError> {
-    let (canon, lineage) = reading::corroborated(repository)?;
+    let reading::Corroborated { canon, lineage, .. } = reading::corroborated(repository)?;
 
     let report = synthesize(lineage.archive(), canon.history(), base, source, target)?;
 

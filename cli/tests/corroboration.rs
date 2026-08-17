@@ -82,7 +82,7 @@ fn extends_recomputed(journal: &[Admission], decisions: &mut [Taken]) {
     for position in 1..decisions.len() {
         let mut canon = ape::canon::Canon::new(ResidentHistory::new());
 
-        let built = ape_cli::lineage::rebuild(&mut canon, journal, &decisions[..position])
+        let (built, _) = ape_cli::lineage::rebuild(&mut canon, journal, &decisions[..position])
             .expect("the decisions before this one still apply");
 
         let parent = built.decided()[position - 1].id();
@@ -479,7 +479,7 @@ fn phase_7_forge() {
     extends_recomputed(&reasoned.journal, &mut decisions);
 
     let mut canon = ape::canon::Canon::new(ResidentHistory::new());
-    let derived = ape_cli::lineage::rebuild(&mut canon, &reasoned.journal, &decisions)
+    let (derived, _) = ape_cli::lineage::rebuild(&mut canon, &reasoned.journal, &decisions)
         .expect("the forged repository derives worlds of its own");
 
     let forged = Repository::open(scratch("forged-whole"));

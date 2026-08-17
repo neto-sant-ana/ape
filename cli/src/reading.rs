@@ -25,8 +25,9 @@ use ape::kernel::value_objects::Date;
 
 use crate::error::ReadingError;
 use crate::history::ResidentHistory;
+use crate::journal::{Admission, Replayed};
 use crate::level;
-use crate::lineage::{self, Lineage};
+use crate::lineage::{self, Lineage, Taken};
 use crate::repository::Repository;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -262,31 +263,54 @@ pub fn reconstruct(
     instance: ResourceInstanceId,
     effective_at: &Date,
 ) -> Result<Vec<Reading>, ReadingError> {
-    let (canon, lineage) = corroborated(repository)?;
+    let Corroborated { canon, lineage, .. } = corroborated(repository)?;
 
     all(canon.history(), lineage.decided(), instance, effective_at)
+}
+
+/// A repository rebuilt, and weighed against what it says it produced.
+///
+/// A reader wants one of these fields. A writer wants all of them, and that is why they arrive
+/// together rather than by asking twice: knowledge to resolve a cut against, the worlds already
+/// decided, how far into the journal the replay reached — which is the coordinate a new decision
+/// has to be able to name — and the two sequences as they were read, which is what a writer
+/// extends and writes back.
+///
+/// One read of each file, whole. A procedure that opened the journal again to get at its records
+/// would be reading a file that may have moved between the two opens, which is the hazard this
+/// value exists to keep out of everything downstream of it.
+pub struct Corroborated {
+    pub canon: Canon<ResidentHistory>,
+    pub lineage: Lineage,
+    pub admitted: Replayed,
+    pub journal: Vec<Admission>,
+    pub decisions: Vec<Taken>,
 }
 
 /// Rebuild what a repository holds, and weigh it against what the repository says it produced.
 ///
 /// This is reconstruction itself, with nothing yet asked of the result. It is separate because
-/// two questions now need it and they need exactly it: reading the worlds, and asking what one
-/// world's intention would be in another. A second copy of the procedure would be a second place
-/// for the order between the two files to drift.
-pub fn corroborated(
-    repository: &Repository,
-) -> Result<(Canon<ResidentHistory>, Lineage), ReadingError> {
+/// three things now need it and they need exactly it: reading the worlds, asking what one world's
+/// intention would be in another, and extending the lineage. A second copy of the procedure would
+/// be a second place for the order between the two files to drift.
+pub fn corroborated(repository: &Repository) -> Result<Corroborated, ReadingError> {
     let mut canon = Canon::new(ResidentHistory::new());
 
-    let lineage = lineage::rebuild(
-        &mut canon,
-        &repository.read_journal()?,
-        &repository.read_lineage()?,
-    )?;
+    let journal = repository.read_journal()?;
+    let decisions = repository.read_lineage()?;
+    let worlds = repository.read_worlds()?;
 
-    corroborate(lineage.decided(), &repository.read_worlds()?)?;
+    let (lineage, admitted) = lineage::rebuild(&mut canon, &journal, &decisions)?;
 
-    Ok((canon, lineage))
+    corroborate(lineage.decided(), &worlds)?;
+
+    Ok(Corroborated {
+        canon,
+        lineage,
+        admitted,
+        journal,
+        decisions,
+    })
 }
 
 /// Weigh the worlds a repository says it decided against the worlds its decisions produce.

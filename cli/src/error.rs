@@ -50,6 +50,15 @@ pub enum SubjectError {
     #[error(transparent)]
     Lineage(#[from] LineageError),
 
+    /// An arrangement that writes a repository and reads it back, which the coordination
+    /// experiment is the first to need: before it, a subject was built in one process and
+    /// persisted once at the end.
+    #[error(transparent)]
+    Repository(#[from] RepositoryError),
+
+    #[error(transparent)]
+    Reading(#[from] ReadingError),
+
     /// A replay that admitted nothing, asked for the entry it ended at.
     #[error("a decision was taken after a replay that admitted nothing")]
     NothingAdmitted,

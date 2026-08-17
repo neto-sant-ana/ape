@@ -1219,7 +1219,8 @@ fn phase_7_apply() {
     // the provenance is recoverable by search and recording the Base buys nothing. If more, the
     // applied world does not identify the transfer that produced it, and no amount of looking
     // will make it.
-    let (canon, lineage) = reading::corroborated(&repository).expect("the repository rebuilds");
+    let reading::Corroborated { canon, lineage, .. } =
+        reading::corroborated(&repository).expect("the repository rebuilds");
     let worlds: Vec<_> = lineage.decided().iter().map(|world| world.id()).collect();
     let base = worlds[0];
 
