@@ -34,7 +34,7 @@ use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 use crate::error::JournalError;
 use crate::history::ResidentHistory;
 use crate::journal::{
-    self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, Replayed, ResourceKindRecord,
+    self, ActionKindRecord, Admission, EffectRecord, Replayed, ResourceKindRecord,
 };
 use crate::lineage::Decision;
 
@@ -70,12 +70,10 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         },
         Admission::Agent {
             label: "shipper".into(),
-            kind: AgentKindRecord::Company,
             recorded_at: day(1),
         },
         Admission::Agent {
             label: "receiver".into(),
-            kind: AgentKindRecord::Company,
             recorded_at: day(1),
         },
         Admission::Resource {

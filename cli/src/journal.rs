@@ -43,8 +43,8 @@ use ape::kernel::entities::{
     ResourceInstanceInput, RoleId, RoleInput, StatementId, StatementInput,
 };
 use ape::kernel::value_objects::{
-    ActionKind, ActionValue, AgentKind, Assignment, Constraint, Date, Effect, Identifier,
-    Observation, Participants, ResourceKind, Settlement, Term,
+    ActionKind, ActionValue, Assignment, Constraint, Date, Effect, Identifier, Observation,
+    Participants, ResourceKind, Settlement, Term,
 };
 
 use crate::error::JournalError;
@@ -64,7 +64,6 @@ pub enum Admission {
     },
     Agent {
         label: String,
-        kind: AgentKindRecord,
         recorded_at: String,
     },
     Eligibility {
@@ -115,13 +114,6 @@ pub enum Admission {
         occurred_at: String,
         recorded_at: String,
     },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum AgentKindRecord {
-    Company,
-    Individual,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -285,18 +277,10 @@ fn admit(
             EntryId::of(id)
         }
 
-        Admission::Agent {
-            label,
-            kind,
-            recorded_at,
-        } => {
+        Admission::Agent { label, recorded_at } => {
             let id = canon.admit_agent(
                 AgentInput {
                     label: identifier(label, "agent label")?,
-                    kind: match kind {
-                        AgentKindRecord::Company => AgentKind::Company,
-                        AgentKindRecord::Individual => AgentKind::Individual,
-                    },
                 },
                 date(recorded_at)?,
             )?;

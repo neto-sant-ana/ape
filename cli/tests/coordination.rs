@@ -1352,21 +1352,36 @@ fn phase_6_terminate() {
 
     assert_eq!(readings.len(), 3);
     assert_eq!(
-        readings
+        readings[0].thesis,
+        arrangement.shared().id().to_string(),
+        "the shared ancestor, before anything that extends it"
+    );
+    assert_eq!(
+        readings[1..]
             .iter()
-            .map(|world| &world.thesis)
-            .collect::<Vec<_>>(),
-        vec![
-            &arrangement.shared().id().to_string(),
-            &equipping.to_string(),
-            &staffing.to_string()
-        ],
-        "the shared ancestor and one line per party, in the order the record settles on"
+            .map(|world| world.thesis.clone())
+            .collect::<BTreeSet<_>>(),
+        BTreeSet::from([equipping.to_string(), staffing.to_string()]),
+        "and one line per party"
     );
 
-    // Which is **not** the order the parties wrote in — the planner converged first. Predicted
-    // wrongly here and corrected against the run, which is the point Phase 4 measured: the order is
-    // derived from what the decisions carry, so it cannot be read as arrival.
+    // The two lines are compared as a set on purpose. The linearization promises determinism and
+    // ancestry — the same decisions produce the same file, and a parent precedes its children — and
+    // it promises nothing about the order between siblings, which falls out of identity bytes.
+    //
+    // Written first as an ordered comparison, which is over-specification: it passed, and then
+    // failed when a field was removed from `Agent` and every identity moved. The assertion was
+    // claiming a guarantee the record does not make.
+    for world in &readings[1..] {
+        assert_eq!(
+            world.thesis_parent,
+            Some(readings[0].thesis.clone()),
+            "each line extends the ancestor that precedes it"
+        );
+    }
+
+    // What the order is **not** is arrival: the planner converged first, and Phase 4 measured why
+    // position cannot be read as who.
 
     // And whose each line is, which is the only thing Part B added and the only thing here that
     // could not have been asked before.

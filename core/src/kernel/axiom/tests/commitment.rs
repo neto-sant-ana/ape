@@ -55,7 +55,6 @@ fn accountable_needs_no_role_only_existence() {
     let bystander = f.store.add_agent(
         Agent::create(AgentInput {
             label: ident("bystander"),
-            kind: AgentKind::Company,
         })
         .unwrap(),
     );

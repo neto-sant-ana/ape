@@ -42,7 +42,7 @@ use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId};
 use crate::error::{JournalError, SubjectError};
 use crate::history::ResidentHistory;
 use crate::journal::{
-    self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, Replayed, ResourceKindRecord,
+    self, ActionKindRecord, Admission, EffectRecord, Replayed, ResourceKindRecord,
 };
 use crate::lineage::{self, Decision, Lineage, Taken};
 use crate::reading::{self, Corroborated, WorldRecord};
@@ -93,12 +93,10 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         },
         Admission::Agent {
             label: "customer".into(),
-            kind: AgentKindRecord::Company,
             recorded_at: day(1),
         },
         Admission::Agent {
             label: "merchant".into(),
-            kind: AgentKindRecord::Company,
             recorded_at: day(1),
         },
         Admission::Resource {
@@ -415,7 +413,6 @@ pub fn worlds(lineage: &Lineage) -> Vec<WorldRecord> {
 fn deciding(label: &str) -> Admission {
     Admission::Agent {
         label: label.to_owned(),
-        kind: AgentKindRecord::Individual,
         recorded_at: day(5),
     }
 }

@@ -2,7 +2,7 @@
 //!
 //! - `Role` — a named capability an agent can be assigned to.
 //!
-//! - `Agent` — a company or individual (`kind`).
+//! - `Agent` — a party, distinguished by its `label`.
 //!
 //! - `EligibilityAssignment` — the full set of `roles` an agent may assume, effective
 //!   from `effective_from`. It carries a time of its own because eligibility changes
@@ -18,7 +18,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::kernel::value_objects::{AgentKind, Date, Identifier};
+use crate::kernel::value_objects::{Date, Identifier};
 
 define_id!(RoleId);
 define_entity! {
@@ -31,7 +31,6 @@ define_id!(AgentId);
 define_entity! {
     pub struct Agent(AgentId) via AgentInput {
         label: Identifier,
-        kind: AgentKind,
     }
 }
 
