@@ -13,6 +13,7 @@ use ape::kernel::value_objects::Date;
 
 use ape_cli::lineage::{self, Lineage};
 use ape_cli::reading::{self, OutcomeRecord, TimelinessRecord, WorldRecord};
+use ape_cli::repository::Repository;
 use ape_cli::subject::convergence::{self, Branched, Diverged};
 use ape_cli::transfer::{
     Applicability, CandidateRecord, ConflictRecord, StatusRecord, TransferRecord,
@@ -574,6 +575,224 @@ fn phase_3_synthesize() {
             },
         },
         "and that much of it moves, which leaves the contingency as the whole of the refusal"
+    );
+}
+
+/// A repository path no other process shares.
+///
+/// The process id is part of it because two runs of this laboratory once wrote to the same path
+/// and read each other's repositories back.
+fn scratch(name: &str) -> std::path::PathBuf {
+    let path = std::env::temp_dir()
+        .join(format!("ape-convergence-{}", std::process::id()))
+        .join(name);
+    let _ = std::fs::remove_dir_all(&path);
+    path
+}
+
+/// Leave the arrangement on disk: the journal, the decisions, and the worlds they produced.
+fn persist(repository: &Repository, arrangement: &Diverged) {
+    repository
+        .write_journal(&arrangement.journal)
+        .expect("the repository is writable");
+    repository
+        .write_lineage(&arrangement.decisions)
+        .expect("the repository is writable");
+    repository
+        .write_worlds(
+            &arrangement
+                .lineage
+                .decided()
+                .iter()
+                .map(WorldRecord::of)
+                .collect::<Vec<_>>(),
+        )
+        .expect("the repository is writable");
+}
+
+/// Phase 4 — Persist.
+///
+/// Both of the corroboration experiment's questions, asked of every datum: what becomes
+/// impossible without it, and what compares it on every read.
+///
+/// The phase's own question is the report, and the answer is that it is not written. Not because
+/// derived values are forbidden — that rule was retired — but because a report is a function of
+/// three worlds and canonical knowledge, and every one of those is already witnessed. A copy of
+/// it would re-detect what the world records detect and nothing else, which is exactly the
+/// liability the replacement rule names.
+///
+/// What is *not* derivable is which three worlds were asked about. That is a choice, and this
+/// repository holds no transfer to have chosen it for: Phase 3 asked a question, and asking is
+/// not deciding. Whether a transfer that was **taken** must record its Base is Phase 7's, and
+/// nothing here answers it early.
+#[test]
+fn phase_4_persist() {
+    let arrangement = diverged();
+    let repository = Repository::open(scratch("phase-4"));
+    persist(&repository, &arrangement);
+
+    assert_eq!(
+        repository
+            .read_journal()
+            .expect("the journal reads back")
+            .len(),
+        arrangement.journal.len(),
+        "every admission was kept, and none was invented"
+    );
+    assert_eq!(
+        repository
+            .read_lineage()
+            .expect("the lineage reads back")
+            .len(),
+        6
+    );
+
+    // The worlds, and the shape they carry. A record naming its parent is what makes the
+    // branching survive: two of them name the same one, which no sequence could express and no
+    // reader could infer from order.
+    let worlds = repository.read_worlds().expect("the worlds read back");
+
+    assert_eq!(worlds.len(), 6);
+    assert_eq!(
+        worlds[1].thesis_parent, worlds[2].thesis_parent,
+        "the two lines of thinking record the world they share"
+    );
+    assert_eq!(
+        worlds[1].thesis_parent,
+        Some(worlds[0].thesis.clone()),
+        "and it is the one the first decision produced"
+    );
+
+    let written = std::fs::read_to_string(repository.journal_path()).expect("the file is there")
+        + &std::fs::read_to_string(repository.lineage_path()).expect("the file is there");
+
+    // What must not be there, inherited from the two experiments that asked it before. `frozen`
+    // and `open` live in the worlds file now and are audited by being compared rather than by
+    // being absent, which is what the corroboration experiment changed.
+    for derived in [
+        "level",
+        "outcome",
+        "fulfilled",
+        "cancelled",
+        "timeliness",
+        "breached",
+        "condition",
+        "feasib",
+        "previous_event",
+        "head",
+        "imposed",
+    ] {
+        assert!(
+            !written.to_lowercase().contains(derived),
+            "the repository holds {derived:?}, which is derived rather than supplied"
+        );
+    }
+
+    // And what this experiment adds to that list: every coordinate of a report. A transfer was
+    // asked about and none was taken, so nothing here should carry a trace of the question.
+    for coordinate in [
+        "status",
+        "applicable",
+        "conflicted",
+        "already-applied",
+        "candidate",
+        "attempted",
+        "unavailability",
+        "freezing",
+        "\"base\"",
+        "\"source\"",
+        "\"target\"",
+        "remove",
+    ] {
+        assert!(
+            !written.to_lowercase().contains(coordinate),
+            "the repository holds {coordinate:?}, which belongs to a report nobody acted on"
+        );
+    }
+
+    // The sharpest form of the same statement. A recorded transfer would have to name the two
+    // worlds it moves between, and those are the only two in this lineage that nothing extends —
+    // so their absence from the two files that hold intention is the evidence.
+    //
+    // Absent *there* and present in the worlds file, which is what makes the absence a fact
+    // rather than a property of where the check happened to look. An audit that proves nothing
+    // is missing by reading the wrong bytes is the failure this pairing exists to rule out.
+    let witnessed = std::fs::read_to_string(repository.worlds_path()).expect("the file is there");
+
+    for (label, tip) in [
+        ("the equipment line", arrangement.provisioning()),
+        ("the inventory line", arrangement.maintaining()),
+    ] {
+        assert!(
+            !written.contains(&tip.id().to_string()),
+            "{label} is named by no intention, so no transfer between the two was recorded"
+        );
+        assert!(
+            witnessed.contains(&tip.id().to_string()),
+            "{label} is recorded as a world, so the absence above is about where it is not"
+        );
+    }
+
+    // The worlds each decision extends are named, which is Phase 1's repair seen from the file.
+    for (position, label) in [
+        (0, "the ancestor"),
+        (1, "the equipment line's first decision"),
+        (2, "the inventory line's first"),
+        (4, "the world the equipment line advanced to"),
+    ] {
+        assert!(
+            written.contains(&arrangement.lineage.decided()[position].id().to_string()),
+            "{label} is extended by a later decision, so the file names it"
+        );
+    }
+
+    // The whole of what a decision records, named field by field, for each of the six. The set
+    // is closed rather than sampled because the phase's question is asked of every datum.
+    let recorded: Vec<BTreeSet<String>> = serde_json::from_str::<Vec<serde_json::Value>>(
+        &std::fs::read_to_string(repository.lineage_path()).expect("the file is there"),
+    )
+    .expect("the lineage is a list of objects")
+    .iter()
+    .map(|decision| {
+        decision
+            .as_object()
+            .expect("a decision is an object")
+            .keys()
+            .cloned()
+            .collect()
+    })
+    .collect();
+
+    let placed = ["after", "witness", "decides"].map(str::to_owned);
+    let genesis = BTreeSet::from_iter(
+        placed
+            .iter()
+            .cloned()
+            .chain(["known_at".into(), "selection".into()]),
+    );
+    let fork = BTreeSet::from_iter(placed.iter().cloned().chain([
+        "extends".into(),
+        "omitted".into(),
+        "introduced".into(),
+    ]));
+    let advance = BTreeSet::from_iter(
+        placed
+            .iter()
+            .cloned()
+            .chain(["extends".into(), "known_at".into()]),
+    );
+
+    assert_eq!(
+        recorded,
+        [
+            genesis,
+            fork.clone(),
+            fork.clone(),
+            fork.clone(),
+            advance,
+            fork
+        ],
+        "a decision records an intention, which world it extends, and where it was taken"
     );
 }
 
