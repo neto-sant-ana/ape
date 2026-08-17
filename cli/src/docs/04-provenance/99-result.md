@@ -80,9 +80,15 @@ Part B's shape is removed. `Adoption`, the `from` field, and the check that re-a
 not in the repository, and Phases 4 through 7 go with them — a guard that guards nothing keeps a
 thing alive, which is the failure mode this experiment just spent three phases naming.
 
-The measurement is not lost, it is archived: it is reproducible at the commit that carried it, which
-is the only place code for something a laboratory decided against belongs. What survives in the tree
-is Part A, which measures a repository that records no claim and must stay able to say so.
+The measurement is not lost, it is archived: it is reproducible at the commits that carried it —
+`8c22054` for the shape and the whole space of claims, `7afd1d7` for what it couples — which is the
+only place code for something a laboratory decided against belongs. What survives in the tree is
+Part A, which measures a repository that records no claim and must stay able to say so.
+
+The revert is honest about one loss. Part B's four phases were guards, and guards in the tree are
+what make a measurement reproducible by running the suite rather than by checking out a commit.
+Keeping them would have kept the shape alive, which is the failure mode this experiment spent three
+phases naming — so the trade is deliberate, and the commit hashes above are the price of it.
 
 ## What the result does not cover
 
