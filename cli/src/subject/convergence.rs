@@ -51,6 +51,7 @@
 //! Every quantity is an integer, for the reason [`super::reconstruction`] gives.
 
 use ape::canon::Canon;
+use ape::engine::synthesis::{ApplicabilityReport, ApplicabilityStatus, synthesize};
 use ape::engine::thesis::{Thesis, ThesisId};
 use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId, StatementId};
 
@@ -60,6 +61,7 @@ use crate::journal::{
     self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, Replayed, ResourceKindRecord,
 };
 use crate::lineage::{self, Decision, Lineage, Taken};
+use crate::transfer;
 
 pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";
@@ -376,6 +378,8 @@ pub struct Diverged {
     /// `N`, which exists only once the journal has grown past the first three decisions.
     pub contingency: CommitmentId,
     pub journal: Vec<Admission>,
+    /// Every entry admitted by the end, so a later decision can say what it stood on.
+    pub admitted: Replayed,
     pub decisions: Vec<Taken>,
     pub lineage: Lineage,
 }
@@ -490,8 +494,76 @@ pub fn diverged() -> Result<Diverged, SubjectError> {
         subject,
         contingency,
         journal,
+        admitted,
         decisions,
         lineage,
+    })
+}
+
+/// The arrangement with the transfer carried, and the report that said it could be.
+pub struct Reconciled {
+    pub canon: Canon<ResidentHistory>,
+    pub subject: Constructed,
+    pub contingency: CommitmentId,
+    pub journal: Vec<Admission>,
+    pub decisions: Vec<Taken>,
+    pub lineage: Lineage,
+    /// What Synthesis answered before the decision was taken.
+    ///
+    /// Held here rather than recomputed by a phase because the decision was taken *from* it: an
+    /// arrangement that asked once and applied something else would be a different arrangement.
+    pub carried: ApplicabilityReport,
+}
+
+impl Reconciled {
+    /// The world the transfer produced.
+    pub fn reconciling(&self) -> &Thesis {
+        &self.lineage.decided()[6]
+    }
+}
+
+/// Carry the inventory line's intention into the equipment line, as a decision.
+///
+/// The direction is the one Synthesis found applicable, which is not a preference: the other
+/// direction is refused, and applying a refused transfer is not something the arrangement can do
+/// without the engine building a world it already said was unavailable.
+///
+/// Nothing new is admitted. A transfer moves intention between worlds and knowledge is untouched
+/// by it, so the journal at the end of this is the journal [`diverged`] left.
+pub fn reconciled() -> Result<Reconciled, SubjectError> {
+    let Diverged {
+        canon,
+        subject,
+        contingency,
+        journal,
+        admitted,
+        mut decisions,
+        mut lineage,
+    } = diverged()?;
+
+    let (base, source, target) = (
+        lineage.decided()[0].id(),
+        lineage.decided()[3].id(),
+        lineage.decided()[5].id(),
+    );
+
+    let carried = synthesize(lineage.archive(), canon.history(), base, source, target)?;
+
+    let ApplicabilityStatus::Applicable { transfer, .. } = carried.status() else {
+        return Err(SubjectError::TransferNotApplicable);
+    };
+
+    decisions.push(Taken::now(transfer::applied(target, transfer), &admitted)?);
+    lineage::decide(canon.history(), &mut lineage, &decisions[6].decision)?;
+
+    Ok(Reconciled {
+        canon,
+        subject,
+        contingency,
+        journal,
+        decisions,
+        lineage,
+        carried,
     })
 }
 

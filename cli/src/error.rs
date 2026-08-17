@@ -57,6 +57,14 @@ pub enum SubjectError {
     /// A decision that extends something, taken over a lineage holding no world.
     #[error("a decision extends a world, and no world has been decided")]
     NothingDecided,
+
+    #[error(transparent)]
+    Synthesis(#[from] ape::engine::synthesis::SynthesisError),
+
+    /// An arrangement that meant to carry a transfer, over a report that refuses it. Applying it
+    /// anyway would build the world Synthesis just said was unavailable.
+    #[error("the transfer the arrangement carries is not applicable")]
+    TransferNotApplicable,
 }
 
 #[derive(Debug, thiserror::Error)]

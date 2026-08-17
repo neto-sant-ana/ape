@@ -32,6 +32,7 @@ use ape::engine::synthesis::{
 use ape::engine::thesis::ThesisId;
 
 use crate::error::TransferError;
+use crate::lineage::Decision;
 use crate::reading;
 use crate::repository::Repository;
 
@@ -193,6 +194,24 @@ fn conflicted(conflict: &ApplicabilityConflict) -> ConflictRecord {
 
 fn hex(id: impl std::fmt::Display) -> String {
     id.to_string()
+}
+
+/// Carry a transfer into its Target as an ordinary decision.
+///
+/// A resolved transfer states what is left to do — remove these, introduce those — and a fork
+/// states an outcome by the same two halves. So this is a translation and not a construction:
+/// the engine builds nothing from a report, and turning one into a world is the application's
+/// decision, taken through the same path as every other decision it has ever taken.
+///
+/// What the decision does **not** carry is where the intention came from. The Base and the Source
+/// produced it and do not survive into it, so the record says which commitments were introduced
+/// and never that another line of thinking is why.
+pub fn applied(target: ThesisId, transfer: &ResolvedTransfer) -> Decision {
+    Decision::Fork {
+        extends: target,
+        omitted: transfer.remove().collect(),
+        introduced: transfer.introduce().collect(),
+    }
 }
 
 /// Rebuild a repository and ask it what one world's intention would be in another.
