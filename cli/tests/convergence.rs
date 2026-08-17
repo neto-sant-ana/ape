@@ -12,7 +12,7 @@ use ape::engine::thesis::{ForkInput, ThesisError, descends_from};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::lineage::{self, Lineage};
-use ape_cli::reading::{self, OutcomeRecord, TimelinessRecord, WorldRecord};
+use ape_cli::reading::{self, OutcomeRecord, Reading, TimelinessRecord, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::subject::convergence::{self, Branched, Diverged};
 use ape_cli::transfer::{
@@ -793,6 +793,140 @@ fn phase_4_persist() {
             fork
         ],
         "a decision records an intention, which world it extends, and where it was taken"
+    );
+}
+
+/// Rebuild in an operating-system process of its own, given the repository and nothing else.
+fn rebuild_in_fresh_process(
+    binary: &std::path::Path,
+    repository: &std::path::Path,
+    instance: ape::kernel::entities::ResourceInstanceId,
+) -> std::process::Output {
+    std::process::Command::new(binary)
+        .arg(repository)
+        .arg(instance.to_string())
+        .arg(EFFECTIVE)
+        .output()
+        .expect("the binary runs")
+}
+
+/// Phase 5 — Terminate and rebuild.
+///
+/// The process that decided the six worlds is gone, and here that is literal: the rebuild
+/// happens in an operating-system process that shares no memory with it. Nothing it computed can
+/// cross, because none of it can cross at all.
+///
+/// The archive is the point of the phase and is invisible in the result, which is the whole of
+/// what makes it interesting. It is not read back — a `Thesis` does not deserialize — so it is
+/// filled again by putting each world into it as the decisions produce it. Its absence would not
+/// show up as a missing archive; it would show up as a decision naming a world nobody can find,
+/// and the rebuild succeeding at all is what says it was there.
+#[test]
+fn phase_5_terminate() {
+    let arrangement = diverged();
+    let repository = Repository::open(scratch("phase-5"));
+    persist(&repository, &arrangement);
+
+    let dead = std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli"));
+
+    let refused = rebuild_in_fresh_process(
+        dead,
+        &scratch("phase-5-absent"),
+        arrangement.subject.instance,
+    );
+
+    assert!(
+        !refused.status.success(),
+        "a fresh process with no repository must not produce a world"
+    );
+
+    let survived = rebuild_in_fresh_process(dead, repository.root(), arrangement.subject.instance);
+
+    assert!(
+        survived.status.success(),
+        "the fresh process failed: {}",
+        String::from_utf8_lossy(&survived.stderr)
+    );
+
+    let rebuilt: Vec<Reading> =
+        serde_json::from_slice(&survived.stdout).expect("a lineage came back");
+
+    assert_eq!(
+        rebuilt.len(),
+        6,
+        "the repository yields every world it holds decisions for"
+    );
+
+    // The shape came back, which is the first thing a sequence could have lost. Two worlds name
+    // one parent, and the world they name is one world rather than two copies of one — the
+    // archive holds it under a single identity because the identity is its content.
+    assert_eq!(
+        rebuilt[0].thesis_parent, None,
+        "the lineage begins at a genesis"
+    );
+    assert_eq!(
+        rebuilt[1].thesis_parent, rebuilt[2].thesis_parent,
+        "the two lines of thinking came back sharing an ancestor"
+    );
+    assert_eq!(
+        rebuilt[1].thesis_parent.as_deref(),
+        Some(rebuilt[0].thesis.as_str()),
+        "and it is the world the first decision produced"
+    );
+
+    // Each line's second decision found the world it extends, across a process boundary and
+    // through an archive that was rebuilt rather than opened.
+    assert_eq!(
+        rebuilt[3].thesis_parent.as_deref(),
+        Some(rebuilt[2].thesis.as_str()),
+        "the inventory line's second decision extends its first"
+    );
+    assert_eq!(
+        rebuilt[4].thesis_parent.as_deref(),
+        Some(rebuilt[1].thesis.as_str()),
+        "the equipment line advanced from where it forked"
+    );
+    assert_eq!(
+        rebuilt[5].thesis_parent.as_deref(),
+        Some(rebuilt[4].thesis.as_str()),
+        "and forked from what it advanced to"
+    );
+
+    // And the two lines came back recognizing different knowledge, which is what made the two
+    // directions of Phase 3 different questions.
+    assert_eq!(rebuilt[3].known_at, "2026-01-10");
+    assert_eq!(rebuilt[5].known_at, "2026-01-16");
+    assert_eq!(rebuilt[5].effective_at, EFFECTIVE);
+
+    // That the fresh process resolves `extends` through an archive it built, rather than reading
+    // past it, is not visible in a result that succeeded. So one decision is repointed at a
+    // world that **exists** — the other line's first — and the rebuild is asked again.
+    //
+    // Breaking the archive in code proves the same thing and proves it in the wrong place: the
+    // living process and the fresh one run one code path, so a mutation there never reaches a
+    // process boundary. Moving the coordinate in the repository is what isolates this side of it.
+    let repointed = Repository::open(scratch("phase-5-repointed"));
+    persist(&repointed, &arrangement);
+
+    let mut decisions = arrangement.decisions.clone();
+    match &mut decisions[3].decision {
+        lineage::Decision::Fork { extends, .. } => *extends = arrangement.equipping().id(),
+        other => panic!("the fourth decision is a fork, found {other:?}"),
+    }
+    repointed.write_lineage(&decisions).expect("writable");
+
+    let refused_repointed =
+        rebuild_in_fresh_process(dead, repointed.root(), arrangement.subject.instance);
+    let complaint = String::from_utf8_lossy(&refused_repointed.stderr);
+
+    assert!(
+        !refused_repointed.status.success(),
+        "a decision extending the other line is a different lineage: {}",
+        String::from_utf8_lossy(&refused_repointed.stdout)
+    );
+    assert!(
+        complaint.contains("world 3 disagrees"),
+        "and the world it produced is what says so, naming which: {complaint}"
     );
 }
 
