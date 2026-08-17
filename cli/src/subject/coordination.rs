@@ -35,6 +35,7 @@
 //! [`super::reconstruction`] gives.
 
 use ape::canon::Canon;
+use ape::engine::synthesis::{ApplicabilityStatus, synthesize};
 use ape::engine::thesis::{Thesis, ThesisId};
 use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 
@@ -46,6 +47,7 @@ use crate::journal::{
 use crate::lineage::{self, Decision, Lineage, Taken};
 use crate::reading::{self, Corroborated, WorldRecord};
 use crate::repository::Repository;
+use crate::transfer;
 
 pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";
@@ -302,6 +304,36 @@ pub fn admit(working: &mut Corroborated, admission: Admission) -> Result<(), Sub
     journal::replay_remaining(&mut working.canon, &working.journal, &mut working.admitted)?;
 
     Ok(())
+}
+
+/// Take up an intention out of another party's line, against this party's own.
+///
+/// The Source is the other party's world, and the Target is this one's. Both have to be in the
+/// archive this party holds, which is a precondition rather than a formality: a party that has not
+/// read the other's line cannot name it, and a party that read before the other converged does not
+/// have it. Reaching each other is downstream of converging.
+///
+/// Nothing about this is a party-to-party operation. The report names three worlds and no party, and
+/// what comes out of it is an ordinary fork of the Target.
+pub fn adopt(
+    working: &mut Corroborated,
+    base: ThesisId,
+    source: ThesisId,
+    target: ThesisId,
+) -> Result<ThesisId, SubjectError> {
+    let report = synthesize(
+        working.lineage.archive(),
+        working.canon.history(),
+        base,
+        source,
+        target,
+    )?;
+
+    let ApplicabilityStatus::Applicable { transfer, .. } = report.status() else {
+        return Err(SubjectError::TransferNotApplicable);
+    };
+
+    decide(working, transfer::applied(target, transfer))
 }
 
 /// Put back everything this party holds, whole.
