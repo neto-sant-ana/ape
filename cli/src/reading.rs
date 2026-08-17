@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use ape::canon::{Canon, CanonicalHistory};
 use ape::engine::hermeneia::{Conflict, Hypothesis, Outcome, Timeliness};
 use ape::engine::thesis::{Interpretation, Thesis};
-use ape::kernel::entities::ResourceInstanceId;
+use ape::kernel::entities::{AgentId, ResourceInstanceId};
 use ape::kernel::value_objects::Date;
 
 use crate::error::ReadingError;
@@ -285,6 +285,31 @@ pub struct Corroborated {
     pub admitted: Replayed,
     pub journal: Vec<Admission>,
     pub decisions: Vec<Taken>,
+}
+
+/// The worlds a party's decisions produced, by identity, where anything says who decided.
+///
+/// This is the whole of what recording a decider buys, and it is deliberately identities rather than
+/// readings. An identity is what a transfer is asked about — convergence established that a question
+/// is asked *of* a record and arrives from outside it — so what a party needs in order to be referred
+/// to is a name it can hand back, and everything else about those worlds is already answerable.
+///
+/// It cannot answer for a decision that claims nobody, and says nothing about there being one. A
+/// reader cannot tell *not this party's* from *unclaimed*, which is what an optional field costs.
+pub fn decided_by(
+    repository: &Repository,
+    party: AgentId,
+) -> Result<BTreeSet<String>, ReadingError> {
+    let Corroborated {
+        lineage, decisions, ..
+    } = corroborated(repository)?;
+
+    Ok(decisions
+        .iter()
+        .zip(lineage.decided())
+        .filter(|(taken, _)| taken.by == Some(party))
+        .map(|(_, world)| world.id().to_string())
+        .collect())
 }
 
 /// Rebuild what a repository holds, and weigh it against what the repository says it produced.

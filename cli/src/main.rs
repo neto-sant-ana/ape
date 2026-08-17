@@ -14,7 +14,7 @@
 use std::process::ExitCode;
 
 use ape::engine::thesis::ThesisId;
-use ape::kernel::entities::ResourceInstanceId;
+use ape::kernel::entities::{AgentId, ResourceInstanceId};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::reading;
@@ -34,15 +34,19 @@ fn main() -> ExitCode {
     }
 }
 
-const USAGE: &str = "usage: ape-cli <repository> <instance> <date>\n   or: ape-cli <repository> transfer <base> <source> <target>";
+const USAGE: &str = "usage: ape-cli <repository> <instance> <date>\n   or: ape-cli <repository> transfer <base> <source> <target>\n   or: ape-cli <repository> decided <party>";
 
-/// Two questions, and they take different arguments because they need different things.
+/// Three questions, and they take different arguments because they need different things.
 ///
 /// Reading the worlds needs an instance and an instant, because a world is read *of* something
 /// *at* some time. A transfer needs neither and needs three identities instead: it is asked
 /// about worlds rather than about a resource, and the question is not in the repository, so it
 /// arrives here. Making one form carry the other's arguments unused would be dishonest about
 /// which answer depends on what.
+///
+/// Asking whose a line is needs one identity and answers with identities, which is the shape of
+/// addressing rather than of reading: what comes back is what the other two forms can be asked
+/// about next.
 fn run() -> Result<String, String> {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
 
@@ -53,6 +57,11 @@ fn run() -> Result<String, String> {
     let repository = Repository::open(root);
 
     match rest {
+        [verb, party] if verb == "decided" => rendered(
+            &reading::decided_by(&repository, identity(party).map(AgentId::from)?)
+                .map_err(|reason| reason.to_string())?,
+        ),
+
         [instance, date] => {
             let instance = identity(instance).map(ResourceInstanceId::from)?;
             let effective_at =
