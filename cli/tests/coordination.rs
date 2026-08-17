@@ -1303,3 +1303,148 @@ fn a_decider_makes_agreement_look_like_duplication() {
     // The mutual adoption Phase 3 measured still produces two different worlds, because a parent is
     // part of an identity and the two parties are on different branches.
 }
+
+/// Ask an operating-system process of its own, given the repository and nothing else.
+fn asked(repository: &std::path::Path, question: &[&str]) -> std::process::Output {
+    std::process::Command::new(std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli")))
+        .arg(repository)
+        .args(question)
+        .output()
+        .expect("the binary runs")
+}
+
+/// The answer, or the reason the process refused to give one.
+fn answered<T: serde::de::DeserializeOwned>(output: &std::process::Output) -> T {
+    assert!(
+        output.status.success(),
+        "the fresh process failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    serde_json::from_slice(&output.stdout).expect("an answer came back")
+}
+
+/// Phase 6 — Terminate, rebuild, compare.
+///
+/// The processes that decided are gone, and here that is literal: what answers shares no memory with
+/// them. Everything the two parties recorded has to arrive through the repository or not at all.
+#[test]
+fn phase_6_terminate() {
+    let (repository, arrangement, staffing, equipping, [planner, steward]) = claimed("phase-6");
+    let subject = &arrangement.subject;
+
+    // Nothing, given nothing.
+    assert!(
+        !asked(
+            &scratch("phase-6-absent"),
+            &[&subject.instance.to_string(), EFFECTIVE]
+        )
+        .status
+        .success(),
+        "a fresh process with no repository must not produce a world"
+    );
+
+    // The worlds, against literals.
+    let readings: Vec<reading::Reading> = answered(&asked(
+        repository.root(),
+        &[&subject.instance.to_string(), EFFECTIVE],
+    ));
+
+    assert_eq!(readings.len(), 3);
+    assert_eq!(
+        readings
+            .iter()
+            .map(|world| &world.thesis)
+            .collect::<Vec<_>>(),
+        vec![
+            &arrangement.shared().id().to_string(),
+            &equipping.to_string(),
+            &staffing.to_string()
+        ],
+        "the shared ancestor and one line per party, in the order the record settles on"
+    );
+
+    // Which is **not** the order the parties wrote in — the planner converged first. Predicted
+    // wrongly here and corrected against the run, which is the point Phase 4 measured: the order is
+    // derived from what the decisions carry, so it cannot be read as arrival.
+
+    // And whose each line is, which is the only thing Part B added and the only thing here that
+    // could not have been asked before.
+    let claims = |party: AgentId| -> BTreeSet<String> {
+        answered(&asked(repository.root(), &["decided", &party.to_string()]))
+    };
+
+    assert_eq!(claims(planner), BTreeSet::from([staffing.to_string()]));
+    assert_eq!(claims(steward), BTreeSet::from([equipping.to_string()]));
+
+    // A party the repository does not hold claims nothing, and is not refused. Which is consistent
+    // and worth stating: the check that refuses an unknown decider is about what is *written*, and
+    // asking about somebody who never decided is a question with an empty answer rather than an
+    // error.
+    let stranger = AgentId::from(*subject.hiring.as_ref());
+
+    assert!(claims(stranger).is_empty());
+
+    // What the answers do not cover, measured. Every world minus every claimed world is not empty:
+    // the genesis is claimed by nobody, and no query says so.
+    let claimed: BTreeSet<String> = claims(planner).union(&claims(steward)).cloned().collect();
+    let all: BTreeSet<String> = readings.iter().map(|world| world.thesis.clone()).collect();
+
+    assert_eq!(
+        all.difference(&claimed).collect::<Vec<_>>(),
+        vec![&arrangement.shared().id().to_string()],
+        "one world belongs to nobody, and a reader cannot tell that from not-this-party's"
+    );
+}
+
+/// There is no room on a world for who decided it, and it is the same reason provenance found.
+///
+/// A reading is per world; an attribution is per decision; and one world can be produced by two
+/// decisions. So the answer cannot travel on the thing a reader reads — measured through the process
+/// boundary, where a per-world record is all there is.
+#[test]
+fn a_decider_does_not_fit_on_a_world() {
+    let (repository, arrangement, staffing, equipping, [planner, steward]) = claimed("no-room");
+    let subject = &arrangement.subject;
+    let shared = arrangement.shared().id();
+
+    let mut agreeing = coordination::read(&repository).expect("reconstructs");
+    coordination::decided(
+        &mut agreeing,
+        steward,
+        coordination::also(shared, subject.hiring),
+    )
+    .expect("the other party decides the same plan");
+
+    converge::converge(&repository, &agreeing).expect("converges");
+
+    let claims = |party: AgentId| -> BTreeSet<String> {
+        answered(&asked(repository.root(), &["decided", &party.to_string()]))
+    };
+
+    // One world, claimed by two parties. No field on a world could hold that.
+    assert_eq!(claims(planner), BTreeSet::from([staffing.to_string()]));
+    assert_eq!(
+        claims(steward),
+        BTreeSet::from([staffing.to_string(), equipping.to_string()]),
+        "and the same world is claimed by both"
+    );
+
+    // Which surfaces at the boundary as a duplicate: the reading form walks decisions, so a world
+    // two decisions produced is read twice.
+    let readings: Vec<reading::Reading> = answered(&asked(
+        repository.root(),
+        &[&subject.instance.to_string(), EFFECTIVE],
+    ));
+
+    assert_eq!(readings.len(), 4, "four decisions");
+    assert_eq!(
+        readings
+            .iter()
+            .map(|world| world.thesis.clone())
+            .collect::<BTreeSet<_>>()
+            .len(),
+        3,
+        "and three worlds"
+    );
+}
