@@ -10,7 +10,8 @@
 use ape::canon::CanonicalHistory;
 use ape::kernel::value_objects::Date;
 
-use ape_cli::journal::{Admission, EntryId};
+use ape_cli::history::ResidentHistory;
+use ape_cli::journal::{self, Admission, EntryId};
 use ape_cli::lineage::{Decision, Taken};
 use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading, WorldRecord};
 use ape_cli::repository::Repository;
@@ -47,6 +48,23 @@ fn persisted(repository: &Repository) -> Reasoned {
         .expect("the repository is writable");
 
     reasoned
+}
+
+/// Recompute every witness from the coordinate its decision names.
+///
+/// This is what a writer that never observed a prefix would produce, and therefore what
+/// *removing* the witness amounts to: the field stays in the file and stops carrying anything
+/// a reader could not work out for itself.
+fn witness_recomputed(journal: &[Admission], decisions: &mut [Taken]) {
+    let mut canon = ape::canon::Canon::new(ResidentHistory::new());
+    let mut admitted = journal::Replayed::default();
+
+    for taken in decisions.iter_mut() {
+        journal::replay_through(&mut canon, journal, &mut admitted, &taken.after)
+            .expect("the coordinate addresses the journal");
+
+        taken.witness = admitted.entries.iter().cloned().collect();
+    }
 }
 
 /// What the decisions produced, as the repository records it.
@@ -346,4 +364,94 @@ fn position(journal: &[Admission], magnitude: f64) -> usize {
             matches!(entry, Admission::Commitment { magnitude: Some(found), .. } if *found == magnitude)
         })
         .expect("the subject commits that magnitude")
+}
+
+/// Phase 5 — Subtract.
+///
+/// With the worlds recorded, what does the rest of the repository still have to hold? Answered
+/// by removing things and seeing what stops working, rather than by arguing about it.
+///
+/// Two of the four the protocol lists are answered before the phase runs. The decisions cannot
+/// go: a `Thesis` does not deserialize, so a recorded world is not a world and nothing else
+/// produces one. The instant and the intention cannot go either — a cut is resolved from an
+/// instant and a genesis selects what it selects, and a decision without them is not a
+/// decision. Neither is expressible, which is its own kind of answer.
+///
+/// What is left is the pair this experiment added.
+#[test]
+fn phase_5_subtract() {
+    let repository = Repository::open(scratch("phase-5-baseline"));
+    let reasoned = persisted(&repository);
+    let baseline = rebuild(&repository, reasoned.subject.instance)
+        .worlds()
+        .to_vec();
+
+    // Subtract the coordinate. Every decision points at the journal's last entry, so a reader
+    // admits everything before deciding anything — which is the form the divergence experiment
+    // refuted, expressed as data rather than as code.
+    let (without_coordinate, refusal) =
+        corrupted("no-coordinate", &baseline, |journal, decisions, _| {
+            let last = {
+                let mut canon = ape::canon::Canon::new(ResidentHistory::new());
+                let mut admitted = journal::Replayed::default();
+                journal::replay_remaining(&mut canon, journal, &mut admitted)
+                    .expect("the journal admits");
+                admitted
+                    .entries
+                    .last()
+                    .cloned()
+                    .expect("something admitted")
+            };
+
+            for taken in decisions.iter_mut() {
+                taken.after = last.clone();
+            }
+            witness_recomputed(journal, decisions);
+        });
+
+    assert_eq!(
+        without_coordinate,
+        Verdict::Refused,
+        "a repository that cannot say where a decision was taken cannot be read at all"
+    );
+    assert!(
+        refusal.complaint.contains("world 0 disagrees"),
+        "and the world is what says so: {}",
+        refusal.complaint
+    );
+
+    // Subtract the witness over the sequence, leaving the coordinate. The field stays and says
+    // only what a reader would have computed, so nothing is compared that was not derived.
+    let (without_witness, _) = corrupted("no-witness", &baseline, |journal, decisions, _| {
+        witness_recomputed(journal, decisions);
+    });
+
+    assert_eq!(
+        without_witness,
+        Verdict::Harmless,
+        "an intact repository survives losing it, which is the easy half"
+    );
+
+    // The hard half: with the witness gone, does anything still catch the corruption it was
+    // introduced for?
+    let (repointed_without_witness, complaint) = corrupted(
+        "no-witness-repointed",
+        &baseline,
+        |journal, decisions, r| {
+            let head = r.canon.history().head().expect("a head");
+            decisions[0].after = EntryId::of(head);
+            witness_recomputed(journal, decisions);
+        },
+    );
+
+    assert_eq!(
+        repointed_without_witness,
+        Verdict::Refused,
+        "the world the coordinate produces is not the world that was recorded"
+    );
+    assert!(
+        complaint.complaint.contains("world 0 disagrees"),
+        "and it is the world witness that says so, not the sequence one: {}",
+        complaint.complaint
+    );
 }
