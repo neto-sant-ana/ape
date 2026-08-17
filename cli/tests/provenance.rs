@@ -801,6 +801,171 @@ fn phase_5_refuse() {
     );
 }
 
+/// Phase 6 — What the claim couples.
+///
+/// Named by measurement rather than described. A claim names a world the claiming world has no
+/// ancestry to, and re-asking the question on every read means that world must still be there.
+#[test]
+fn phase_6_couple() {
+    let arrangement = provenance::attributed().expect("the arrangement holds");
+    let subject = &arrangement.subject;
+
+    // The adopted world does not descend from the plan it took its intention from. They are on
+    // separate branches; that is what made the transfer a transfer.
+    assert!(
+        !descends_from(
+            arrangement.lineage.archive(),
+            arrangement.adopting().id(),
+            arrangement.broad().id(),
+        )
+        .expect("ancestry walks"),
+        "nothing relates the adopted world to the plan it adopted from"
+    );
+
+    // A lineage without that plan. Every world the adopted one needs is still decided — its
+    // ancestry is untouched — and the discarded branch is simply not written down.
+    let pruned: Vec<_> = [0, 1, 3, 4]
+        .into_iter()
+        .map(|at| arrangement.decisions[at].clone())
+        .collect();
+
+    let unclaimed = Repository::open(scratch("phase-6-unclaimed"));
+    unclaimed
+        .write_journal(&arrangement.journal)
+        .expect("writable");
+    unclaimed
+        .write_lineage(
+            &pruned
+                .iter()
+                .cloned()
+                .map(|mut taken| {
+                    taken.from = None;
+                    taken
+                })
+                .collect::<Vec<_>>(),
+        )
+        .expect("writable");
+
+    let mut rebuilt = Vec::new();
+    {
+        let mut canon = ape::canon::Canon::new(ape_cli::history::ResidentHistory::new());
+        let lineage = lineage::rebuild(
+            &mut canon,
+            &arrangement.journal,
+            &unclaimed.read_lineage().expect("reads back"),
+        )
+        .expect("a pruned lineage still produces its worlds");
+        rebuilt.extend(lineage.decided().iter().map(|world| world.id()));
+    }
+    unclaimed
+        .write_worlds(
+            &[0, 1, 3, 4]
+                .into_iter()
+                .map(|at| WorldRecord::of(&arrangement.lineage.decided()[at]))
+                .collect::<Vec<_>>(),
+        )
+        .expect("writable");
+
+    assert_eq!(
+        rebuilt[3],
+        arrangement.adopting().id(),
+        "the adopted world is the same world without the plan it came from"
+    );
+    assert!(
+        reading::reconstruct(
+            &unclaimed,
+            subject.instance,
+            &Date::parse(EFFECTIVE).expect("a real date")
+        )
+        .is_ok(),
+        "and the pruned repository reads"
+    );
+
+    // The same pruning, with the claim kept. Now it does not read: the question cannot be asked
+    // again, because the world it asks about is gone.
+    let claimed = Repository::open(scratch("phase-6-claimed"));
+    claimed
+        .write_journal(&arrangement.journal)
+        .expect("writable");
+    claimed.write_lineage(&pruned).expect("writable");
+    claimed
+        .write_worlds(
+            &[0, 1, 3, 4]
+                .into_iter()
+                .map(|at| WorldRecord::of(&arrangement.lineage.decided()[at]))
+                .collect::<Vec<_>>(),
+        )
+        .expect("writable");
+
+    let complaint = reading::corroborated(&claimed)
+        .err()
+        .expect("a claim about a world that is gone cannot be checked")
+        .to_string();
+
+    assert!(
+        complaint.contains("absent from the archive"),
+        "and the refusal says the world is not there: {complaint}"
+    );
+
+    // So this is what it couples, exactly: **a line of thinking cannot be discarded once anything
+    // claims to have adopted from it.** Not because the worlds need it — they do not, measured
+    // above — but because a claim re-asked on every read keeps a world alive that nothing else
+    // refers to.
+    //
+    // Four protocols have left abandoned siblings unmodelled. This is the first measurement of what
+    // provenance would cost that question, and it costs it everything.
+}
+
+/// Phase 7 — Terminate, rebuild, compare.
+#[test]
+fn phase_7_terminate() {
+    let arrangement = provenance::attributed().expect("the arrangement holds");
+    let subject = &arrangement.subject;
+
+    let repository = Repository::open(scratch("phase-7"));
+    persist(&repository, &arrangement);
+
+    let living = reading::reconstruct(
+        &repository,
+        subject.instance,
+        &Date::parse(EFFECTIVE).expect("a real date"),
+    )
+    .expect("the repository reconstructs");
+
+    let dead = std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli"));
+    let survived = std::process::Command::new(dead)
+        .arg(repository.root())
+        .arg(subject.instance.to_string())
+        .arg(EFFECTIVE)
+        .output()
+        .expect("the binary runs");
+
+    assert!(
+        survived.status.success(),
+        "the fresh process failed: {}",
+        String::from_utf8_lossy(&survived.stderr)
+    );
+
+    let rebuilt: Vec<reading::Reading> =
+        serde_json::from_slice(&survived.stdout).expect("a lineage came back");
+
+    assert_eq!(rebuilt, living, "whole, across a process boundary");
+
+    // And against literals written before the run, which equality between two derivations cannot
+    // do. The claim changed no world, so these are the same five the unclaimed arrangement gives.
+    assert_eq!(rebuilt.len(), 5);
+    assert_eq!(rebuilt[4].known_at, "2026-01-10");
+    assert_eq!(rebuilt[4].open.len(), 4);
+    assert!(rebuilt[4].conflicts.is_empty());
+    assert_eq!(
+        rebuilt[2].conflicts,
+        vec![ConflictRecord::OutOfBounds {
+            instance: subject.instance.to_string(),
+            level: -5.0,
+        }]
+    );
+}
+
 /// Pinning the Target is not bookkeeping, and this is what it changes.
 ///
 /// A transfer whose Target is some other world can reach the same **selection** and cannot reach
