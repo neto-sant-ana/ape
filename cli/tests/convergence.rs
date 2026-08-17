@@ -8,10 +8,11 @@
 use std::collections::BTreeSet;
 
 use ape::engine::synthesis::synthesize;
-use ape::engine::thesis::{ForkInput, ThesisError, descends_from};
+use ape::engine::thesis::{ForkInput, ThesisError, ThesisId, descends_from};
 use ape::kernel::value_objects::Date;
 
-use ape_cli::lineage::{self, Lineage};
+use ape_cli::journal::EntryId;
+use ape_cli::lineage::{self, Lineage, Taken};
 use ape_cli::reading::{self, OutcomeRecord, Reading, TimelinessRecord, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::subject::convergence::{self, Branched, Diverged};
@@ -1063,6 +1064,391 @@ fn phase_6_compare() {
         "and the refusal says so: {}",
         String::from_utf8_lossy(&incoherent.stderr)
     );
+}
+
+/// Phase 7 — Apply.
+///
+/// The transfer Synthesis found applicable is carried into its Target as a decision, and the
+/// repository is read once more. This is where the hypothesis's least certain claim is settled:
+/// if a transfer applied reproduces through the ordinary path, a repository records a **choice**;
+/// if it does not, it has to record a computation.
+#[test]
+fn phase_7_apply() {
+    let arrangement = convergence::reconciled().expect("the arrangement holds");
+    let subject = &arrangement.subject;
+
+    assert_eq!(
+        arrangement.lineage.decided().len(),
+        7,
+        "one more world, and no new kind of thing"
+    );
+
+    // The world the transfer produced, against the candidate the report predicted. If those
+    // disagreed the report would be evidence about a world nobody can build.
+    let reconciling = arrangement.reconciling();
+    let carried = Applicability::of(&arrangement.carried);
+
+    let StatusRecord::Applicable { candidate, .. } = &carried.status else {
+        panic!(
+            "the carried transfer is applicable, found {:?}",
+            carried.status
+        );
+    };
+
+    assert_eq!(
+        reconciling
+            .selection()
+            .open()
+            .map(|id| id.to_string())
+            .collect::<BTreeSet<_>>(),
+        candidate.open,
+        "the world a fork produces is the candidate the report described"
+    );
+    assert_eq!(
+        reconciling
+            .selection()
+            .frozen()
+            .map(|id| id.to_string())
+            .collect::<BTreeSet<_>>(),
+        candidate.frozen
+    );
+
+    // And it is an ordinary child of its Target, at its Target's cut. A transfer moves intention
+    // and no knowledge, so nothing about the world says it came from anywhere but a fork.
+    assert_eq!(
+        reconciling.parent(),
+        &Some(arrangement.lineage.decided()[5].id()),
+        "the applied world extends the Target"
+    );
+    assert_eq!(
+        reconciling.cut().known_at().to_iso(),
+        "2026-01-16",
+        "and recognizes exactly what the Target recognized"
+    );
+
+    // The record it left is a fork like the four before it. No field was added, and the closed
+    // set Phase 4 pinned is unchanged.
+    let repository = Repository::open(scratch("phase-7"));
+    repository
+        .write_journal(&arrangement.journal)
+        .expect("writable");
+    repository
+        .write_lineage(&arrangement.decisions)
+        .expect("writable");
+    repository
+        .write_worlds(
+            &arrangement
+                .lineage
+                .decided()
+                .iter()
+                .map(WorldRecord::of)
+                .collect::<Vec<_>>(),
+        )
+        .expect("writable");
+
+    let written = std::fs::read_to_string(repository.lineage_path()).expect("the file is there");
+    let recorded: Vec<serde_json::Value> =
+        serde_json::from_str(&written).expect("the lineage is a list");
+
+    assert_eq!(recorded.len(), 7);
+    assert_eq!(
+        recorded[6]["decides"], "fork",
+        "a transfer applied is recorded as a fork"
+    );
+    assert_eq!(
+        recorded[6]
+            .as_object()
+            .expect("an object")
+            .keys()
+            .cloned()
+            .collect::<BTreeSet<_>>(),
+        BTreeSet::from([
+            "decides".to_owned(),
+            "extends".into(),
+            "omitted".into(),
+            "introduced".into(),
+            "after".into(),
+            "witness".into(),
+        ]),
+        "and records nothing a fork does not"
+    );
+
+    // Reproduced through the same path as every other decision, in a process of its own.
+    let dead = std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli"));
+    let survived = rebuild_in_fresh_process(dead, repository.root(), subject.instance);
+
+    assert!(
+        survived.status.success(),
+        "the fresh process failed: {}",
+        String::from_utf8_lossy(&survived.stderr)
+    );
+
+    let rebuilt: Vec<Reading> =
+        serde_json::from_slice(&survived.stdout).expect("a lineage came back");
+
+    assert_eq!(rebuilt.len(), 7);
+    assert_eq!(
+        rebuilt[6].thesis,
+        reconciling.id().to_string(),
+        "the applied world came back as the world it was"
+    );
+
+    // The verdict it carries, which is the reason to have applied anything at all. Each line was
+    // within the account's bounds alone; holding both is not. Synthesis said the transfer was
+    // applicable and it was right — applicability is about what a Target may hold, and the
+    // account's own bounds are a different judgement with a different owner.
+    assert_eq!(
+        rebuilt[6].conflicts,
+        vec![ape_cli::reading::ConflictRecord::OutOfBounds {
+            instance: subject.instance.to_string(),
+            level: -50.0,
+        }],
+        "60 − 30 − 25 − 40 − 15 is outside 0..100"
+    );
+    for position in [3, 5] {
+        assert!(
+            rebuilt[position].conflicts.is_empty(),
+            "and neither line was refused on its own"
+        );
+    }
+
+    // What the record no longer says, counted rather than argued.
+    //
+    // The decision names what it introduced and not that another line of thinking is why. So:
+    // given only the repository, how many transfers would produce exactly this world? If one,
+    // the provenance is recoverable by search and recording the Base buys nothing. If more, the
+    // applied world does not identify the transfer that produced it, and no amount of looking
+    // will make it.
+    let (canon, lineage) = reading::corroborated(&repository).expect("the repository rebuilds");
+    let worlds: Vec<_> = lineage.decided().iter().map(|world| world.id()).collect();
+    let base = worlds[0];
+
+    let produced: BTreeSet<String> = reconciling
+        .selection()
+        .open()
+        .map(|id| id.to_string())
+        .collect();
+
+    let explanations: Vec<(usize, usize)> = worlds
+        .iter()
+        .enumerate()
+        .flat_map(|(from, source)| {
+            worlds
+                .iter()
+                .enumerate()
+                .map(move |(into, target)| (from, into, *source, *target))
+        })
+        .filter_map(|(from, into, source, target)| {
+            let report = synthesize(lineage.archive(), canon.history(), base, source, target)
+                .expect("the ancestor is a coherent Base for every pair");
+
+            match Applicability::of(&report).status {
+                StatusRecord::Applicable { candidate, .. } if candidate.open == produced => {
+                    Some((from, into))
+                }
+                _ => None,
+            }
+        })
+        .collect();
+
+    // Three, and the count was written down as two before the run. The one missed is the applied
+    // world transferred into what the equipment line had advanced to — which reaches the same
+    // selection by a different Target, and is the reason a guess is not a measurement here.
+    assert_eq!(
+        explanations,
+        [(3, 5), (6, 4), (6, 5)],
+        "three transfers produce this world, and the record says which was taken by not saying"
+    );
+}
+
+/// One case of the audit below: what it is called, what it moves, and what must be said about it.
+type Tamper<T> = (&'static str, Box<dyn Fn(&mut T)>, &'static str);
+
+/// Every derived value this repository holds, tampered one at a time.
+///
+/// The sixth success criterion says each of them is compared on every read, and every one that is
+/// not is removed. Half of that was verified by reasoning in Phases 4 and 5 — the report is not
+/// written, the world records and the witnesses are — and reasoning is what this laboratory
+/// spends its time refusing to accept from itself.
+///
+/// So the list is closed and walked. Each case moves one value in a repository that is otherwise
+/// intact, and the read must refuse **and name what disagreed**: a refusal that says the
+/// repository is invalid sends a reader back to the bytes.
+///
+/// The check happens inside `reading::corroborated`, which is reconstruction itself and not a
+/// harness. A comparison a test performs is a comparison production does not.
+#[test]
+fn every_persisted_derivation_is_weighed() {
+    let arrangement = convergence::reconciled().expect("the arrangement holds");
+
+    let intact = Repository::open(scratch("weighed-intact"));
+    persist_reconciled(&intact, &arrangement);
+
+    assert!(
+        reading::corroborated(&intact).is_ok(),
+        "the baseline reads, or every refusal below is about something else"
+    );
+
+    let worlds = intact.read_worlds().expect("the worlds read back");
+    let decisions = intact.read_lineage().expect("the lineage reads back");
+
+    // The world record, coordinate by coordinate. `disagreement` weighs them in a fixed order and
+    // an earlier match hides a later one, so every coordinate is moved on its own to prove none
+    // of them is unreachable — identity in particular, which is weighed last.
+    let world_cases: Vec<Tamper<Vec<WorldRecord>>> = vec![
+        (
+            "the instant a world recognizes",
+            Box::new(|worlds: &mut Vec<WorldRecord>| worlds[6].known_at = "2026-01-17".into()),
+            "world 6 disagrees with what was recorded, in the instant it recognizes",
+        ),
+        (
+            "the chain a world recognizes",
+            Box::new(|worlds: &mut Vec<WorldRecord>| worlds[6].event_head = Some("00".repeat(32))),
+            "world 6 disagrees with what was recorded, in the chain it recognizes",
+        ),
+        (
+            "what history made unavoidable",
+            Box::new(|worlds: &mut Vec<WorldRecord>| {
+                let moved = worlds[6].open.iter().next().cloned().expect("an open one");
+                worlds[6].frozen.insert(moved);
+            }),
+            "world 6 disagrees with what was recorded, in what history made unavoidable",
+        ),
+        (
+            "what a world still proposes",
+            Box::new(|worlds: &mut Vec<WorldRecord>| {
+                let dropped = worlds[6].open.iter().next().cloned().expect("an open one");
+                worlds[6].open.remove(&dropped);
+            }),
+            "world 6 disagrees with what was recorded, in what it still proposes",
+        ),
+        (
+            "ancestry",
+            Box::new(|worlds: &mut Vec<WorldRecord>| {
+                worlds[6].thesis_parent = Some(worlds[3].thesis.clone())
+            }),
+            "world 6 disagrees with what was recorded, in ancestry",
+        ),
+        (
+            "identity alone",
+            Box::new(|worlds: &mut Vec<WorldRecord>| worlds[6].thesis = "00".repeat(32)),
+            "world 6 disagrees with what was recorded, in identity alone",
+        ),
+        (
+            "how many worlds there are",
+            Box::new(|worlds: &mut Vec<WorldRecord>| {
+                worlds.pop();
+            }),
+            "the decisions produce 7 worlds, and 6 were recorded",
+        ),
+    ];
+
+    for (label, tamper, complaint) in world_cases {
+        let moved = Repository::open(scratch(&format!("weighed-{}", label.replace(' ', "-"))));
+        persist_reconciled(&moved, &arrangement);
+
+        let mut tampered = worlds.clone();
+        tamper(&mut tampered);
+        moved.write_worlds(&tampered).expect("writable");
+
+        let refusal = reading::corroborated(&moved)
+            .err()
+            .unwrap_or_else(|| panic!("{label} moved and nothing noticed"));
+
+        assert_eq!(refusal.to_string(), complaint, "{label}");
+    }
+
+    // The decision record's two derived halves. Neither is a world, and neither is caught by the
+    // world records: a witness disagrees before any world is built, and a reference that resolves
+    // to nothing never builds one.
+    let decision_cases: Vec<Tamper<Vec<Taken>>> = vec![
+        (
+            "an entry dropped from a witness",
+            Box::new(|decisions: &mut Vec<Taken>| {
+                let dropped = decisions[3]
+                    .witness
+                    .iter()
+                    .next()
+                    .cloned()
+                    .expect("a witnessed entry");
+                decisions[3].witness.remove(&dropped);
+            }),
+            "was admitted, and the decision was not taken against it",
+        ),
+        (
+            "an entry invented in a witness",
+            Box::new(|decisions: &mut Vec<Taken>| {
+                decisions[3]
+                    .witness
+                    .insert(EntryId::of(ThesisId::from([0; 32])));
+            }),
+            "which the journal does not offer",
+        ),
+        (
+            "a reference to a world nothing produces",
+            Box::new(
+                |decisions: &mut Vec<Taken>| match &mut decisions[6].decision {
+                    lineage::Decision::Fork { extends, .. } => *extends = ThesisId::from([0; 32]),
+                    other => panic!("the last decision is a fork, found {other:?}"),
+                },
+            ),
+            "which the lineage does not hold",
+        ),
+        (
+            "a coordinate moved along the journal",
+            Box::new(|decisions: &mut Vec<Taken>| decisions[0].after = decisions[6].after.clone()),
+            "was admitted, and the decision was not taken against it",
+        ),
+        // The case the corroboration experiment declared its subject could not build.
+        //
+        // The inventory line's second decision is moved forward past the contingency's admission.
+        // It selects what it names and inherits a cut at the tenth, and the contingency is
+        // neither selected by it nor an Event — so the world it produces is *identical*, and
+        // every world record still agrees. Only the witness sees the decision has been relocated.
+        (
+            "a decision relocated where no world changes",
+            Box::new(|decisions: &mut Vec<Taken>| decisions[3].after = decisions[4].after.clone()),
+            "was admitted, and the decision was not taken against it",
+        ),
+    ];
+
+    for (label, tamper, fragment) in decision_cases {
+        let moved = Repository::open(scratch(&format!("weighed-{}", label.replace(' ', "-"))));
+        persist_reconciled(&moved, &arrangement);
+
+        let mut tampered = decisions.clone();
+        tamper(&mut tampered);
+        moved.write_lineage(&tampered).expect("writable");
+
+        let refusal = reading::corroborated(&moved)
+            .err()
+            .unwrap_or_else(|| panic!("{label} and nothing noticed"));
+
+        assert!(
+            refusal.to_string().contains(fragment),
+            "{label}: the refusal does not name what disagreed: {refusal}"
+        );
+    }
+}
+
+/// Leave the whole arrangement on disk, transfer included.
+fn persist_reconciled(repository: &Repository, arrangement: &convergence::Reconciled) {
+    repository
+        .write_journal(&arrangement.journal)
+        .expect("writable");
+    repository
+        .write_lineage(&arrangement.decisions)
+        .expect("writable");
+    repository
+        .write_worlds(
+            &arrangement
+                .lineage
+                .decided()
+                .iter()
+                .map(WorldRecord::of)
+                .collect::<Vec<_>>(),
+        )
+        .expect("writable");
 }
 
 /// Two forks of one world, and two forks in a row, are different arrangements — and the
