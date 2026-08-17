@@ -797,3 +797,235 @@ fn reaching_each_other_does_not_join_two_lines() {
         "two tips, and no relation between them"
     );
 }
+
+/// The keys of one record, as it is written down.
+fn keys<T: serde::Serialize>(record: &T) -> BTreeSet<String> {
+    serde_json::from_value::<serde_json::Map<String, serde_json::Value>>(
+        serde_json::to_value(record).expect("a record serializes"),
+    )
+    .expect("an object")
+    .keys()
+    .cloned()
+    .collect()
+}
+
+/// Every identity a decision itself mentions, which is not every identity it carries.
+///
+/// `after` and `witness` are addresses of knowledge, and knowledge is admitted by nobody in
+/// particular. What this collects is the identities the *intention* names.
+fn mentioned(decision: &Decision) -> BTreeSet<String> {
+    match decision {
+        Decision::Genesis { selection, .. } => selection.iter().map(|id| id.to_string()).collect(),
+        Decision::Advance { extends, .. } => BTreeSet::from([extends.to_string()]),
+        Decision::Fork {
+            extends,
+            omitted,
+            introduced,
+        } => std::iter::once(extends.to_string())
+            .chain(omitted.iter().chain(introduced).map(|id| id.to_string()))
+            .collect(),
+    }
+}
+
+/// Phase 4 — Establish that it is not derivable.
+///
+/// Provenance's unanswerable question was about a world, and worlds are derived, so a search could
+/// at least be attempted — it found too many answers rather than none. This one is about a party,
+/// and the phase's job is to establish by asking that there is not even a candidate.
+#[test]
+fn phase_4_ask_who_decided() {
+    let (repository, arrangement, _, _) = converged("phase-4");
+
+    let decisions = repository.read_lineage().expect("readable");
+    let worlds = repository.read_worlds().expect("readable");
+
+    assert_eq!(decisions.len(), 3);
+
+    // Every field of every decision, as a closed set per variant. Nothing here is a party, and an
+    // added field would be named rather than tolerated.
+    assert_eq!(
+        keys(&decisions[0]),
+        BTreeSet::from(["decides", "known_at", "selection", "after", "witness"].map(str::to_owned)),
+        "the genesis"
+    );
+    for taken in &decisions[1..] {
+        assert_eq!(
+            keys(taken),
+            BTreeSet::from(
+                [
+                    "decides",
+                    "extends",
+                    "omitted",
+                    "introduced",
+                    "after",
+                    "witness"
+                ]
+                .map(str::to_owned)
+            ),
+            "each fork"
+        );
+    }
+    assert_eq!(
+        keys(&worlds[0]),
+        BTreeSet::from(
+            [
+                "thesis",
+                "thesis_parent",
+                "known_at",
+                "event_head",
+                "frozen",
+                "open"
+            ]
+            .map(str::to_owned)
+        ),
+        "and every world"
+    );
+
+    // The population exists. This is what makes the question worth asking rather than empty: the
+    // repository knows agents, by name, and knows what each of them is a party to.
+    let agents: BTreeSet<String> = arrangement
+        .subject
+        .admitted
+        .agents
+        .iter()
+        .map(|id| id.to_string())
+        .collect();
+
+    assert_eq!(agents.len(), 2, "a payer and a payee");
+
+    let parties: BTreeSet<String> = repository
+        .read_journal()
+        .expect("readable")
+        .iter()
+        .filter_map(|entry| match entry {
+            ape_cli::journal::Admission::Commitment {
+                accountable,
+                executors,
+                beneficiaries,
+                ..
+            } => Some(
+                std::iter::once(accountable.to_string())
+                    .chain(
+                        executors
+                            .iter()
+                            .chain(beneficiaries)
+                            .map(|id| id.to_string()),
+                    )
+                    .collect::<Vec<_>>(),
+            ),
+            _ => None,
+        })
+        .flatten()
+        .collect();
+
+    assert_eq!(
+        parties, agents,
+        "and both of them are parties to commitments"
+    );
+
+    // And no decision names one. Derived from the journal rather than from a list written here, so
+    // that an agent added to the subject is searched for too.
+    for taken in &decisions {
+        assert!(
+            mentioned(&taken.decision).is_disjoint(&agents),
+            "a decision names an agent: {:?}",
+            mentioned(&taken.decision).intersection(&agents).next()
+        );
+    }
+
+    // The nuance that keeps this honest: the agents *are* in the lineage file, inside the witness.
+    // Which says they were known when the decision was taken, and never that they took it.
+    assert!(
+        agents.iter().all(|agent| decisions[0]
+            .witness
+            .iter()
+            .any(|entry| entry.to_string() == *agent)),
+        "the record says an agent was known, and that is a different statement"
+    );
+}
+
+/// Two parties and one party are one repository.
+///
+/// The measurement that makes non-derivability a demonstration rather than an inventory. Provenance
+/// established the same shape for a transfer carried versus a decision taken alone; here it is the
+/// number of minds, which is a larger thing to be unable to see.
+#[test]
+fn two_parties_and_one_party_are_one_repository() {
+    let (apart, arrangement, _, _) = converged("two-parties");
+
+    let together = {
+        let (repository, arrangement) = founded("one-party");
+        let subject = &arrangement.subject;
+        let shared = arrangement.shared().id();
+
+        let mut alone = coordination::read(&repository).expect("reconstructs");
+
+        coordination::decide(&mut alone, coordination::also(shared, subject.hiring))
+            .expect("one mind, deciding both");
+        coordination::decide(&mut alone, coordination::also(shared, subject.equipment))
+            .expect("one after the other");
+
+        converge::converge(&repository, &alone).expect("converges once");
+
+        repository
+    };
+
+    assert_eq!(
+        differing(&bytes(&apart), &bytes(&together)),
+        None,
+        "two parties interleaving and one party thinking twice produce the same repository"
+    );
+
+    // So there is no function from a repository to how many minds wrote it, and therefore none to
+    // which of them wrote what. Not an ambiguous answer — no candidate at all.
+    let _ = arrangement;
+}
+
+/// Part A's repair removed the last accidental trace of who wrote what.
+///
+/// Before it, the surviving decision was the last writer's, which Phase 1 measured. Position in the
+/// file weakly encoded arrival, and arrival weakly encoded party. The canonical order is derived
+/// from content, so it encodes neither.
+#[test]
+fn the_repair_erased_the_only_accidental_signal() {
+    let (repository, arrangement, staffing, _) = converged("erased");
+
+    let worlds = repository.read_worlds().expect("readable");
+    let at = worlds
+        .iter()
+        .position(|world| world.thesis == staffing.to_string())
+        .expect("the first party's world is recorded");
+
+    // Phase 2 already measured that either order produces one repository. So whichever position the
+    // first party's world holds, it holds it because of what the decision says — not because that
+    // party went first, which the other order would have contradicted.
+    let reversed = {
+        let (repository, arrangement) = founded("erased-reversed");
+        let subject = &arrangement.subject;
+        let shared = arrangement.shared().id();
+
+        let mut one = coordination::read(&repository).expect("reconstructs");
+        let mut other = coordination::read(&repository).expect("reconstructs");
+
+        coordination::decide(&mut one, coordination::also(shared, subject.hiring)).expect("plans");
+        coordination::decide(&mut other, coordination::also(shared, subject.equipment))
+            .expect("plans");
+
+        converge::converge(&repository, &other).expect("the other party first, this time");
+        converge::converge(&repository, &one).expect("converges");
+
+        repository
+            .read_worlds()
+            .expect("readable")
+            .iter()
+            .position(|world| world.thesis == staffing.to_string())
+            .expect("the same world, recorded")
+    };
+
+    assert_eq!(
+        at, reversed,
+        "the same position whichever party wrote first, so position says nothing about who"
+    );
+
+    let _ = arrangement;
+}
