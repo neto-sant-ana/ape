@@ -7,12 +7,16 @@
 
 use std::collections::BTreeSet;
 
+use ape::engine::synthesis::synthesize;
 use ape::engine::thesis::{ForkInput, ThesisError, descends_from};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::lineage::{self, Lineage};
 use ape_cli::reading::{self, OutcomeRecord, TimelinessRecord, WorldRecord};
 use ape_cli::subject::convergence::{self, Branched, Diverged};
+use ape_cli::transfer::{
+    Applicability, CandidateRecord, ConflictRecord, StatusRecord, TransferRecord,
+};
 
 /// The instant every world is interpreted at.
 ///
@@ -357,6 +361,220 @@ fn phase_2_diverge() {
         "and the two lines no longer recognize the same knowledge"
     );
     assert_eq!(readings[3].known_at, "2026-01-10");
+}
+
+/// The reference Phase 3 records: one report in each direction, from a living process.
+struct Reference {
+    /// The equipment line's intention, asked about in the inventory line.
+    into_inventory: Applicability,
+    /// And the reverse, which is a different question rather than the same one backwards.
+    into_equipment: Applicability,
+}
+
+/// Ask the engine both questions, against the archive the decisions filled.
+///
+/// The Base is the ancestor because it is the only world both lines descend from, which Phase 2
+/// counted. Where a subject offered more than one, this choice would be part of the question
+/// and would need saying — Synthesis verifies a Base and never searches for one.
+fn synthesized(arrangement: &Diverged) -> Reference {
+    let archive = arrangement.lineage.archive();
+    let knowledge = arrangement.canon.history();
+    let base = arrangement.ancestor().id();
+
+    let (equipment_line, inventory_line) = (
+        arrangement.provisioning().id(),
+        arrangement.maintaining().id(),
+    );
+
+    let ask = |source, target| {
+        Applicability::of(
+            &synthesize(archive, knowledge, base, source, target).expect("the Base is coherent"),
+        )
+    };
+
+    Reference {
+        into_inventory: ask(equipment_line, inventory_line),
+        into_equipment: ask(inventory_line, equipment_line),
+    }
+}
+
+/// Phase 3 — Synthesize.
+///
+/// What one line of thinking's intention would be in the other, asked in both directions and
+/// recorded whole. This is the reference; everything after it is a claim about reproducing it.
+///
+/// The two answers differ, and not by symmetry. Each line decided over the knowledge it had, and
+/// only one of them had advanced — so an intention built on what arrived later has nowhere to go
+/// in a world that has not recognized it, while the intention built on knowledge both lines
+/// always had moves without objection.
+#[test]
+fn phase_3_synthesize() {
+    let arrangement = diverged();
+    let subject = &arrangement.subject;
+    let reference = synthesized(&arrangement);
+
+    let (funding, equipment, inventory, maintenance, contingency) = (
+        subject.funding.to_string(),
+        subject.equipment.to_string(),
+        subject.inventory.to_string(),
+        subject.maintenance.to_string(),
+        arrangement.contingency.to_string(),
+    );
+
+    // Both reports are measured over the same three worlds, named the same way. A report that
+    // agreed about everything else and disagreed here would be an answer to another question.
+    for (label, report) in [
+        ("into the inventory line", &reference.into_inventory),
+        ("into the equipment line", &reference.into_equipment),
+    ] {
+        assert_eq!(
+            report.base,
+            arrangement.ancestor().id().to_string(),
+            "{label} is measured against the world both lines came from"
+        );
+        assert!(
+            report.omitted.is_empty(),
+            "{label}: neither line withdrew anything the ancestor proposed"
+        );
+    }
+
+    assert_eq!(
+        reference.into_inventory.source,
+        arrangement.provisioning().id().to_string()
+    );
+    assert_eq!(
+        reference.into_inventory.target,
+        arrangement.maintaining().id().to_string()
+    );
+
+    // How the three cuts stand, which is what decides which direction can refuse.
+    //
+    // A fork copies its parent's cut and an advance may not regress the instant, so a Base is
+    // never later than something that descends from it. That is not checked anywhere and does
+    // not need to be: it follows from the two derivations, and coherence of the Base already
+    // implies it.
+    //
+    // What is unordered is Source against Target — two branches, and nothing relates them. Here
+    // one is strictly later, and that ordering is the whole of why one direction conflicts.
+    let (base_at, equipment_at, inventory_at) = (
+        arrangement.ancestor().cut().known_at(),
+        arrangement.provisioning().cut().known_at(),
+        arrangement.maintaining().cut().known_at(),
+    );
+
+    assert!(
+        base_at <= equipment_at && base_at <= inventory_at,
+        "descending from the Base cannot move a cut backwards"
+    );
+    assert!(
+        inventory_at < equipment_at,
+        "and only here do the two lines stand in an order at all"
+    );
+
+    // Asking the equipment line's intention in the inventory line. What it decided is the
+    // equipment and the contingency; the contingency was recorded on the twelfth, and the
+    // inventory line recognizes the tenth.
+    assert_eq!(
+        reference.into_inventory.introduced,
+        BTreeSet::from([equipment.clone(), contingency.clone()]),
+        "the equipment line decided two things the ancestor had not"
+    );
+    assert_eq!(
+        reference.into_inventory.status,
+        StatusRecord::Conflicted {
+            attempted: TransferRecord {
+                remove: BTreeSet::new(),
+                introduce: BTreeSet::from([equipment.clone(), contingency.clone()]),
+            },
+            conflicts: vec![ConflictRecord::HistoricalUnavailability {
+                commitment: contingency.clone(),
+                recorded_at: "2026-01-12".into(),
+                known_at: "2026-01-10".into(),
+            }],
+        },
+        "an intention built on knowledge the other line has not recognized cannot move to it"
+    );
+
+    // The reverse, which is a different question and not the same one backwards. A difference is
+    // measured between the Base and the Source and never consults the Target at all, so swapping
+    // the two roles changes what is being measured before anything judges whether it lands.
+    assert_eq!(
+        reference.into_equipment.introduced,
+        BTreeSet::from([inventory.clone(), maintenance.clone()])
+    );
+    assert!(
+        reference
+            .into_inventory
+            .introduced
+            .is_disjoint(&reference.into_equipment.introduced),
+        "the two directions have no commitment in common, so neither is the other's inverse"
+    );
+    assert_eq!(
+        reference.into_equipment.status,
+        StatusRecord::Applicable {
+            transfer: TransferRecord {
+                remove: BTreeSet::new(),
+                introduce: BTreeSet::from([inventory.clone(), maintenance.clone()]),
+            },
+            candidate: CandidateRecord {
+                frozen: BTreeSet::new(),
+                open: BTreeSet::from([
+                    funding.clone(),
+                    equipment.clone(),
+                    contingency.clone(),
+                    inventory.clone(),
+                    maintenance.clone(),
+                ]),
+            },
+        },
+        "and moves without objection"
+    );
+
+    // A transfer is applicable and the world it proposes is not feasible, which are different
+    // questions with different owners. Synthesis judges what a Target may hold; the account's
+    // own bounds judge what it can carry, and 60 − 30 − 25 − 40 − 15 is outside them.
+    //
+    // Nothing here refuses that world. It is not a world yet, and whether it becomes one is a
+    // decision Phase 7 takes with this report in hand rather than instead of it.
+    assert!(
+        reference.into_equipment.status != StatusRecord::AlreadyApplied,
+        "the Target does not already contain the difference"
+    );
+
+    // The cause of the refusal, isolated rather than inferred. Asked about the same line of
+    // thinking, in the same target, one step earlier — before it advanced — the same transfer
+    // is applicable. So what the inventory line cannot take is not the equipment line's
+    // intention; it is the half of that intention built over knowledge it has not recognized.
+    let earlier = Applicability::of(
+        &synthesize(
+            arrangement.lineage.archive(),
+            arrangement.canon.history(),
+            arrangement.ancestor().id(),
+            arrangement.equipping().id(),
+            arrangement.maintaining().id(),
+        )
+        .expect("the Base is coherent"),
+    );
+
+    assert_eq!(
+        earlier.introduced,
+        BTreeSet::from([equipment.clone()]),
+        "one step earlier the equipment line had decided one thing"
+    );
+    assert_eq!(
+        earlier.status,
+        StatusRecord::Applicable {
+            transfer: TransferRecord {
+                remove: BTreeSet::new(),
+                introduce: BTreeSet::from([equipment.clone()]),
+            },
+            candidate: CandidateRecord {
+                frozen: BTreeSet::new(),
+                open: BTreeSet::from([funding, equipment, inventory, maintenance]),
+            },
+        },
+        "and that much of it moves, which leaves the contingency as the whole of the refusal"
+    );
 }
 
 /// Two forks of one world, and two forks in a row, are different arrangements — and the
