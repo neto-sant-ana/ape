@@ -52,7 +52,12 @@ use crate::history::ResidentHistory;
 use crate::journal::{self, Admission, EntryId, Replayed};
 
 /// One decision about which world is being reasoned about.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// Ordered by its own content, and every field it holds is an identity or an instant. That is
+/// what lets two parties' decisions be put in one sequence without either party's order
+/// deciding it — a comparison over the encoding would have made the encoding load-bearing,
+/// which is the objection [`crate::reading::WorldRecord`] already answers for a witness.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(tag = "decides", rename_all = "kebab-case")]
 pub enum Decision {
     /// The first world: what it selects, and the instant it is taken at.
@@ -80,6 +85,16 @@ pub enum Decision {
     },
 }
 
+impl Decision {
+    /// The world this decision needs to already exist, or nothing for a genesis.
+    pub fn extends(&self) -> Option<ThesisId> {
+        match self {
+            Self::Genesis { .. } => None,
+            Self::Advance { extends, .. } | Self::Fork { extends, .. } => Some(*extends),
+        }
+    }
+}
+
 /// A decision, and the point in the sequence of admissions at which it was taken.
 ///
 /// `after` addresses the journal entry that was the most recent one at that point. It is a
@@ -95,7 +110,7 @@ pub enum Decision {
 /// The two halves are flattened into one object on purpose. A decision and where it was taken
 /// are one record — a decision filed under a coordinate it did not have would be a lineage
 /// that reads back as a different lineage.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Taken {
     #[serde(flatten)]
     pub decision: Decision,

@@ -129,6 +129,42 @@ pub enum TransferError {
     Synthesis(#[from] ape::engine::synthesis::SynthesisError),
 }
 
+/// What a party could not put back.
+///
+/// Every one of these leaves the repository as it was. A refusal that had written half of a merge
+/// would be the tear Phase 1 measured, produced by the code meant to prevent it.
+#[derive(Debug, thiserror::Error)]
+pub enum ConvergeError {
+    #[error(transparent)]
+    Reading(#[from] ReadingError),
+
+    #[error(transparent)]
+    Lineage(#[from] LineageError),
+
+    #[error(transparent)]
+    Repository(#[from] RepositoryError),
+
+    /// The journal a party read is not the one it is writing on top of.
+    ///
+    /// Shaped after the Canon's `UnexpectedHead` and refused for the same reason one layer up:
+    /// knowledge is a sequence, every standing decision names the entries that stood when it was
+    /// taken, and a journal whose earlier entries moved makes those decisions disagree with it.
+    /// The party re-reads and admits again.
+    #[error(
+        "the journal diverges at entry {position}: this party holds {expected}, and {found} is there"
+    )]
+    Diverged {
+        position: usize,
+        expected: crate::journal::EntryId,
+        found: crate::journal::EntryId,
+    },
+
+    /// Decisions that cannot be put in an order, because none of what is left extends a world
+    /// anything produced. A lineage whose worlds do not reach a genesis is not a lineage.
+    #[error("{remaining} decisions extend worlds nothing in the merge produces")]
+    NothingApplies { remaining: usize },
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum LineageError {
     #[error(transparent)]
