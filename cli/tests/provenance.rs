@@ -7,13 +7,15 @@
 
 use std::collections::BTreeSet;
 
-use ape::engine::synthesis::synthesize;
+use ape::engine::synthesis::{ApplicabilityStatus, synthesize};
 use ape::engine::thesis::{ThesisId, descends_from};
 use ape::kernel::value_objects::Date;
 
-use ape_cli::reading::{self, ConflictRecord};
+use ape_cli::lineage::{self, Decision, Lineage};
+use ape_cli::reading::{self, ConflictRecord, WorldRecord};
+use ape_cli::repository::Repository;
 use ape_cli::subject::provenance::{self, Adopted};
-use ape_cli::transfer::{Applicability, StatusRecord};
+use ape_cli::transfer::{self, Applicability, StatusRecord};
 
 /// The instant every world is interpreted at, past every deadline the subject carries.
 const EFFECTIVE: &str = "2026-01-28";
@@ -232,6 +234,215 @@ fn phase_1_ambiguity() {
     // answers it: what travelled is a commitment identity, and an identity carries no origin.
     assert_eq!(non_degenerate[0].1, 1, "the narrow plan explains it");
     assert_eq!(non_degenerate[1].1, 2, "and so does the refused one");
+}
+
+/// A repository path no other process shares.
+fn scratch(name: &str) -> std::path::PathBuf {
+    let path = std::env::temp_dir()
+        .join(format!("ape-provenance-{}", std::process::id()))
+        .join(name);
+    let _ = std::fs::remove_dir_all(&path);
+    path
+}
+
+fn persist(repository: &Repository, arrangement: &Adopted) {
+    repository
+        .write_journal(&arrangement.journal)
+        .expect("writable");
+    repository
+        .write_lineage(&arrangement.decisions)
+        .expect("writable");
+    repository
+        .write_worlds(
+            &arrangement
+                .lineage
+                .decided()
+                .iter()
+                .map(WorldRecord::of)
+                .collect::<Vec<_>>(),
+        )
+        .expect("writable");
+}
+
+/// Phase 2 — Exhaust what the record already answers.
+///
+/// Every question a reader might ask about the adopted world, asked *of the repository* rather
+/// than settled by argument. Four of the five have answers. The fifth is the experiment's, and
+/// this phase establishes two things about it that no amount of recording could change.
+#[test]
+fn phase_2_exhaust() {
+    let arrangement = adopted();
+    let subject = &arrangement.subject;
+
+    let repository = Repository::open(scratch("phase-2"));
+    persist(&repository, &arrangement);
+
+    let readings = reading::reconstruct(
+        &repository,
+        subject.instance,
+        &Date::parse(EFFECTIVE).expect("a real date"),
+    )
+    .expect("the repository reconstructs");
+
+    let adopting = &readings[4];
+    let recorded = repository.read_lineage().expect("the lineage reads back");
+
+    // What does this world select — derived, and the repository produces it.
+    assert_eq!(
+        adopting.open,
+        BTreeSet::from([
+            subject.funding.to_string(),
+            subject.tooling.to_string(),
+            subject.expansion.to_string(),
+            subject.grant.to_string(),
+        ])
+    );
+
+    // What did the decision ask for, which world did it extend, and when was it taken — recorded,
+    // and each is read back rather than inferred.
+    let taken = &recorded[4];
+
+    let Decision::Fork {
+        extends,
+        omitted,
+        introduced,
+    } = &taken.decision
+    else {
+        panic!("the fifth decision is a fork, found {:?}", taken.decision);
+    };
+
+    assert!(omitted.is_empty(), "it withdrew nothing");
+    assert_eq!(
+        introduced,
+        &BTreeSet::from([subject.tooling]),
+        "and asked for the tooling"
+    );
+    assert_eq!(
+        *extends,
+        arrangement.receiving().id(),
+        "over the receiving line"
+    );
+    assert_eq!(
+        taken.after, arrangement.decisions[0].after,
+        "at the point in the journal every decision here was taken at"
+    );
+
+    // Which line the intention came from — and the first reason no record of the world could say.
+    //
+    // A planner who never consulted anybody and decided the same fork produces a decision that is
+    // *the same record*, field for field. A transfer applied is not a kind of decision; it is a
+    // decision that happens to have been chosen with a report in hand.
+    let independently = transfer::applied(
+        arrangement.receiving().id(),
+        match arrangement.carried.status() {
+            ApplicabilityStatus::Applicable { transfer, .. } => transfer,
+            other => panic!("the carried transfer is applicable, found {other:?}"),
+        },
+    );
+
+    let deliberate = Decision::Fork {
+        extends: arrangement.receiving().id(),
+        omitted: BTreeSet::new(),
+        introduced: BTreeSet::from([subject.tooling]),
+    };
+
+    assert_eq!(
+        serde_json::to_string(&independently).expect("a decision serializes"),
+        serde_json::to_string(&deliberate).expect("a decision serializes"),
+        "a transfer carried and an independent decision are one record"
+    );
+
+    // And the second reason, which is about worlds rather than records: deciding it independently
+    // produces the **same world**. Identity is derived from content, so two routes to one content
+    // are not two worlds — there is no place on a world for where it came from to live.
+    let mut alone = Lineage::new();
+    for decision in [
+        provenance::genesis(subject.funding),
+        provenance::narrow(arrangement.ancestor().id(), subject.tooling),
+        provenance::broad(
+            arrangement.ancestor().id(),
+            subject.tooling,
+            subject.expansion,
+        ),
+        provenance::receiving(
+            arrangement.ancestor().id(),
+            subject.expansion,
+            subject.grant,
+        ),
+        deliberate.clone(),
+    ] {
+        lineage::decide(arrangement.canon.history(), &mut alone, &decision)
+            .expect("each decision applies");
+    }
+
+    assert_eq!(
+        alone.decided()[4].id(),
+        arrangement.adopting().id(),
+        "the world a transfer produced and the world a planner produced are one world"
+    );
+
+    // So the standing asymmetry Phase 1 raised does not reach it either, and this is why rather
+    // than an argument that it does not. The three commitments that make the broad plan
+    // infeasible are *inside* the adopted world, and the adopted world is feasible.
+    let refused: BTreeSet<_> = arrangement.broad().selection().resolved().collect();
+    let accepted: BTreeSet<_> = arrangement.adopting().selection().resolved().collect();
+
+    assert!(
+        refused.is_subset(&accepted),
+        "everything the refused plan selects, the adopted world selects too"
+    );
+    assert!(
+        !readings[2].conflicts.is_empty(),
+        "and that plan is refused"
+    );
+    assert!(
+        adopting.conflicts.is_empty(),
+        "while the world containing all of it is not"
+    );
+
+    // Which says what infeasibility is: a property of a selection, not of a member of one. So
+    // nothing about the refused plan can travel with a commitment out of it, because the
+    // commitment never carried it.
+
+    // The relation runs one way only, and that is where anything provenance could be has to live.
+    // A *different* record can produce the identical world: asking again for the expansion the
+    // receiving line already holds is a request that changes nothing, so the fork lands on the
+    // same selection under a different intention.
+    let verbose = Decision::Fork {
+        extends: arrangement.receiving().id(),
+        omitted: BTreeSet::new(),
+        introduced: BTreeSet::from([subject.tooling, subject.expansion]),
+    };
+
+    assert_ne!(
+        serde_json::to_string(&verbose).expect("a decision serializes"),
+        serde_json::to_string(&deliberate).expect("a decision serializes"),
+        "two records"
+    );
+
+    let mut redundantly = Lineage::new();
+    for decision in [
+        provenance::genesis(subject.funding),
+        provenance::receiving(
+            arrangement.ancestor().id(),
+            subject.expansion,
+            subject.grant,
+        ),
+    ] {
+        lineage::decide(arrangement.canon.history(), &mut redundantly, &decision)
+            .expect("each decision applies");
+    }
+    lineage::decide(arrangement.canon.history(), &mut redundantly, &verbose)
+        .expect("a redundant introduction is tolerated");
+
+    assert_eq!(
+        redundantly.decided()[2].id(),
+        arrangement.adopting().id(),
+        "and one world"
+    );
+
+    // So a record can say more than a world can hold. Whatever provenance is, it is an annotation
+    // on a decision — there is no room for it on the thing the decision produced.
 }
 
 /// Pinning the Target is not bookkeeping, and this is what it changes.
