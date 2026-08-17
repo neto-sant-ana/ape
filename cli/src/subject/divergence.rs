@@ -21,7 +21,7 @@
 //! Every quantity is an integer, for the reason [`super::reconstruction`] gives.
 
 use ape::canon::Canon;
-use ape::engine::thesis::Thesis;
+use ape::engine::thesis::ThesisId;
 use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId, StatementId};
 
 use crate::error::{JournalError, SubjectError};
@@ -29,7 +29,7 @@ use crate::history::ResidentHistory;
 use crate::journal::{
     self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, Replayed, ResourceKindRecord,
 };
-use crate::lineage::{self, Decision, Taken};
+use crate::lineage::{self, Decision, Lineage, Taken};
 
 pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";
@@ -231,8 +231,15 @@ pub fn cancellation(overspend: CommitmentId) -> Admission {
 }
 
 /// The advancement Phase 2 decides, at an instant later than the genesis.
-pub fn advancement() -> Decision {
-    Decision::Advance { known_at: day(15) }
+///
+/// The world it extends is named rather than implied. In this arrangement that is always the
+/// world decided last, and saying so costs nothing — the arrangement is a line, and a line is
+/// a tree that never branched.
+pub fn advancement(extends: ThesisId) -> Decision {
+    Decision::Advance {
+        extends,
+        known_at: day(15),
+    }
 }
 
 /// `C` — an outflow the account can afford, admitted after the cancellation.
@@ -259,8 +266,9 @@ pub fn alternative(subject: &Constructed) -> Admission {
 /// Nothing is omitted. The overspend the parent selects is frozen by the cancellation, so
 /// omitting it is not available — the alternative is reached by adding an intention rather
 /// than by withdrawing one.
-pub fn fork(alternative: CommitmentId) -> Decision {
+pub fn fork(extends: ThesisId, alternative: CommitmentId) -> Decision {
     Decision::Fork {
+        extends,
         omitted: [].into(),
         introduced: [alternative].into(),
     }
@@ -274,7 +282,7 @@ pub struct Reasoned {
     pub alternative: CommitmentId,
     pub journal: Vec<Admission>,
     pub decisions: Vec<Taken>,
-    pub lineage: Vec<Thesis>,
+    pub lineage: Lineage,
 }
 
 /// The arrangement at its first decision: the subject admitted, and the genesis decided.
@@ -282,7 +290,7 @@ pub struct Begun {
     pub canon: Canon<ResidentHistory>,
     pub subject: Constructed,
     pub decisions: Vec<Taken>,
-    pub lineage: Vec<Thesis>,
+    pub lineage: Lineage,
 }
 
 /// Admit the subject and decide the genesis over it.
@@ -299,7 +307,7 @@ pub fn begun() -> Result<Begun, SubjectError> {
         &subject.admitted,
     )?];
 
-    let mut lineage = Vec::new();
+    let mut lineage = Lineage::new();
     lineage::decide(canon.history(), &mut lineage, &decisions[0].decision)?;
 
     Ok(Begun {
@@ -331,7 +339,7 @@ pub fn reasoned() -> Result<Reasoned, SubjectError> {
     journal.push(cancellation(subject.overspend));
     journal::replay_remaining(&mut canon, &journal, &mut admitted)?;
 
-    decisions.push(Taken::now(advancement(), &admitted)?);
+    decisions.push(Taken::now(advancement(tip(&lineage)?), &admitted)?);
     lineage::decide(canon.history(), &mut lineage, &decisions[1].decision)?;
 
     journal.push(alternative(&subject));
@@ -342,7 +350,7 @@ pub fn reasoned() -> Result<Reasoned, SubjectError> {
         .last()
         .ok_or(SubjectError::NothingAdmitted)?;
 
-    decisions.push(Taken::now(fork(alternative), &admitted)?);
+    decisions.push(Taken::now(fork(tip(&lineage)?, alternative), &admitted)?);
     lineage::decide(canon.history(), &mut lineage, &decisions[2].decision)?;
 
     Ok(Reasoned {
@@ -353,6 +361,15 @@ pub fn reasoned() -> Result<Reasoned, SubjectError> {
         decisions,
         lineage,
     })
+}
+
+/// The world decided last, which in a line is the only one a decision could extend.
+fn tip(lineage: &Lineage) -> Result<ThesisId, SubjectError> {
+    Ok(lineage
+        .decided()
+        .last()
+        .ok_or(SubjectError::NothingDecided)?
+        .id())
 }
 
 fn day(day: u8) -> String {

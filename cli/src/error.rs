@@ -53,6 +53,10 @@ pub enum SubjectError {
     /// A replay that admitted nothing, asked for the entry it ended at.
     #[error("a decision was taken after a replay that admitted nothing")]
     NothingAdmitted,
+
+    /// A decision that extends something, taken over a lineage holding no world.
+    #[error("a decision extends a world, and no world has been decided")]
+    NothingDecided,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -107,15 +111,17 @@ pub enum LineageError {
     #[error("{0:?} is not readable as an instant")]
     UnreadableInstant(String),
 
-    /// An advancement with nothing to advance. The lineage on disk begins in the middle,
-    /// which no sequence of decisions could have produced.
-    #[error("the lineage advances before it begins")]
-    AdvancedWithoutGenesis,
-
-    /// The same, for a fork. Kept distinct because the two say which decision was orphaned,
-    /// and a lineage read long after it was written is read by someone who was not there.
-    #[error("the lineage forks before it begins")]
-    ForkedWithoutParent,
+    /// A decision naming a world the lineage did not produce.
+    ///
+    /// This replaces two errors that said a lineage began in the middle. Once a decision names
+    /// what it extends, beginning in the middle is not a separate case: a first decision that
+    /// is not a genesis names a world nothing has produced yet, and so does a decision whose
+    /// ancestor came back different. The identity is named because a reader has no other way
+    /// to tell those apart.
+    #[error("the decision extends world {thesis}, which the lineage does not hold")]
+    ExtendsUnknownWorld {
+        thesis: ape::engine::thesis::ThesisId,
+    },
 
     /// A decision written down before anything had been admitted, which no application takes:
     /// a world selects commitments, and a commitment is knowledge.

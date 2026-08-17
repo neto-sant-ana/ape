@@ -15,7 +15,7 @@ use ape::kernel::value_objects::Date;
 use ape_cli::history::ResidentHistory;
 use ape_cli::journal;
 use ape_cli::level;
-use ape_cli::lineage::{self, Decision, Taken};
+use ape_cli::lineage::{self, Decision, Lineage, Taken};
 use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::subject::divergence::{self, Begun, Reasoned};
@@ -77,7 +77,7 @@ fn phase_1_construct() {
         lineage,
         ..
     } = constructed();
-    let thesis = lineage.last().expect("the genesis");
+    let thesis = lineage.decided().last().expect("the genesis");
 
     // The cut names an instant the day is not finished with, and resolves an empty chain
     // because nothing has been recorded within it yet. Both halves are recorded: the second
@@ -173,7 +173,7 @@ fn phase_2_observe() {
         decisions,
         lineage,
     } = constructed();
-    let genesis = lineage.last().expect("the genesis").clone();
+    let genesis = lineage.decided().last().expect("the genesis").clone();
 
     journal::replay(&mut canon, &[divergence::cancellation(subject.overspend)])
         .expect("an observation the statement can cancel with");
@@ -221,10 +221,14 @@ fn phase_2_observe() {
     // So applying the same decision again builds a different world. Nothing has been
     // persisted and no process has died: re-deriving a decision against knowledge that moved
     // is sufficient on its own.
-    let mut rederived = Vec::new();
+    let mut rederived = Lineage::new();
     lineage::decide(canon.history(), &mut rederived, &decisions[0].decision)
         .expect("the genesis decision still applies");
-    let rederived = rederived.pop().expect("the world it produced");
+    let rederived = rederived
+        .decided()
+        .last()
+        .expect("the world it produced")
+        .clone();
 
     assert_ne!(
         rederived.id(),
@@ -253,15 +257,19 @@ fn phase_2_observe() {
     // The advancement, decided the way an application decides: against the lineage it holds,
     // at the moment it takes it.
     let mut lineage = lineage;
-    let imposed = lineage::decide(canon.history(), &mut lineage, &divergence::advancement())
-        .expect("a later cut over the same intention");
+    let imposed = lineage::decide(
+        canon.history(),
+        &mut lineage,
+        &divergence::advancement(genesis.id()),
+    )
+    .expect("a later cut over the same intention");
 
     // Recorded rather than established. History settled nothing the genesis had not already
     // selected, so this subject cannot make an imposition happen — hard-wiring the report to
     // empty passes here. What losing it would cost is a question this experiment leaves open.
     assert!(imposed.is_empty(), "nothing was imposed, found {imposed:?}");
 
-    let advanced = lineage.last().expect("the advanced world");
+    let advanced = lineage.decided().last().expect("the advanced world");
 
     assert_eq!(advanced.parent(), &Some(genesis.id()));
     assert_eq!(advanced.cut().known_at(), &day(15));
@@ -333,6 +341,7 @@ fn phase_3_diverge() {
         ..
     } = reasoned();
 
+    let lineage = lineage.decided();
     assert_eq!(lineage.len(), 3, "genesis, advancement, fork");
 
     let (advanced, forked) = (&lineage[1], &lineage[2]);
@@ -481,10 +490,20 @@ fn phase_4_persist() {
         );
     }
 
-    for thesis in &lineage {
-        assert!(
-            !written.contains(&thesis.id().to_string()),
-            "the repository holds a derived world identity"
+    // A world identity does appear now, and only where a decision extends one. The change is
+    // a result of the convergence experiment: a lineage that may branch has to say which world
+    // each decision is about, and the reference is weighed on every read by having to resolve
+    // against a world the earlier decisions produce.
+    //
+    // The world *nothing* extends is still absent, and that is the half this phase was always
+    // asking about — a decision records what it asked for, never what it got.
+    let lineage = lineage.decided();
+
+    for (position, extended) in [(0, true), (1, true), (2, false)] {
+        assert_eq!(
+            written.contains(&lineage[position].id().to_string()),
+            extended,
+            "world {position} is referenced by a later decision: {extended}"
         );
     }
 
@@ -533,6 +552,12 @@ fn phase_4_persist() {
     // either says which came first. It is a reference rather than a derivation — the entry
     // it addresses is re-derived from content on every replay, and an address that named
     // nothing would be refused instead of believed.
+    //
+    // `extends` belongs to the convergence experiment and appears here because a decision has
+    // one shape everywhere. In this arrangement it names the world decided last, which order
+    // already said — so it buys nothing *here*, and this phase's own rule would drop it. What
+    // it buys is a lineage that branches, which this subject cannot arrange; recording that
+    // honestly is what keeps the set closed rather than approximately closed.
     let recorded: Vec<BTreeSet<String>> = serde_json::from_str::<Vec<serde_json::Value>>(
         &std::fs::read_to_string(repository.lineage_path()).expect("the file is there"),
     )
@@ -561,6 +586,7 @@ fn phase_4_persist() {
             BTreeSet::from([
                 "decides".to_owned(),
                 "known_at".into(),
+                "extends".into(),
                 "after".into(),
                 "witness".into(),
             ]),
@@ -568,11 +594,13 @@ fn phase_4_persist() {
                 "decides".to_owned(),
                 "omitted".into(),
                 "introduced".into(),
+                "extends".into(),
                 "after".into(),
                 "witness".into(),
             ]),
         ],
-        "a decision records an instant, an intention, and where in the sequence it was taken"
+        "a decision records an instant, an intention, which world it extends, and where in \
+         the sequence it was taken"
     );
 
     // The other audit, which the rule above cannot perform: the coordinate has to *address*
@@ -689,7 +717,7 @@ fn phase_8_compare() {
 
     let before = reading::all(
         reasoned.canon.history(),
-        &reasoned.lineage,
+        reasoned.lineage.decided(),
         reasoned.subject.instance,
         &effective,
     )
@@ -830,10 +858,12 @@ fn phase_8_compare() {
     let forked = &after[2];
 
     let Taken {
-        decision: Decision::Fork {
-            omitted,
-            introduced,
-        },
+        decision:
+            Decision::Fork {
+                omitted,
+                introduced,
+                ..
+            },
         ..
     } = &repository.read_lineage().expect("the lineage reads back")[2]
     else {
@@ -888,6 +918,7 @@ fn persist(repository: &Repository, reasoned: &Reasoned) {
         .write_worlds(
             &reasoned
                 .lineage
+                .decided()
                 .iter()
                 .map(WorldRecord::of)
                 .collect::<Vec<_>>(),

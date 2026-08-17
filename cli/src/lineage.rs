@@ -1,19 +1,28 @@
-//! The lineage: the decisions that produced a Thesis, in the order they were taken.
+//! The lineage: the decisions that produced a set of worlds, and the order they were taken in.
 //!
 //! A Thesis is not admitted and does not reach canonical history. It is decided — which
 //! commitments a world selects, and which instant it recognizes — and everything else about
 //! it follows: the cut resolves its head from the instant, the selection absorbs whatever
 //! that cut froze, and the identity is derived from the result.
 //!
-//! So a lineage is persisted the way knowledge is: as the sequence that produces it, never
-//! as what it produced. The same discipline for the same reason — a stored `ThesisId` would
-//! be an answer kept beside the question, free to disagree with it after any change to how
-//! identity is derived.
+//! So a lineage is persisted as the decisions that produce it rather than as the worlds they
+//! produced. What a decision may *name* is a different matter: an identity written down as a
+//! reference is an edge of a graph whose vertices are content-addressed, not an answer cached
+//! beside its question. The distinction holds because nothing reads such a name back as a
+//! source — a `Thesis` cannot be deserialized, so a named world is one that has to be produced
+//! again before it can be found.
 //!
-//! Nothing here needs a `ThesisArchive`. An archive holds Theses so they can be resolved by
-//! identity, and a repository that keeps the decisions resolves them by replaying instead.
-//! That is a consequence of this experiment's boundary rather than a claim about the port:
-//! ancestry walked across processes may well want one, and nothing here has needed it.
+//! # A lineage is not a line
+//!
+//! Two worlds may extend the same parent, and neither is the other's successor. Order alone
+//! cannot say which of them a later decision is about, so a decision that extends something
+//! names what it extends, and the worlds already decided are held where an identity resolves
+//! them — which is what a `ThesisArchive` is for.
+//!
+//! Nothing in this laboratory needed one until a decision had to be placed among worlds rather
+//! than after them. The archive is therefore built as the decisions produce it, never opened,
+//! and it refuses a child whose parent is absent: an archive with a hole in it would end an
+//! ancestry walk exactly where a genesis ends one.
 //!
 //! # A decision is not enough to place a decision
 //!
@@ -31,10 +40,13 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 
 use ape::canon::{Canon, CanonicalKnowledge};
-use ape::engine::thesis::{ForkInput, GenesisInput, KnowledgeCut, Thesis};
+use ape::engine::thesis::{
+    ForkInput, GenesisInput, KnowledgeCut, Thesis, ThesisArchive, ThesisId, ThesisLookup,
+};
 use ape::kernel::entities::CommitmentId;
 use ape::kernel::value_objects::Date;
 
+use crate::archive::ResidentArchive;
 use crate::error::LineageError;
 use crate::history::ResidentHistory;
 use crate::journal::{self, Admission, EntryId, Replayed};
@@ -53,7 +65,7 @@ pub enum Decision {
     },
 
     /// Recognizing later history, up to an instant.
-    Advance { known_at: String },
+    Advance { extends: ThesisId, known_at: String },
 
     /// A different intention under the cut already recognized.
     ///
@@ -62,6 +74,7 @@ pub enum Decision {
     /// not recoverable by comparing two selections: a commitment absent from a child was
     /// either omitted by this decision or never open to begin with.
     Fork {
+        extends: ThesisId,
         omitted: BTreeSet<CommitmentId>,
         introduced: BTreeSet<CommitmentId>,
     },
@@ -121,6 +134,59 @@ impl Taken {
     }
 }
 
+/// The worlds a lineage has produced: resolvable by identity, and in the order decided.
+///
+/// The two halves answer different questions and neither derives the other cheaply. A decision
+/// names the world it extends, which is a question about identity; a reader compares what a
+/// repository recorded against what it produced, which is a question about order. Holding one
+/// and searching it for the other would be reinventing the port the engine already defines.
+///
+/// The archive is filled as worlds are decided, which is the only way it can be filled at all —
+/// a `Thesis` does not deserialize, so an archive is never opened, only rebuilt.
+#[derive(Debug, Default)]
+pub struct Lineage {
+    archive: ResidentArchive,
+    decided: Vec<Thesis>,
+}
+
+impl Lineage {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Every world, in the order its decision was taken.
+    pub fn decided(&self) -> &[Thesis] {
+        &self.decided
+    }
+
+    /// The worlds by identity, as Synthesis reads them.
+    pub fn archive(&self) -> &ResidentArchive {
+        &self.archive
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.decided.is_empty()
+    }
+
+    /// The world a decision names, or a refusal naming what could not be found.
+    ///
+    /// The refusal is the corroboration this reference buys. An identity is derived from the
+    /// content of the world it addresses, so a repository whose earlier decisions no longer
+    /// produce the world a later one extends cannot resolve it — and says which one.
+    fn extended(&self, thesis: ThesisId) -> Result<Thesis, LineageError> {
+        self.archive
+            .thesis(thesis)
+            .ok_or(LineageError::ExtendsUnknownWorld { thesis })
+    }
+
+    fn record(&mut self, thesis: Thesis) -> Result<(), LineageError> {
+        self.archive.put_thesis(thesis.clone())?;
+        self.decided.push(thesis);
+
+        Ok(())
+    }
+}
+
 /// Extend a lineage by one decision, returning what history imposed on the world it makes.
 ///
 /// An application calls this as each decision is taken; a reconstruction calls it for every
@@ -133,7 +199,7 @@ impl Taken {
 /// there is no prior intention for it to have been absent from.
 pub fn decide<K: CanonicalKnowledge>(
     knowledge: &K,
-    lineage: &mut Vec<Thesis>,
+    lineage: &mut Lineage,
     decision: &Decision,
 ) -> Result<BTreeSet<CommitmentId>, LineageError> {
     let (thesis, imposed) = match decision {
@@ -151,10 +217,9 @@ pub fn decide<K: CanonicalKnowledge>(
             BTreeSet::new(),
         ),
 
-        Decision::Advance { known_at } => {
+        Decision::Advance { extends, known_at } => {
             let advancement = lineage
-                .last()
-                .ok_or(LineageError::AdvancedWithoutGenesis)?
+                .extended(*extends)?
                 .advance(knowledge, KnowledgeCut::at(knowledge, date(known_at)?))?;
 
             let imposed = advancement.imposed().collect();
@@ -163,24 +228,22 @@ pub fn decide<K: CanonicalKnowledge>(
         }
 
         Decision::Fork {
+            extends,
             omitted,
             introduced,
         } => (
-            lineage
-                .last()
-                .ok_or(LineageError::ForkedWithoutParent)?
-                .fork(
-                    knowledge,
-                    ForkInput {
-                        omitted: omitted.clone(),
-                        introduced: introduced.clone(),
-                    },
-                )?,
+            lineage.extended(*extends)?.fork(
+                knowledge,
+                ForkInput {
+                    omitted: omitted.clone(),
+                    introduced: introduced.clone(),
+                },
+            )?,
             BTreeSet::new(),
         ),
     };
 
-    lineage.push(thesis);
+    lineage.record(thesis)?;
 
     Ok(imposed)
 }
@@ -194,8 +257,8 @@ pub fn decide<K: CanonicalKnowledge>(
 pub fn replay<K: CanonicalKnowledge>(
     knowledge: &K,
     decisions: &[Decision],
-) -> Result<Vec<Thesis>, LineageError> {
-    let mut lineage: Vec<Thesis> = Vec::new();
+) -> Result<Lineage, LineageError> {
+    let mut lineage = Lineage::new();
 
     for decision in decisions {
         decide(knowledge, &mut lineage, decision)?;
@@ -219,9 +282,9 @@ pub fn rebuild(
     canon: &mut Canon<ResidentHistory>,
     journal: &[Admission],
     decisions: &[Taken],
-) -> Result<Vec<Thesis>, LineageError> {
+) -> Result<Lineage, LineageError> {
     let mut admitted = Replayed::default();
-    let mut lineage: Vec<Thesis> = Vec::new();
+    let mut lineage = Lineage::new();
 
     for taken in decisions {
         journal::replay_through(canon, journal, &mut admitted, &taken.after)?;

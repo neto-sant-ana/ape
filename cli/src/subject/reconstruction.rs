@@ -28,6 +28,7 @@
 //! the experiment measuring reconstruction rather than float determinism.
 
 use ape::canon::Canon;
+use ape::engine::thesis::ThesisId;
 use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 
 use crate::error::JournalError;
@@ -169,8 +170,11 @@ pub fn genesis(commitment: CommitmentId) -> Decision {
 }
 
 /// The advancement Phase 2 needs, because a cut cannot recognize an Event it predates.
-pub fn advancement() -> Decision {
-    Decision::Advance { known_at: day(15) }
+pub fn advancement(extends: ThesisId) -> Decision {
+    Decision::Advance {
+        extends,
+        known_at: day(15),
+    }
 }
 
 /// The settling Event, which Phase 2 admits after the world has been interpreted without it.

@@ -270,9 +270,9 @@ pub fn reconstruct(
         &repository.read_lineage()?,
     )?;
 
-    corroborate(&lineage, &repository.read_worlds()?)?;
+    corroborate(lineage.decided(), &repository.read_worlds()?)?;
 
-    all(canon.history(), &lineage, instance, effective_at)
+    all(canon.history(), lineage.decided(), instance, effective_at)
 }
 
 /// Weigh the worlds a repository says it decided against the worlds its decisions produce.
@@ -319,7 +319,7 @@ mod tests {
             (begun.canon, begun.subject, begun.decisions, begun.lineage)
         };
 
-        let thesis = lineage.last().expect("the genesis");
+        let thesis = lineage.decided().last().expect("the genesis");
         let record = WorldRecord::of(thesis);
 
         let reading = of(

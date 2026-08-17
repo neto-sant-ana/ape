@@ -44,7 +44,7 @@ fn persisted(repository: &Repository) -> Reasoned {
         .write_lineage(&reasoned.decisions)
         .expect("the repository is writable");
     repository
-        .write_worlds(&worlds(&reasoned.lineage))
+        .write_worlds(&worlds(reasoned.lineage.decided()))
         .expect("the repository is writable");
 
     reasoned
@@ -64,6 +64,33 @@ fn witness_recomputed(journal: &[Admission], decisions: &mut [Taken]) {
             .expect("the coordinate addresses the journal");
 
         taken.witness = admitted.entries.iter().cloned().collect();
+    }
+}
+
+/// Rewrite each decision's reference so that it names the world its predecessor now produces.
+///
+/// A forger who moves a coordinate moves every world downstream of it, and `extends` names a
+/// world by an identity derived from its content — so a forgery that leaves the original
+/// references behind is not a forgery at all, it is a repository that refuses itself.
+///
+/// Doing this is what the convergence experiment added to the cost of a consistent forgery, and
+/// doing it *here* is what keeps Phase 7 measuring the thing it set out to measure. It walks
+/// the decisions one at a time, because the world a decision extends exists only once every
+/// decision before it has been applied — and that this lineage is a chain is what makes "the
+/// world before it" the right answer.
+fn extends_recomputed(journal: &[Admission], decisions: &mut [Taken]) {
+    for position in 1..decisions.len() {
+        let mut canon = ape::canon::Canon::new(ResidentHistory::new());
+
+        let built = ape_cli::lineage::rebuild(&mut canon, journal, &decisions[..position])
+            .expect("the decisions before this one still apply");
+
+        let parent = built.decided()[position - 1].id();
+
+        match &mut decisions[position].decision {
+            Decision::Advance { extends, .. } | Decision::Fork { extends, .. } => *extends = parent,
+            Decision::Genesis { .. } => {}
+        }
     }
 }
 
@@ -184,7 +211,7 @@ fn phase_1_construct() {
     // re-established rather than assumed.
     let living = reading::all(
         reasoned.canon.history(),
-        &reasoned.lineage,
+        reasoned.lineage.decided(),
         reasoned.subject.instance,
         &Date::parse(EFFECTIVE).expect("the effective instant is a date"),
     )
@@ -226,7 +253,7 @@ fn corrupted(
     repository.write_journal(&journal).expect("writable");
     repository.write_lineage(&decisions).expect("writable");
     repository
-        .write_worlds(&worlds(&reasoned.lineage))
+        .write_worlds(&worlds(reasoned.lineage.decided()))
         .expect("writable");
 
     let rebuilt = rebuild(&repository, reasoned.subject.instance);
@@ -338,17 +365,25 @@ fn phase_2_corrupt() {
         "the sequence disagrees, and the entry is named: {}",
         repointed.complaint
     );
+    // What turns this one changed, and the change belongs to the convergence experiment. A
+    // narrowed genesis produces a different world, and the advancement after it names the world
+    // it extends — so the reference stops resolving before anything compares a world at all.
+    //
+    // The refusal fires earlier and says less: it names a world that could not be found rather
+    // than the coordinate that moved. Which is a statement about *this* lineage, where every
+    // world but the last is extended by something. Narrowing the intention of a world nothing
+    // extends still leaves the world witness as the only thing that turns it.
     assert!(
         narrowed
             .complaint
-            .contains("world 0 disagrees with what was recorded, in what it still proposes"),
-        "the world disagrees, and the coordinate is named: {}",
+            .contains("which the lineage does not hold"),
+        "the reference does not resolve, and the world is named: {}",
         narrowed.complaint
     );
 
     // The two refusals come from different witnesses, and the second is the one this phase
     // added. An altered intention leaves the journal untouched and every address resolving,
-    // so nothing about the sequence can see it — only the world it produces can.
+    // so nothing about the sequence can see it — only what it produces can.
     assert_ne!(
         repointed.complaint, narrowed.complaint,
         "a corruption of the coordinate and a corruption of the intention are not one finding"
@@ -441,16 +476,17 @@ fn phase_7_forge() {
 
     decisions[0].after = EntryId::of(reasoned.canon.history().head().expect("a head"));
     witness_recomputed(&reasoned.journal, &mut decisions);
+    extends_recomputed(&reasoned.journal, &mut decisions);
+
+    let mut canon = ape::canon::Canon::new(ResidentHistory::new());
+    let derived = ape_cli::lineage::rebuild(&mut canon, &reasoned.journal, &decisions)
+        .expect("the forged repository derives worlds of its own");
 
     let forged = Repository::open(scratch("forged-whole"));
     forged.write_journal(&reasoned.journal).expect("writable");
     forged.write_lineage(&decisions).expect("writable");
     forged
-        .write_worlds(&worlds(&{
-            let mut canon = ape::canon::Canon::new(ResidentHistory::new());
-            ape_cli::lineage::rebuild(&mut canon, &reasoned.journal, &decisions)
-                .expect("the forged repository derives worlds of its own")
-        }))
+        .write_worlds(&worlds(derived.decided()))
         .expect("writable");
 
     let rebuilt = rebuild(&forged, reasoned.subject.instance);
@@ -485,6 +521,11 @@ fn phase_7_forge() {
 /// decision. Neither is expressible, which is its own kind of answer.
 ///
 /// What is left is the pair this experiment added.
+///
+/// Every corruption here also recomputes `extends`, which the convergence experiment added. A
+/// subtraction has to leave the repository consistent in every other respect or it stops
+/// measuring the subtraction: a stale reference is a second inconsistency, and the refusal it
+/// produces would be evidence about it rather than about what was removed.
 #[test]
 fn phase_5_subtract() {
     let repository = Repository::open(scratch("phase-5-baseline"));
@@ -514,6 +555,7 @@ fn phase_5_subtract() {
                 taken.after = last.clone();
             }
             witness_recomputed(journal, decisions);
+            extends_recomputed(journal, decisions);
         });
 
     assert_eq!(
@@ -548,6 +590,7 @@ fn phase_5_subtract() {
             let head = r.canon.history().head().expect("a head");
             decisions[0].after = EntryId::of(head);
             witness_recomputed(journal, decisions);
+            extends_recomputed(journal, decisions);
         },
     );
 

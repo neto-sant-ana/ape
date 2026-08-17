@@ -64,7 +64,7 @@ fn constructed() -> (Canon<ResidentHistory>, Constructed, Vec<Taken>, Thesis) {
     let lineage = lineage::replay(canon.history(), &intentions(&decisions))
         .expect("a genesis over admitted knowledge");
 
-    let thesis = lineage.into_iter().next_back().expect("one Thesis");
+    let thesis = lineage.decided().last().expect("one Thesis").clone();
 
     (canon, subject, decisions, thesis)
 }
@@ -203,23 +203,23 @@ fn phase_2_observe() {
     // and it goes into the lineage rather than being taken here.
     let mut decisions = decisions;
     decisions.push(
-        Taken::now(subject::advancement(), &prefix(&subject, &admitted))
-            .expect("the Event was admitted"),
+        Taken::now(
+            subject::advancement(genesis.id()),
+            &prefix(&subject, &admitted),
+        )
+        .expect("the Event was admitted"),
     );
 
     let lineage = lineage::replay(canon.history(), &intentions(&decisions))
         .expect("a lineage the canonical knowledge supports");
 
     assert_eq!(
-        lineage.len(),
+        lineage.decided().len(),
         2,
         "the genesis, and the world that succeeded it"
     );
 
-    let advanced = lineage
-        .into_iter()
-        .next_back()
-        .expect("the advanced Thesis");
+    let advanced = lineage.decided().last().expect("the advanced Thesis");
 
     assert_ne!(
         advanced.id(),
@@ -233,7 +233,7 @@ fn phase_2_observe() {
     // Settled, and therefore no longer under deadline pressure: timeliness is absent once
     // an outcome is known, because a due date stops applying to what is already settled.
     let interpretation =
-        Interpretation::of(&advanced, canon.history()).expect("the advanced Thesis interprets");
+        Interpretation::of(advanced, canon.history()).expect("the advanced Thesis interprets");
 
     let projected = interpretation
         .conditions_at(&day(15))
@@ -306,8 +306,11 @@ fn phase_3_persist() {
     // canonical knowledge — history says what became known, not which of it a world selects.
     let mut decisions = decisions;
     decisions.push(
-        Taken::now(subject::advancement(), &prefix(&subject, &admitted))
-            .expect("the Event was admitted"),
+        Taken::now(
+            subject::advancement(genesis.id()),
+            &prefix(&subject, &admitted),
+        )
+        .expect("the Event was admitted"),
     );
 
     let repository = Repository::open(scratch("phase-3"));
@@ -358,9 +361,14 @@ fn phase_3_persist() {
     assert!(written.contains("2026-01-05"), "the commitment's instant");
     assert!(written.contains("2026-01-12"), "the Event's instant");
 
-    // The lineage survives the same question. A `ThesisId` is derived from the selection a
-    // cut resolves, so writing one down would keep an answer beside the question it comes
-    // from — and the decisions are what a fresh process needs to ask it again.
+    // The lineage no longer survives that question whole, and the change is a result of the
+    // convergence experiment rather than of this one. A decision now names the world it
+    // extends, so a `ThesisId` does appear — as a reference, weighed on every read by having
+    // to resolve against a world the earlier decisions produce.
+    //
+    // What a decision still never records is the world it *produced*. That is the half that
+    // would be an answer kept beside its question, and nothing reads a world back either way:
+    // a `Thesis` does not deserialize.
     let read = repository.read_lineage().expect("the lineage reads back");
     assert_eq!(read.len(), decisions.len());
 
@@ -369,12 +377,21 @@ fn phase_3_persist() {
     let reached =
         lineage::replay(canon.history(), &intentions(&decisions)).expect("the lineage rebuilds");
 
-    for thesis in [&genesis, reached.last().expect("the advanced Thesis")] {
-        assert!(
-            !written.contains(&thesis.id().to_string()),
-            "the repository holds a derived Thesis identity"
-        );
-    }
+    assert!(
+        written.contains(&genesis.id().to_string()),
+        "the advancement names the world it extends"
+    );
+    assert!(
+        !written.contains(
+            &reached
+                .decided()
+                .last()
+                .expect("the advanced")
+                .id()
+                .to_string()
+        ),
+        "the repository holds the world a decision produced"
+    );
     assert!(written.contains("2026-01-10"), "the genesis instant");
     assert!(written.contains("2026-01-15"), "the advancement instant");
 }
@@ -556,7 +573,7 @@ struct Living {
 
 /// Build the world through Phases 1 to 3, read it while it is alive, and leave it on disk.
 fn persisted(repository: &Repository) -> Living {
-    let (mut canon, subject, decisions, _) = constructed();
+    let (mut canon, subject, decisions, genesis) = constructed();
 
     let mut journal = subject.journal.clone();
     let settlement = subject::settlement(subject.commitment);
@@ -566,8 +583,11 @@ fn persisted(repository: &Repository) -> Living {
 
     let mut decisions = decisions;
     decisions.push(
-        Taken::now(subject::advancement(), &prefix(&subject, &admitted))
-            .expect("the Event was admitted"),
+        Taken::now(
+            subject::advancement(genesis.id()),
+            &prefix(&subject, &admitted),
+        )
+        .expect("the Event was admitted"),
     );
 
     let lineage =
@@ -575,7 +595,10 @@ fn persisted(repository: &Repository) -> Living {
 
     let reading = reading::of(
         canon.history(),
-        lineage.last().expect("the world the lineage reached"),
+        lineage
+            .decided()
+            .last()
+            .expect("the world the lineage reached"),
         subject.instance,
         &day(15),
     )
@@ -584,7 +607,13 @@ fn persisted(repository: &Repository) -> Living {
     repository.write_journal(&journal).expect("writable");
     repository.write_lineage(&decisions).expect("writable");
     repository
-        .write_worlds(&lineage.iter().map(WorldRecord::of).collect::<Vec<_>>())
+        .write_worlds(
+            &lineage
+                .decided()
+                .iter()
+                .map(WorldRecord::of)
+                .collect::<Vec<_>>(),
+        )
         .expect("writable");
 
     Living {

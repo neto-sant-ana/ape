@@ -8,5 +8,6 @@
 //! They overlap in shape, and the overlap is left alone. Two arrangements that happen to
 //! need a role and an agent are not two copies of one fact.
 
+pub mod convergence;
 pub mod divergence;
 pub mod reconstruction;
