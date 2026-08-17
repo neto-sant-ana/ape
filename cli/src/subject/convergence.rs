@@ -3,36 +3,63 @@
 //! ```text
 //! cash ∈ [0, 100]
 //!
-//! A  receive  60   recorded day 2    ──▶ what both lines start from
-//! L  spend    30   recorded day 3    ──▶ what one line decides
-//! R  spend    40   recorded day 3    ──▶ what the other decides
+//! A  receive  60   recorded day  2   ──▶ what both lines start from
+//! L  spend    30   recorded day  3   ──▶ the equipment line's first decision
+//! R  spend    40   recorded day  3   ──▶ the inventory line's first
+//! M  spend    15   recorded day  4   ──▶ its second, over knowledge already there
+//! N  spend    25   recorded day 12   ──▶ knowledge that arrives after both lines exist
 //! ```
 //!
-//! The genesis selects `A` alone. Two forks of it introduce `L` and `R` respectively, so
-//! neither descends from the other and both descend from the same world. That is the whole of
-//! the arrangement, and it is the smallest one in which a transfer has anything to mean:
-//! Synthesis measures a difference over a Base both sides passed through.
+//! The genesis selects `A` alone. Two forks of it introduce `L` and `R`, so neither descends
+//! from the other and both descend from the same world — the smallest arrangement in which a
+//! transfer has anything to mean, since Synthesis measures a difference over a Base both sides
+//! passed through.
 //!
-//! Both lines are within the account's bounds on their own — 30 and 20 — which is what makes
-//! the question about intention rather than about arithmetic. What a world holding both would
-//! be is not decided here; it is what a transfer would produce, and the experiment asks for it
-//! rather than arranging it.
+//! ```text
+//!               ancestor { A }                      day 10
+//!            ┌────────┴────────┐
+//!      equipping { A, L }   stocking { A, R }       day 10
+//!            │                 │
+//!      advanced { A, L }    maintaining { A, R, M } day 16 / day 10
+//!            │
+//!      provisioning { A, L, N }                     day 16
+//! ```
 //!
-//! No commitment depends on another. The protocol asks for no dependencies unless the
-//! procedure demands them, and nothing so far does.
+//! # The asymmetry, and why it is not arbitrary
+//!
+//! `N` is recorded after both lines have already forked. Only a world whose cut reaches it may
+//! select it, and a fork inherits its parent's cut — so the equipment line has to **advance
+//! before it can fork**, which is the engine's own reason for keeping the two operations
+//! disjoint: knowledge becoming available is not the same event as someone deciding to use it.
+//!
+//! The inventory line needs no advance, because `M` was already knowledge when the ancestor
+//! was decided and nobody had selected it. Its second decision is intention alone.
+//!
+//! That leaves the two lines at different cuts, which is what gives a transfer between them two
+//! different answers depending on the direction it is asked in. Reaching that by arranging when
+//! knowledge arrives, rather than by declaring two cuts, is what makes it a finding.
+//!
+//! # Arithmetic
+//!
+//! Each line is within the account's bounds on its own — 5 and 5 — and a world holding both
+//! would be at −50. Neither of those is arranged as a verdict: what a transfer produces is what
+//! the experiment asks for rather than what it builds.
+//!
+//! No commitment depends on another. The protocol asks for no dependencies unless the procedure
+//! demands them, and nothing so far does.
 //!
 //! Every quantity is an integer, for the reason [`super::reconstruction`] gives.
 
 use ape::canon::Canon;
-use ape::engine::thesis::ThesisId;
+use ape::engine::thesis::{Thesis, ThesisId};
 use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId, StatementId};
 
-use crate::error::JournalError;
+use crate::error::{JournalError, SubjectError};
 use crate::history::ResidentHistory;
 use crate::journal::{
     self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, Replayed, ResourceKindRecord,
 };
-use crate::lineage::Decision;
+use crate::lineage::{self, Decision, Lineage, Taken};
 
 pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";
@@ -45,23 +72,21 @@ pub struct Constructed {
     pub equipment: CommitmentId,
     /// `R` — what the other introduces.
     pub inventory: CommitmentId,
+    /// `M` — the inventory line's second decision, over knowledge the ancestor already had.
+    pub maintenance: CommitmentId,
     pub instance: ResourceInstanceId,
     pub journal: Vec<Admission>,
     /// Every entry admitted so far, accumulated through one reading rather than several.
     pub admitted: Replayed,
-    /// What a later phase needs to word an outflow of its own, since a commitment refers to a
+    /// What [`contingency`] needs to word an outflow of its own, since a commitment refers to a
     /// statement and to agents by identity and those exist only once admitted.
-    #[allow(dead_code)]
     spending: Spending,
 }
 
 /// The vocabulary an outflow is worded from.
 struct Spending {
-    #[allow(dead_code)]
     payer: AgentId,
-    #[allow(dead_code)]
     payee: AgentId,
-    #[allow(dead_code)]
     statement: StatementId,
 }
 
@@ -202,6 +227,18 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
             dependencies: [].into(),
             recorded_at: day(3),
         },
+        Admission::Commitment {
+            accountable: merchant,
+            executors: [merchant].into(),
+            beneficiaries: [customer].into(),
+            statement: outflow,
+            resource: instance,
+            committed_at: day(4),
+            due_date: day(25),
+            magnitude: Some(15.0),
+            dependencies: [].into(),
+            recorded_at: day(4),
+        },
     ];
     journal.extend(intended);
     journal::replay_remaining(canon, &journal, &mut admitted)?;
@@ -210,6 +247,7 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         funding: admitted.commitments[0],
         equipment: admitted.commitments[1],
         inventory: admitted.commitments[2],
+        maintenance: admitted.commitments[3],
         instance,
         journal,
         admitted,
@@ -253,6 +291,208 @@ pub fn stocking(extends: ThesisId, inventory: CommitmentId) -> Decision {
         omitted: [].into(),
         introduced: [inventory].into(),
     }
+}
+
+/// The inventory line's second decision: also maintain what it already has.
+///
+/// Nothing had to happen for this to be available. `M` was recorded on the fourth and the
+/// ancestor's cut is the tenth, so it was knowledge nobody had selected — which is what an
+/// intention is free to change without any history moving.
+pub fn maintaining(extends: ThesisId, maintenance: CommitmentId) -> Decision {
+    Decision::Fork {
+        extends,
+        omitted: [].into(),
+        introduced: [maintenance].into(),
+    }
+}
+
+/// `N` — an outflow recorded after both lines had already forked.
+///
+/// It is the arrangement's second half. A commitment recorded past a world's cut is not a
+/// commitment that world declined; it is one that world cannot see, and no fork of it can
+/// select what it cannot see.
+pub fn contingency(subject: &Constructed) -> Admission {
+    Admission::Commitment {
+        accountable: subject.spending.payer,
+        executors: [subject.spending.payer].into(),
+        beneficiaries: [subject.spending.payee].into(),
+        statement: subject.spending.statement,
+        resource: subject.instance,
+        committed_at: day(12),
+        due_date: day(30),
+        magnitude: Some(25.0),
+        dependencies: [].into(),
+        recorded_at: day(12),
+    }
+}
+
+/// The equipment line advancing, so that it can see what arrived after it forked.
+///
+/// This changes no intention, and that is the point of it being its own decision. The engine
+/// keeps advancing and forking disjoint precisely so that an ancestry edge says which of the
+/// two happened, and a lineage that could do both at once would lose that.
+pub fn advancing(extends: ThesisId) -> Decision {
+    Decision::Advance {
+        extends,
+        known_at: day(16),
+    }
+}
+
+/// The equipment line's second intention: take the contingency it can now see.
+pub fn provisioning(extends: ThesisId, contingency: CommitmentId) -> Decision {
+    Decision::Fork {
+        extends,
+        omitted: [].into(),
+        introduced: [contingency].into(),
+    }
+}
+
+/// The arrangement at Phase 1: one ancestor and two worlds that extend it.
+pub struct Branched {
+    pub canon: Canon<ResidentHistory>,
+    pub subject: Constructed,
+    pub decisions: Vec<Taken>,
+    pub lineage: Lineage,
+}
+
+impl Branched {
+    pub fn ancestor(&self) -> &Thesis {
+        &self.lineage.decided()[0]
+    }
+
+    pub fn equipping(&self) -> &Thesis {
+        &self.lineage.decided()[1]
+    }
+
+    pub fn stocking(&self) -> &Thesis {
+        &self.lineage.decided()[2]
+    }
+}
+
+/// Everything Phase 2 produces: six worlds, and the knowledge and decisions behind them.
+pub struct Diverged {
+    pub canon: Canon<ResidentHistory>,
+    pub subject: Constructed,
+    /// `N`, which exists only once the journal has grown past the first three decisions.
+    pub contingency: CommitmentId,
+    pub journal: Vec<Admission>,
+    pub decisions: Vec<Taken>,
+    pub lineage: Lineage,
+}
+
+/// Every world by the decision that produced it.
+///
+/// Named rather than indexed from the end, because the two that matter are not at the end. A
+/// lineage that branches has as many tips as it has branches, and "the last decision" names one
+/// of them only by accident of the order the decisions were taken in.
+impl Diverged {
+    pub fn ancestor(&self) -> &Thesis {
+        &self.lineage.decided()[0]
+    }
+
+    pub fn equipping(&self) -> &Thesis {
+        &self.lineage.decided()[1]
+    }
+
+    pub fn stocking(&self) -> &Thesis {
+        &self.lineage.decided()[2]
+    }
+
+    /// The tip of the inventory line.
+    pub fn maintaining(&self) -> &Thesis {
+        &self.lineage.decided()[3]
+    }
+
+    pub fn advanced(&self) -> &Thesis {
+        &self.lineage.decided()[4]
+    }
+
+    /// The tip of the equipment line.
+    pub fn provisioning(&self) -> &Thesis {
+        &self.lineage.decided()[5]
+    }
+}
+
+/// Admit the subject and decide the ancestor and its two forks.
+pub fn branched() -> Result<Branched, SubjectError> {
+    let mut canon = Canon::new(ResidentHistory::new());
+    let subject = construct(&mut canon)?;
+
+    let mut decisions = Vec::new();
+    let mut lineage = Lineage::new();
+
+    let mut take = |decision: Decision| -> Result<ThesisId, SubjectError> {
+        let taken = Taken::now(decision, &subject.admitted)?;
+        lineage::decide(canon.history(), &mut lineage, &taken.decision)?;
+        decisions.push(taken);
+
+        Ok(lineage.decided().last().expect("just decided").id())
+    };
+
+    let ancestor = take(genesis(subject.funding))?;
+    take(equipping(ancestor, subject.equipment))?;
+    take(stocking(ancestor, subject.inventory))?;
+
+    Ok(Branched {
+        canon,
+        subject,
+        decisions,
+        lineage,
+    })
+}
+
+/// Run the arrangement whole: three decisions, then knowledge, then three more.
+///
+/// This lives beside the subject rather than in a harness because **the order is the subject**.
+/// `N` is admitted after both lines have forked, and the equipment line advances only then —
+/// an experiment holding its own copy of that sequence would be observing a different
+/// arrangement while believing it observed this one.
+///
+/// The decisions do not alternate between the branches in the order a reader might expect, and
+/// that is deliberate too: an application reasoning about alternatives returns to whichever one
+/// it is thinking about, and the record has to survive that.
+pub fn diverged() -> Result<Diverged, SubjectError> {
+    let Branched {
+        mut canon,
+        subject,
+        mut decisions,
+        mut lineage,
+    } = branched()?;
+
+    let mut journal = subject.journal.clone();
+    let mut admitted = subject.admitted.clone();
+
+    let stocking = lineage.decided()[2].id();
+    decisions.push(Taken::now(
+        maintaining(stocking, subject.maintenance),
+        &admitted,
+    )?);
+    lineage::decide(canon.history(), &mut lineage, &decisions[3].decision)?;
+
+    journal.push(contingency(&subject));
+    journal::replay_remaining(&mut canon, &journal, &mut admitted)?;
+
+    let contingency = *admitted
+        .commitments
+        .last()
+        .ok_or(SubjectError::NothingAdmitted)?;
+
+    let equipping = lineage.decided()[1].id();
+    decisions.push(Taken::now(advancing(equipping), &admitted)?);
+    lineage::decide(canon.history(), &mut lineage, &decisions[4].decision)?;
+
+    let advanced = lineage.decided()[4].id();
+    decisions.push(Taken::now(provisioning(advanced, contingency), &admitted)?);
+    lineage::decide(canon.history(), &mut lineage, &decisions[5].decision)?;
+
+    Ok(Diverged {
+        canon,
+        subject,
+        contingency,
+        journal,
+        decisions,
+        lineage,
+    })
 }
 
 fn day(day: u8) -> String {

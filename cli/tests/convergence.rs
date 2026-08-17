@@ -7,14 +7,12 @@
 
 use std::collections::BTreeSet;
 
-use ape::canon::Canon;
-use ape::engine::thesis::Thesis;
+use ape::engine::thesis::{ForkInput, ThesisError, descends_from};
 use ape::kernel::value_objects::Date;
 
-use ape_cli::history::ResidentHistory;
 use ape_cli::lineage::{self, Lineage};
 use ape_cli::reading::{self, OutcomeRecord, TimelinessRecord, WorldRecord};
-use ape_cli::subject::convergence;
+use ape_cli::subject::convergence::{self, Branched, Diverged};
 
 /// The instant every world is interpreted at.
 ///
@@ -27,67 +25,17 @@ fn effective() -> Date {
     Date::parse(EFFECTIVE).expect("a real date")
 }
 
-/// What Phase 1 arranges: one ancestor, and two worlds that extend it.
-struct Branched {
-    canon: Canon<ResidentHistory>,
-    subject: convergence::Constructed,
-    lineage: Lineage,
-}
-
-impl Branched {
-    fn ancestor(&self) -> &Thesis {
-        &self.lineage.decided()[0]
-    }
-
-    fn equipping(&self) -> &Thesis {
-        &self.lineage.decided()[1]
-    }
-
-    fn stocking(&self) -> &Thesis {
-        &self.lineage.decided()[2]
-    }
-}
-
-/// Admit the subject and take the three decisions, each through the decision record.
+/// The arrangement at Phase 1, and the arrangement whole.
 ///
-/// Nothing here calls `Thesis::fork` directly. That is the discipline the divergence
-/// experiment established — what a later process gets is the decision, so the decision is what
-/// every phase must go through — and it is also what made this arrangement impossible to state
-/// until a decision could name the world it extends.
+/// Both live beside the subject rather than here, because the order in which admissions and
+/// decisions interleave *is* the subject. Nothing in this harness calls `Thesis::fork` either:
+/// what a later process gets is the decision, so the decision is what every phase goes through.
 fn branched() -> Branched {
-    let mut canon = Canon::new(ResidentHistory::new());
-    let subject = convergence::construct(&mut canon).expect("the subject is admissible");
+    convergence::branched().expect("the subject is admissible")
+}
 
-    let mut lineage = Lineage::new();
-
-    lineage::decide(
-        canon.history(),
-        &mut lineage,
-        &convergence::genesis(subject.funding),
-    )
-    .expect("the common ancestor is decidable");
-
-    let ancestor = lineage.decided()[0].id();
-
-    lineage::decide(
-        canon.history(),
-        &mut lineage,
-        &convergence::equipping(ancestor, subject.equipment),
-    )
-    .expect("one line of thinking");
-
-    lineage::decide(
-        canon.history(),
-        &mut lineage,
-        &convergence::stocking(ancestor, subject.inventory),
-    )
-    .expect("the other");
-
-    Branched {
-        canon,
-        subject,
-        lineage,
-    }
+fn diverged() -> Diverged {
+    convergence::diverged().expect("the arrangement holds")
 }
 
 /// Phase 1 — Branch.
@@ -218,6 +166,197 @@ fn phase_1_branch() {
         Some(TimelinessRecord::WithinDeadline)
     );
     assert!(!stocking.contains_key(&subject.equipment.to_string()));
+}
+
+/// Phase 2 — Diverge in two directions.
+///
+/// Each line takes a decision of its own, so neither is a prefix of the other and the
+/// difference between them is two steps rather than one. What separates the two decisions is
+/// the arrangement's second half: one line could decide, and the other had to advance first.
+#[test]
+fn phase_2_diverge() {
+    let arrangement = diverged();
+    let subject = &arrangement.subject;
+
+    assert_eq!(
+        arrangement.lineage.decided().len(),
+        6,
+        "the ancestor, two forks, and one more decision on each side"
+    );
+
+    // The inventory line's second decision. `M` was recorded on the fourth and the ancestor's
+    // cut is the tenth, so it was already knowledge nobody had selected — an intention is free
+    // to take it up with no history moving at all.
+    let maintaining = arrangement.maintaining();
+
+    assert_eq!(
+        maintaining.parent(),
+        &Some(arrangement.stocking().id()),
+        "the inventory line's second decision extends its first"
+    );
+    assert_eq!(
+        maintaining.cut(),
+        arrangement.ancestor().cut(),
+        "a fork inherits its parent's cut, and this line has never advanced"
+    );
+    assert_eq!(
+        maintaining.selection().open().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.funding, subject.inventory, subject.maintenance]),
+        "the inventory line holds the funding, the inventory and the maintenance"
+    );
+
+    // The equipment line's, which took two decisions to reach because `N` did not exist when
+    // the line forked. Advancing changes the cut and no intention; forking changes the
+    // intention and no cut. Keeping them apart is what lets each ancestry edge say which
+    // happened.
+    let advanced = arrangement.advanced();
+
+    assert_eq!(
+        advanced.parent(),
+        &Some(arrangement.equipping().id()),
+        "the equipment line advances from where it forked"
+    );
+    assert_eq!(advanced.cut().known_at().to_iso(), "2026-01-16");
+    assert_eq!(
+        advanced.cut().event_head(),
+        None,
+        "nothing has been observed, so a later instant resolves the same empty chain"
+    );
+    assert_eq!(
+        advanced.selection().open().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.funding, subject.equipment]),
+        "advancing recognized knowledge and decided nothing"
+    );
+
+    let provisioning = arrangement.provisioning();
+
+    assert_eq!(
+        provisioning.parent(),
+        &Some(advanced.id()),
+        "and forks from what it advanced to, not from where it forked before"
+    );
+    assert_eq!(
+        provisioning.cut(),
+        advanced.cut(),
+        "a fork moves no cut, so the knowledge it reasons over is the one it advanced to"
+    );
+    assert_eq!(
+        provisioning.selection().open().collect::<BTreeSet<_>>(),
+        BTreeSet::from([subject.funding, subject.equipment, arrangement.contingency]),
+        "the equipment line holds the funding, the equipment and the contingency"
+    );
+
+    // The asymmetry is the engine's and not the arrangement's politeness. A world at the
+    // ancestor's cut cannot select the contingency at all, so the inventory line could not have
+    // taken it without advancing either.
+    let refused = arrangement.stocking().fork(
+        arrangement.canon.history(),
+        ForkInput {
+            omitted: [].into(),
+            introduced: [arrangement.contingency].into(),
+        },
+    );
+
+    assert!(
+        matches!(
+            refused,
+            Err(ThesisError::CommitmentNotKnownAtCut { commitment, .. })
+                if commitment == arrangement.contingency
+        ),
+        "a fork cannot select what its cut cannot see, found {refused:?}"
+    );
+
+    // Both tips descend from the ancestor, which makes it an *admissible* Base and not the
+    // right one — Synthesis accepts any common ancestor, and which one is asked about is part of
+    // the question rather than a fact to be discovered.
+    //
+    // Here it happens to be the only one, so this arrangement can exercise a Base and cannot
+    // exercise choosing between two.
+    let archive = arrangement.lineage.archive();
+    let (equipment_line, inventory_line) = (provisioning.id(), maintaining.id());
+
+    for (label, tip) in [
+        ("the equipment line", equipment_line),
+        ("the inventory line", inventory_line),
+    ] {
+        assert!(
+            descends_from(archive, tip, arrangement.ancestor().id()).expect("ancestry walks"),
+            "{label} descends from the ancestor"
+        );
+    }
+
+    for (label, tip, other) in [
+        ("the equipment line", equipment_line, arrangement.stocking()),
+        (
+            "the inventory line",
+            inventory_line,
+            arrangement.equipping(),
+        ),
+    ] {
+        assert!(
+            !descends_from(archive, tip, other.id()).expect("ancestry walks"),
+            "{label} passed through nothing the other decided"
+        );
+    }
+
+    // Which is the phase's own requirement rather than a statement about the Base: two lines
+    // that diverged, with the difference between them more than one step on either side.
+
+    assert!(
+        !descends_from(archive, equipment_line, inventory_line).expect("ancestry walks")
+            && !descends_from(archive, inventory_line, equipment_line).expect("ancestry walks"),
+        "neither line is a prefix of the other"
+    );
+
+    // How many Bases a transfer between the two tips could be measured against, counted rather
+    // than argued. It is the boundary of what this subject can say: a Base can be exercised
+    // here, and choosing between two cannot.
+    let admissible: Vec<_> = arrangement
+        .lineage
+        .decided()
+        .iter()
+        .filter(|world| {
+            [equipment_line, inventory_line]
+                .iter()
+                .all(|tip| descends_from(archive, *tip, world.id()).expect("ancestry walks"))
+        })
+        .map(|world| world.id())
+        .collect();
+
+    assert_eq!(
+        admissible,
+        [arrangement.ancestor().id()],
+        "exactly one world is an ancestor of both tips"
+    );
+
+    // Each line is within the account's bounds on its own. Nothing here says what a world
+    // holding both would be: that is what a transfer produces, and the next phase asks for it
+    // rather than arranging it.
+    let readings = reading::all(
+        arrangement.canon.history(),
+        arrangement.lineage.decided(),
+        subject.instance,
+        &effective(),
+    )
+    .expect("every world reads");
+
+    for (position, label) in [(3, "the inventory line"), (5, "the equipment line")] {
+        assert!(
+            readings[position].conflicts.is_empty(),
+            "{label} is feasible on its own, found {:?}",
+            readings[position].conflicts
+        );
+        assert_eq!(
+            readings[position].level, 0.0,
+            "{label}: nothing has settled"
+        );
+    }
+
+    assert_eq!(
+        readings[5].known_at, "2026-01-16",
+        "and the two lines no longer recognize the same knowledge"
+    );
+    assert_eq!(readings[3].known_at, "2026-01-10");
 }
 
 /// Two forks of one world, and two forks in a row, are different arrangements — and the
