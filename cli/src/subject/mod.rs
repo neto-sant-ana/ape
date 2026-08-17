@@ -9,6 +9,7 @@
 //! need a role and an agent are not two copies of one fact.
 
 pub mod convergence;
+pub mod coordination;
 pub mod divergence;
 pub mod provenance;
 pub mod reconstruction;

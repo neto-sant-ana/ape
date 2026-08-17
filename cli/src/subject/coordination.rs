@@ -1,0 +1,326 @@
+//! The coordination subject: one budget, and two parties who each plan against it.
+//!
+//! ```text
+//! cash ∈ [0, 100]
+//!
+//! B  receive 50   recorded day 2   the budget, and the whole of the shared ancestor
+//! H  spend   20   recorded day 3   what one party plans
+//! E  spend   15   recorded day 3   what the other plans
+//! G  receive 30   recorded day 4   knowledge one party admits on its own
+//! R  receive 10   recorded day 4   knowledge the other admits on its own
+//! ```
+//!
+//! ```text
+//!                shared { B }                50
+//!            ┌────────┴────────┐
+//!  staffing { B, H }    equipping { B, E }    30 / 35
+//! ```
+//!
+//! Both lines are feasible, and so is a world holding both — 50 − 20 − 15 leaves 15. That is
+//! deliberate: this experiment is about what a record does with two writers, and an arrangement
+//! whose parties cannot coexist would answer a question about feasibility instead.
+//!
+//! # What is new here, and it is not the arrangement
+//!
+//! Every previous subject built a lineage in memory and wrote it down once at the end. This one
+//! needs a party to **read a repository somebody else wrote and extend it**, which is a path the
+//! laboratory has never had — four experiments' worth of one writer, and the exclusion was doing
+//! more work than it looked like.
+//!
+//! So the apparatus is here: [`decide`] and [`admit`] extend what a party read, and [`write`]
+//! puts it back the only way this repository writes, which is whole. Nothing coordinates. That
+//! is the measurement.
+//!
+//! No commitment depends on another. Every quantity is an integer, for the reason
+//! [`super::reconstruction`] gives.
+
+use ape::canon::Canon;
+use ape::engine::thesis::{Thesis, ThesisId};
+use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
+
+use crate::error::{JournalError, SubjectError};
+use crate::history::ResidentHistory;
+use crate::journal::{
+    self, ActionKindRecord, Admission, AgentKindRecord, EffectRecord, Replayed, ResourceKindRecord,
+};
+use crate::lineage::{self, Decision, Lineage, Taken};
+use crate::reading::{self, Corroborated, WorldRecord};
+use crate::repository::Repository;
+
+pub const FULFILLING: &str = "Settled";
+pub const CANCELLING: &str = "Void";
+
+/// What the procedure refers to across phases, and the journal that produced it.
+pub struct Constructed {
+    /// `B` — the inflow the shared ancestor selects, and nothing else does.
+    pub budget: CommitmentId,
+    /// `H` — what one party plans.
+    pub hiring: CommitmentId,
+    /// `E` — what the other party plans.
+    pub equipment: CommitmentId,
+    /// `G` — an inflow nobody has admitted, held for one party to admit on its own.
+    pub grant: Admission,
+    /// `R` — the same, for the other party, so that the two admit different knowledge.
+    pub rebate: Admission,
+    pub instance: ResourceInstanceId,
+    pub journal: Vec<Admission>,
+    pub admitted: Replayed,
+}
+
+/// Admit the subject, accumulating the journal that describes it.
+pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, JournalError> {
+    let mut journal = Vec::new();
+    let mut admitted = Replayed::default();
+
+    journal.extend([
+        Admission::Role {
+            label: "payer".into(),
+            recorded_at: day(1),
+        },
+        Admission::Role {
+            label: "payee".into(),
+            recorded_at: day(1),
+        },
+        Admission::Agent {
+            label: "customer".into(),
+            kind: AgentKindRecord::Company,
+            recorded_at: day(1),
+        },
+        Admission::Agent {
+            label: "merchant".into(),
+            kind: AgentKindRecord::Company,
+            recorded_at: day(1),
+        },
+        Admission::Resource {
+            label: "cash".into(),
+            kind: ResourceKindRecord::Between {
+                lower: 0.0,
+                upper: 100.0,
+            },
+            recorded_at: day(1),
+        },
+    ]);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
+
+    let (payer, payee) = (admitted.roles[0], admitted.roles[1]);
+    let (customer, merchant) = (admitted.agents[0], admitted.agents[1]);
+    let cash = admitted.resources[0];
+
+    journal.extend([
+        Admission::Eligibility {
+            agent: customer,
+            roles: [payer].into(),
+            effective_from: day(1),
+            recorded_at: day(1),
+        },
+        Admission::Eligibility {
+            agent: merchant,
+            roles: [payee].into(),
+            effective_from: day(1),
+            recorded_at: day(1),
+        },
+        Admission::ResourceInstance {
+            label: "account".into(),
+            resource: cash,
+            recorded_at: day(1),
+        },
+        Admission::Action {
+            verb: "receive".into(),
+            kind: ActionKindRecord::Quantifiable(EffectRecord::Increase),
+            resource: cash,
+            recorded_at: day(1),
+        },
+        Admission::Action {
+            verb: "spend".into(),
+            kind: ActionKindRecord::Quantifiable(EffectRecord::Decrease),
+            resource: cash,
+            recorded_at: day(1),
+        },
+    ]);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
+
+    let instance = admitted.instances[0];
+    let (receive, spend) = (admitted.actions[0], admitted.actions[1]);
+
+    journal.extend([
+        Admission::Statement {
+            actors: [payer].into(),
+            recipients: [payee].into(),
+            action: receive,
+            fulfills: [FULFILLING.to_owned()].into(),
+            cancels: [CANCELLING.to_owned()].into(),
+            recorded_at: day(1),
+        },
+        Admission::Statement {
+            actors: [payee].into(),
+            recipients: [payer].into(),
+            action: spend,
+            fulfills: [FULFILLING.to_owned()].into(),
+            cancels: [CANCELLING.to_owned()].into(),
+            recorded_at: day(1),
+        },
+    ]);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
+
+    let (inflow, outflow) = (admitted.statements[0], admitted.statements[1]);
+
+    // Each statement names the roles its parties must hold, so which agent plays which side is
+    // fixed by the statement rather than chosen here. An inflow is the customer's to execute; an
+    // outflow is the merchant's.
+    let flowing =
+        |statement, executor, beneficiary, magnitude: f64, day_of: u8| Admission::Commitment {
+            accountable: executor,
+            executors: [executor].into(),
+            beneficiaries: [beneficiary].into(),
+            statement,
+            resource: instance,
+            committed_at: day(day_of),
+            due_date: day(25),
+            magnitude: Some(magnitude),
+            dependencies: [].into(),
+            recorded_at: day(day_of),
+        };
+
+    journal.extend([
+        flowing(inflow, customer, merchant, 50.0, 2),
+        flowing(outflow, merchant, customer, 20.0, 3),
+        flowing(outflow, merchant, customer, 15.0, 3),
+    ]);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
+
+    Ok(Constructed {
+        budget: admitted.commitments[0],
+        hiring: admitted.commitments[1],
+        equipment: admitted.commitments[2],
+        grant: flowing(inflow, customer, merchant, 30.0, 4),
+        rebate: flowing(inflow, customer, merchant, 10.0, 4),
+        instance,
+        journal,
+        admitted,
+    })
+}
+
+/// The shared ancestor: funded, and nothing yet decided about spending it.
+pub fn shared(budget: CommitmentId) -> Decision {
+    Decision::Genesis {
+        known_at: day(10),
+        selection: [budget].into(),
+    }
+}
+
+/// A fork that withdraws nothing and asks for one more commitment.
+///
+/// Every intention in this arrangement has that shape, so there is one of these rather than
+/// several: what tells the two parties' lines apart is which commitment, and which world.
+pub fn also(extends: ThesisId, commitment: CommitmentId) -> Decision {
+    Decision::Fork {
+        extends,
+        omitted: [].into(),
+        introduced: [commitment].into(),
+    }
+}
+
+/// The repository as both parties find it: the subject admitted, and one world decided.
+pub struct Founded {
+    pub subject: Constructed,
+    pub decisions: Vec<Taken>,
+    pub lineage: Lineage,
+}
+
+impl Founded {
+    pub fn shared(&self) -> &Thesis {
+        &self.lineage.decided()[0]
+    }
+}
+
+/// Build the shared starting point, in one process, as the previous experiments did.
+///
+/// Nothing about this is contended. It is the state a repository is in *before* two parties look
+/// at it, and it exists so that what follows is about extending a repository rather than about
+/// creating one.
+pub fn founded() -> Result<Founded, SubjectError> {
+    let mut canon = Canon::new(ResidentHistory::new());
+    let subject = construct(&mut canon)?;
+
+    let mut lineage = Lineage::new();
+    let taken = Taken::now(shared(subject.budget), &subject.admitted)?;
+
+    lineage::decide(canon.history(), &mut lineage, &taken.decision)?;
+
+    Ok(Founded {
+        subject,
+        decisions: vec![taken],
+        lineage,
+    })
+}
+
+/// Write a founded repository, so that parties have something to read.
+pub fn found(repository: &Repository, founded: &Founded) -> Result<(), SubjectError> {
+    repository.write_journal(&founded.subject.journal)?;
+    repository.write_lineage(&founded.decisions)?;
+    repository.write_worlds(&worlds(&founded.lineage))?;
+
+    Ok(())
+}
+
+/// What a party reads before it decides anything.
+///
+/// A [`Corroborated`] is exactly a working copy: knowledge, the worlds already decided, the
+/// coordinate the replay reached, and the two sequences as they were on disk. What makes it a
+/// party rather than a reader is that it goes on to [`decide`] and [`write`].
+pub fn read(repository: &Repository) -> Result<Corroborated, SubjectError> {
+    Ok(reading::corroborated(repository)?)
+}
+
+/// Take a decision against what this party read, and nobody else's.
+///
+/// The cut resolves against the knowledge in hand and the parent resolves out of the archive in
+/// hand, so a party that read an older repository decides in an older world — which is the
+/// arrangement rather than a defect of it.
+pub fn decide(working: &mut Corroborated, decision: Decision) -> Result<ThesisId, SubjectError> {
+    let taken = Taken::now(decision, &working.admitted)?;
+
+    lineage::decide(
+        working.canon.history(),
+        &mut working.lineage,
+        &taken.decision,
+    )?;
+    working.decisions.push(taken);
+
+    Ok(working
+        .lineage
+        .decided()
+        .last()
+        .ok_or(SubjectError::NothingDecided)?
+        .id())
+}
+
+/// Admit knowledge against what this party read, extending its journal.
+pub fn admit(working: &mut Corroborated, admission: Admission) -> Result<(), SubjectError> {
+    working.journal.push(admission);
+
+    journal::replay_remaining(&mut working.canon, &working.journal, &mut working.admitted)?;
+
+    Ok(())
+}
+
+/// Put back everything this party holds, whole.
+///
+/// Whole is not a choice made here. It is what [`Repository`] does, and it has never mattered
+/// because nothing else was ever writing.
+pub fn write(repository: &Repository, working: &Corroborated) -> Result<(), SubjectError> {
+    repository.write_journal(&working.journal)?;
+    repository.write_lineage(&working.decisions)?;
+    repository.write_worlds(&worlds(&working.lineage))?;
+
+    Ok(())
+}
+
+/// The witnesses for every world a lineage produced.
+pub fn worlds(lineage: &Lineage) -> Vec<WorldRecord> {
+    lineage.decided().iter().map(WorldRecord::of).collect()
+}
+
+fn day(day: u8) -> String {
+    format!("2026-01-{day:02}")
+}
