@@ -27,8 +27,13 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 
 use ape::engine::synthesis::{
-    ApplicabilityConflict, ApplicabilityReport, ApplicabilityStatus, ResolvedTransfer,
+    ApplicabilityConflict, ApplicabilityReport, ApplicabilityStatus, ResolvedTransfer, synthesize,
 };
+use ape::engine::thesis::ThesisId;
+
+use crate::error::TransferError;
+use crate::reading;
+use crate::repository::Repository;
 
 /// A rule the resulting world would break, naming what it is about.
 ///
@@ -188,4 +193,27 @@ fn conflicted(conflict: &ApplicabilityConflict) -> ConflictRecord {
 
 fn hex(id: impl std::fmt::Display) -> String {
     id.to_string()
+}
+
+/// Rebuild a repository and ask it what one world's intention would be in another.
+///
+/// The three identities arrive from outside, and they have to. Reconstructing a *world* needs
+/// the repository alone; reconstructing a *report* needs the repository and a question, and the
+/// question is not in there — Phase 4 established that a query nobody acted on is not part of
+/// the record.
+///
+/// Where the identities come from is not a gap. They are content-addressed, so a caller obtains
+/// them by reading the same repository and naming what it found. A question is asked *about* a
+/// record; it is not stored in one.
+pub fn reconstruct(
+    repository: &Repository,
+    base: ThesisId,
+    source: ThesisId,
+    target: ThesisId,
+) -> Result<Applicability, TransferError> {
+    let (canon, lineage) = reading::corroborated(repository)?;
+
+    let report = synthesize(lineage.archive(), canon.history(), base, source, target)?;
+
+    Ok(Applicability::of(&report))
 }

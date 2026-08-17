@@ -98,6 +98,20 @@ pub enum ReadingError {
     },
 }
 
+/// What a transfer asked of a repository could not answer.
+///
+/// The two halves are kept apart because they fail for different reasons. A repository that
+/// cannot be rebuilt says nothing about the transfer; a transfer refused over a repository that
+/// rebuilt says nothing about the repository.
+#[derive(Debug, thiserror::Error)]
+pub enum TransferError {
+    #[error(transparent)]
+    Reading(#[from] ReadingError),
+
+    #[error(transparent)]
+    Synthesis(#[from] ape::engine::synthesis::SynthesisError),
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum LineageError {
     #[error(transparent)]

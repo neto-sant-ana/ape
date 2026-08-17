@@ -930,6 +930,141 @@ fn phase_5_terminate() {
     );
 }
 
+/// Ask a fresh process what one world's intention would be in another.
+fn transfer_in_fresh_process(
+    binary: &std::path::Path,
+    repository: &std::path::Path,
+    base: &str,
+    source: &str,
+    target: &str,
+) -> std::process::Output {
+    std::process::Command::new(binary)
+        .arg(repository)
+        .arg("transfer")
+        .arg(base)
+        .arg(source)
+        .arg(target)
+        .output()
+        .expect("the binary runs")
+}
+
+/// Phase 6 — Compare.
+///
+/// The report a fresh process produces against the one Phase 3 recorded, whole, in both
+/// directions. And against literals written down before the run, because a comparison of two
+/// derivations survives a defect the two share.
+///
+/// The three identities are handed to the fresh process rather than found by it. That is Phase
+/// 4's decision arriving as an interface: reconstructing a world needs the repository alone, and
+/// reconstructing a report needs the repository and a question.
+#[test]
+fn phase_6_compare() {
+    let arrangement = diverged();
+    let repository = Repository::open(scratch("phase-6"));
+    persist(&repository, &arrangement);
+
+    let living = synthesized(&arrangement);
+    let dead = std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli"));
+
+    let ask = |source: &str, target: &str| {
+        let produced = transfer_in_fresh_process(
+            dead,
+            repository.root(),
+            &arrangement.ancestor().id().to_string(),
+            source,
+            target,
+        );
+
+        assert!(
+            produced.status.success(),
+            "the fresh process failed: {}",
+            String::from_utf8_lossy(&produced.stderr)
+        );
+
+        serde_json::from_slice::<Applicability>(&produced.stdout).expect("a report came back")
+    };
+
+    let (equipment_line, inventory_line) = (
+        arrangement.provisioning().id().to_string(),
+        arrangement.maintaining().id().to_string(),
+    );
+
+    let into_inventory = ask(&equipment_line, &inventory_line);
+    let into_equipment = ask(&inventory_line, &equipment_line);
+
+    // Whole, in both directions. Every coordinate the protocol names is inside this comparison —
+    // the three identities, the difference, the status and the conflicts — and so is any
+    // coordinate nobody thought to list, which is the kind a list misses.
+    assert_eq!(
+        into_inventory, living.into_inventory,
+        "the refused direction came back the same report"
+    );
+    assert_eq!(
+        into_equipment, living.into_equipment,
+        "and so did the one that carries"
+    );
+
+    // Against literals instead, which answers a different question. Equality above compares two
+    // derivations produced by one implementation and survives that implementation drifting;
+    // these do not.
+    assert_eq!(
+        into_inventory.status,
+        StatusRecord::Conflicted {
+            attempted: TransferRecord {
+                remove: BTreeSet::new(),
+                introduce: BTreeSet::from([
+                    arrangement.subject.equipment.to_string(),
+                    arrangement.contingency.to_string(),
+                ]),
+            },
+            conflicts: vec![ConflictRecord::HistoricalUnavailability {
+                commitment: arrangement.contingency.to_string(),
+                recorded_at: "2026-01-12".into(),
+                known_at: "2026-01-10".into(),
+            }],
+        }
+    );
+
+    match &into_equipment.status {
+        StatusRecord::Applicable {
+            transfer,
+            candidate,
+        } => {
+            assert_eq!(transfer.remove.len(), 0);
+            assert_eq!(transfer.introduce.len(), 2);
+            assert_eq!(candidate.frozen.len(), 0);
+            assert_eq!(
+                candidate.open.len(),
+                5,
+                "the funding, both lines' decisions, and the contingency"
+            );
+        }
+        other => panic!("the carrying direction is applicable, found {other:?}"),
+    }
+
+    // And the ancestry walk, which nothing else in this phase would show. A report at all means
+    // the rebuilt archive reached the Base from both tips; a Base that only one of them descends
+    // from has to be refused, or the walk was never performed.
+    let incoherent = transfer_in_fresh_process(
+        dead,
+        repository.root(),
+        &arrangement.equipping().id().to_string(),
+        &equipment_line,
+        &inventory_line,
+    );
+
+    assert!(
+        !incoherent.status.success(),
+        "a Base only the Source descends from is not a Base: {}",
+        String::from_utf8_lossy(&incoherent.stdout)
+    );
+    assert!(
+        String::from_utf8_lossy(&incoherent.stderr).contains("is not a common ancestor of"),
+        "and the refusal says so: {}",
+        String::from_utf8_lossy(&incoherent.stderr)
+    );
+}
+
 /// Two forks of one world, and two forks in a row, are different arrangements — and the
 /// record now says which.
 ///

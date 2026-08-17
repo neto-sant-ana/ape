@@ -17,7 +17,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
-use ape::canon::CanonicalHistory;
+use ape::canon::{Canon, CanonicalHistory};
 use ape::engine::hermeneia::{Conflict, Hypothesis, Outcome, Timeliness};
 use ape::engine::thesis::{Interpretation, Thesis};
 use ape::kernel::entities::ResourceInstanceId;
@@ -26,7 +26,7 @@ use ape::kernel::value_objects::Date;
 use crate::error::ReadingError;
 use crate::history::ResidentHistory;
 use crate::level;
-use crate::lineage;
+use crate::lineage::{self, Lineage};
 use crate::repository::Repository;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -262,7 +262,21 @@ pub fn reconstruct(
     instance: ResourceInstanceId,
     effective_at: &Date,
 ) -> Result<Vec<Reading>, ReadingError> {
-    let mut canon = ape::canon::Canon::new(ResidentHistory::new());
+    let (canon, lineage) = corroborated(repository)?;
+
+    all(canon.history(), lineage.decided(), instance, effective_at)
+}
+
+/// Rebuild what a repository holds, and weigh it against what the repository says it produced.
+///
+/// This is reconstruction itself, with nothing yet asked of the result. It is separate because
+/// two questions now need it and they need exactly it: reading the worlds, and asking what one
+/// world's intention would be in another. A second copy of the procedure would be a second place
+/// for the order between the two files to drift.
+pub fn corroborated(
+    repository: &Repository,
+) -> Result<(Canon<ResidentHistory>, Lineage), ReadingError> {
+    let mut canon = Canon::new(ResidentHistory::new());
 
     let lineage = lineage::rebuild(
         &mut canon,
@@ -272,7 +286,7 @@ pub fn reconstruct(
 
     corroborate(lineage.decided(), &repository.read_worlds()?)?;
 
-    all(canon.history(), lineage.decided(), instance, effective_at)
+    Ok((canon, lineage))
 }
 
 /// Weigh the worlds a repository says it decided against the worlds its decisions produce.

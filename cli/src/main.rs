@@ -13,11 +13,13 @@
 
 use std::process::ExitCode;
 
+use ape::engine::thesis::ThesisId;
 use ape::kernel::entities::ResourceInstanceId;
 use ape::kernel::value_objects::Date;
 
 use ape_cli::reading;
 use ape_cli::repository::Repository;
+use ape_cli::transfer;
 
 fn main() -> ExitCode {
     match run() {
@@ -32,24 +34,52 @@ fn main() -> ExitCode {
     }
 }
 
-fn run() -> Result<String, String> {
-    let mut arguments = std::env::args().skip(1);
+const USAGE: &str = "usage: ape-cli <repository> <instance> <date>\n   or: ape-cli <repository> transfer <base> <source> <target>";
 
-    let mut next = |name: &str| {
-        arguments
-            .next()
-            .ok_or_else(|| format!("usage: ape-cli <repository> <instance> <date>\nmissing {name}"))
+/// Two questions, and they take different arguments because they need different things.
+///
+/// Reading the worlds needs an instance and an instant, because a world is read *of* something
+/// *at* some time. A transfer needs neither and needs three identities instead: it is asked
+/// about worlds rather than about a resource, and the question is not in the repository, so it
+/// arrives here. Making one form carry the other's arguments unused would be dishonest about
+/// which answer depends on what.
+fn run() -> Result<String, String> {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+
+    let [root, rest @ ..] = arguments.as_slice() else {
+        return Err(USAGE.to_owned());
     };
 
-    let repository = Repository::open(next("repository")?);
-    let instance = identity(&next("instance")?).map(ResourceInstanceId::from)?;
-    let effective_at =
-        Date::parse(next("date")?).map_err(|_| "date is not YYYY-MM-DD".to_owned())?;
+    let repository = Repository::open(root);
 
-    let lineage = reading::reconstruct(&repository, instance, &effective_at)
-        .map_err(|reason| reason.to_string())?;
+    match rest {
+        [instance, date] => {
+            let instance = identity(instance).map(ResourceInstanceId::from)?;
+            let effective_at =
+                Date::parse(date).map_err(|_| "date is not YYYY-MM-DD".to_owned())?;
 
-    serde_json::to_string_pretty(&lineage).map_err(|reason| reason.to_string())
+            rendered(
+                &reading::reconstruct(&repository, instance, &effective_at)
+                    .map_err(|reason| reason.to_string())?,
+            )
+        }
+
+        [verb, base, source, target] if verb == "transfer" => rendered(
+            &transfer::reconstruct(
+                &repository,
+                identity(base).map(ThesisId::from)?,
+                identity(source).map(ThesisId::from)?,
+                identity(target).map(ThesisId::from)?,
+            )
+            .map_err(|reason| reason.to_string())?,
+        ),
+
+        _ => Err(USAGE.to_owned()),
+    }
+}
+
+fn rendered<T: serde::Serialize>(answer: &T) -> Result<String, String> {
+    serde_json::to_string_pretty(answer).map_err(|reason| reason.to_string())
 }
 
 /// A 32-byte identity written as hex, which is the form every APE id renders itself in.
