@@ -349,6 +349,39 @@ pub fn read(repository: &Repository) -> Result<Corroborated, SubjectError> {
     Ok(reading::corroborated(repository)?)
 }
 
+/// Admit a candidate against what this arrangement holds, extending its journal.
+///
+/// Every arrangement does this, and it is the half none of them can undo: comparison requires
+/// construction, construction is admission, and the journal is where an admission lands.
+pub fn admit(working: &mut Corroborated, admission: Admission) -> Result<(), SubjectError> {
+    working.journal.push(admission);
+
+    journal::replay_remaining(&mut working.canon, &working.journal, &mut working.admitted)?;
+
+    Ok(())
+}
+
+/// Weigh a candidate without recording that it was weighed — arrangement A.
+///
+/// The world comes back and the lineage never hears of it, which is what an application does when it
+/// interprets the cheap way. It is produced from the very [`Decision`] arrangement B would write
+/// down, so the two arrangements cannot come to weigh different worlds; what differs between them is
+/// only whether the world is kept.
+pub fn considered(working: &Corroborated, decision: &Decision) -> Result<Thesis, SubjectError> {
+    let (thesis, _) = lineage::produced(working.canon.history(), &working.lineage, decision)?;
+
+    Ok(thesis)
+}
+
+/// Put back everything this arrangement holds, whole.
+pub fn write(repository: &Repository, working: &Corroborated) -> Result<(), SubjectError> {
+    repository.write_journal(&working.journal)?;
+    repository.write_lineage(&working.decisions)?;
+    repository.write_worlds(&worlds(&working.lineage))?;
+
+    Ok(())
+}
+
 /// The witnesses for every world a lineage produced.
 pub fn worlds(lineage: &Lineage) -> Vec<WorldRecord> {
     lineage.decided().iter().map(WorldRecord::of).collect()

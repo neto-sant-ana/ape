@@ -238,16 +238,34 @@ impl Lineage {
 /// decision at once, through [`replay`]. Which is to say the two run the same code and
 /// differ only in *when* — and a decision resolves its cut against the knowledge standing at
 /// the moment it is applied.
-///
-/// A genesis imposes nothing, and that is a statement about the report rather than about the
-/// world: whatever its cut froze is absorbed into the selection with no one told, because
-/// there is no prior intention for it to have been absent from.
 pub fn decide<K: CanonicalKnowledge>(
     knowledge: &K,
     lineage: &mut Lineage,
     decision: &Decision,
 ) -> Result<BTreeSet<CommitmentId>, LineageError> {
-    let (thesis, imposed) = match decision {
+    let (thesis, imposed) = produced(knowledge, lineage, decision)?;
+
+    lineage.record(thesis)?;
+
+    Ok(imposed)
+}
+
+/// The world a decision makes, and what history imposed on it, keeping neither.
+///
+/// [`decide`] is this followed by recording, and the seam between the two is not a convenience: it
+/// is the difference between weighing a world and keeping one. An application that only wants to
+/// know what an intention would come to needs the first half and has no use for the second — and
+/// because both halves start here, the world it weighs is the world the other would have recorded.
+///
+/// A genesis imposes nothing, and that is a statement about the report rather than about the
+/// world: whatever its cut froze is absorbed into the selection with no one told, because
+/// there is no prior intention for it to have been absent from.
+pub fn produced<K: CanonicalKnowledge>(
+    knowledge: &K,
+    lineage: &Lineage,
+    decision: &Decision,
+) -> Result<(Thesis, BTreeSet<CommitmentId>), LineageError> {
+    let produced = match decision {
         Decision::Genesis {
             known_at,
             selection,
@@ -288,9 +306,7 @@ pub fn decide<K: CanonicalKnowledge>(
         ),
     };
 
-    lineage.record(thesis)?;
-
-    Ok(imposed)
+    Ok(produced)
 }
 
 /// Apply a whole lineage against knowledge as it stands, oldest first.
