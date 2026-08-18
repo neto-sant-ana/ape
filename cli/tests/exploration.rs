@@ -8,12 +8,13 @@
 use std::collections::BTreeSet;
 
 use ape::canon::CanonicalHistory;
+use ape::engine::hermeneia::Conflict;
 use ape::kernel::value_objects::Date;
 
 use ape_cli::reading;
 use ape_cli::repository::Repository;
 use ape_cli::subject::exploration::{
-    self, ADMISSIBLE, BUDGET, CANDIDATES, Founded, Judged, OPENED, OPENING,
+    self, ADMISSIBLE, BEST, BUDGET, CANDIDATES, Founded, Judged, OPENED, OPENING, REFUSED,
 };
 
 /// A repository path no other process shares.
@@ -23,6 +24,34 @@ fn scratch(name: &str) -> std::path::PathBuf {
         .join(name);
     let _ = std::fs::remove_dir_all(&path);
     path
+}
+
+/// What a repository costs, read off the files rather than off the process that wrote them.
+///
+/// The four the protocol asks for, and compared as one value: a phase that asserted them field by
+/// field would pass while quietly leaving one of them unmeasured.
+#[derive(Debug, PartialEq)]
+struct Measured {
+    entries: usize,
+    lineage_bytes: u64,
+    worlds: usize,
+    watermark: Option<String>,
+}
+
+fn measured(repository: &Repository) -> Measured {
+    Measured {
+        entries: repository.read_journal().expect("readable").len(),
+        lineage_bytes: std::fs::metadata(repository.lineage_path())
+            .expect("the lineage is on disk")
+            .len(),
+        worlds: repository.read_worlds().expect("readable").len(),
+        watermark: reading::corroborated(repository)
+            .expect("the repository reconstructs")
+            .canon
+            .history()
+            .recorded_through()
+            .map(|at| at.to_iso()),
+    }
 }
 
 /// The starting repository, and what the arrangement refers to.
@@ -134,4 +163,183 @@ fn the_objective_does_not_move_between_two_readings() {
     };
 
     assert_eq!(judged(&one), judged(&other));
+}
+
+/// Phase 1 — explore ephemerally: admit, fork in memory, interpret, score, drop the world.
+///
+/// Arrangement A, and every number it compares against is written here before it runs. The journal
+/// grows by one per candidate; the lineage does not grow at all; one world stays recorded; and the
+/// watermark advances **once** for twelve candidates, because they are all recorded at one instant.
+///
+/// What the objective finds is the first real measurement of the division Phase 0 only read off its
+/// own literals.
+#[test]
+fn phase_1_explore_ephemerally() {
+    let (repository, arrangement) = founded("phase-1");
+    let subject = &arrangement.subject;
+    let opening = arrangement.opening().id();
+
+    let founding = measured(&repository);
+
+    assert_eq!(
+        founding,
+        Measured {
+            entries: OPENED,
+            lineage_bytes: founding.lineage_bytes,
+            worlds: 1,
+            watermark: Some("2026-01-03".to_owned()),
+        }
+    );
+
+    let mut working = exploration::read(&repository).expect("reconstructs");
+    let mut weighed = Vec::new();
+
+    for (nth, spend) in CANDIDATES.iter().enumerate() {
+        exploration::admit(&mut working, subject.candidate(*spend)).expect("admissible");
+
+        let candidate = *working
+            .admitted
+            .commitments
+            .last()
+            .expect("the candidate was just admitted");
+
+        let world = exploration::considered(&working, &exploration::spending(opening, candidate))
+            .expect("the candidate makes a world");
+
+        let judged = exploration::judge(working.canon.history(), &world, subject.instance)
+            .expect("the objective reads it");
+
+        exploration::write(&repository, &working).expect("writable");
+
+        assert_eq!(
+            measured(&repository),
+            Measured {
+                entries: OPENED + nth + 1,
+                lineage_bytes: founding.lineage_bytes,
+                worlds: 1,
+                watermark: Some("2026-01-04".to_owned()),
+            },
+            "after weighing and dropping candidate {spend}"
+        );
+
+        weighed.push((world.id(), judged));
+    }
+
+    // What the objective made of the twelve, measured this time.
+    assert_eq!(
+        weighed
+            .iter()
+            .filter(|(_, judged)| judged.level().is_some())
+            .count(),
+        ADMISSIBLE,
+        "candidates the engine found nothing against"
+    );
+    assert_eq!(
+        weighed
+            .iter()
+            .filter(|(_, judged)| matches!(judged, Judged::Refused(_)))
+            .count(),
+        REFUSED,
+        "candidates the floor refused"
+    );
+
+    // And *why* the two were refused, by what the engine found rather than by which two they are.
+    assert_eq!(
+        weighed
+            .iter()
+            .filter_map(|(_, judged)| match judged {
+                Judged::Refused(conflicts) => Some(conflicts.clone()),
+                Judged::Admissible { .. } => None,
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            vec![Conflict::OutOfBounds {
+                instance: subject.instance,
+                level: -10.0
+            }],
+            vec![Conflict::OutOfBounds {
+                instance: subject.instance,
+                level: -20.0
+            }],
+        ],
+        "the floor refused them, one by ten and one by twenty"
+    );
+
+    assert_eq!(
+        exploration::best(&weighed).expect("something was admissible"),
+        (weighed[ADMISSIBLE - 1].0, BEST),
+        "the objective's answer is the candidate that spends the opening exactly"
+    );
+
+    // E2, both halves, read off the repository a later process would open.
+    assert_eq!(
+        measured(&repository),
+        Measured {
+            entries: OPENED + BUDGET,
+            lineage_bytes: founding.lineage_bytes,
+            worlds: 1,
+            watermark: Some("2026-01-04".to_owned()),
+        }
+    );
+    assert_eq!(repository.read_lineage().expect("readable").len(), 1);
+    assert!(
+        !weighed.iter().any(|(world, _)| {
+            repository
+                .read_worlds()
+                .expect("readable")
+                .iter()
+                .any(|record| record.thesis == world.to_string())
+        }),
+        "not one of the twelve worlds is anywhere in the repository"
+    );
+}
+
+/// The other half of E2, and it is measured rather than assumed absent.
+///
+/// *Unidentifiable* is a claim about what the journal says, so it is checked by reading what the
+/// journal says: every commitment admission it holds — the settled opening and all twelve weighed
+/// candidates alike — carries the same field names. One shape across thirteen entries is the
+/// positive form of "nothing marks a candidate", and asserting the absence of a marker would have
+/// been the author's expectation rather than a measurement.
+#[test]
+fn an_ephemeral_candidate_is_shaped_exactly_like_an_intention() {
+    let (repository, arrangement) = founded("shape");
+    let subject = &arrangement.subject;
+
+    let mut working = exploration::read(&repository).expect("reconstructs");
+
+    for spend in CANDIDATES {
+        exploration::admit(&mut working, subject.candidate(spend)).expect("admissible");
+    }
+    exploration::write(&repository, &working).expect("writable");
+
+    let encoded: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(repository.journal_path()).expect("readable"),
+    )
+    .expect("the journal is JSON");
+
+    let shapes: BTreeSet<Vec<String>> = encoded
+        .as_array()
+        .expect("the journal is a sequence")
+        .iter()
+        .filter_map(|entry| entry.as_object())
+        .filter(|entry| entry.get("admits") == Some(&serde_json::json!("commitment")))
+        .map(|entry| entry.keys().cloned().collect())
+        .collect();
+
+    assert_eq!(
+        encoded
+            .as_array()
+            .expect("a sequence")
+            .iter()
+            .filter(|entry| entry.get("admits") == Some(&serde_json::json!("commitment")))
+            .count(),
+        BUDGET + 1,
+        "twelve candidates and the opening"
+    );
+    assert_eq!(
+        shapes.len(),
+        1,
+        "and one shape between them, so nothing in the journal says which were only weighed"
+    );
 }
