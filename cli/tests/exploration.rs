@@ -9,13 +9,15 @@ use std::collections::BTreeSet;
 
 use ape::canon::CanonicalHistory;
 use ape::engine::hermeneia::Conflict;
+use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 use ape::kernel::value_objects::Date;
 
-use ape_cli::reading;
+use ape_cli::reading::{self, Reading};
 use ape_cli::repository::Repository;
 use ape_cli::subject::exploration::{
     self, ADMISSIBLE, BEST, BUDGET, CANDIDATES, Founded, Judged, OPENED, OPENING, REFUSED,
 };
+use ape_cli::transfer;
 
 /// A repository path no other process shares.
 fn scratch(name: &str) -> std::path::PathBuf {
@@ -342,4 +344,156 @@ fn an_ephemeral_candidate_is_shaped_exactly_like_an_intention() {
         1,
         "and one shape between them, so nothing in the journal says which were only weighed"
     );
+}
+
+/// The instants a projection is taken at, so that no answer is compared at one moment only.
+const INSTANTS: [&str; 3] = ["2026-01-01", "2026-01-10", "2026-01-20"];
+
+/// Phase 2 — what the record still answers, by value.
+///
+/// E1, and the one phase whose refutation stops the experiment rather than narrowing it. Every
+/// derived answer the repository could give before exploration is taken again after twelve candidates
+/// have been weighed and dropped, and compared as a **whole value**: a derived `PartialEq` *is* the
+/// field-by-field comparison the protocol asks for, and it is the only form that keeps covering a
+/// field added after this was written.
+///
+/// Four kinds of answer, because E1 names four — a projection at three instants, a reading of every
+/// world, a feasibility report, and an applicability report. The last is derived from three worlds,
+/// so this phase records two intentions of its own. They are minted by the very method that mints a
+/// candidate, because Observation 2 measured that the two are the same admission.
+#[test]
+fn phase_2_what_the_record_still_answers() {
+    let (repository, arrangement) = founded("phase-2");
+    let subject = &arrangement.subject;
+    let opening = arrangement.opening().id();
+
+    let mut working = exploration::read(&repository).expect("reconstructs");
+
+    let intending = |working: &mut _, spend| {
+        exploration::admit(working, subject.intention(spend)).expect("admissible");
+        let commitment = *last_commitment(working);
+
+        exploration::decide(working, exploration::spending(opening, commitment)).expect("decidable")
+    };
+
+    let source = intending(&mut working, 5.0);
+    let target = intending(&mut working, 15.0);
+
+    exploration::write(&repository, &working).expect("writable");
+
+    let intended = measured(&repository);
+
+    assert_eq!(
+        intended,
+        Measured {
+            entries: OPENED + 2,
+            lineage_bytes: intended.lineage_bytes,
+            worlds: 3,
+            watermark: Some("2026-01-03".to_owned()),
+        },
+        "two intentions recorded at the instant the Event was, so the watermark has not moved yet"
+    );
+
+    let before_readings = readings(&repository, subject.instance);
+    let before_judgments = judgments(&repository, subject.instance);
+    let before_report =
+        transfer::reconstruct(&repository, opening, source, target).expect("a report is derivable");
+
+    for spend in CANDIDATES {
+        exploration::admit(&mut working, subject.candidate(spend)).expect("admissible");
+
+        let candidate = *last_commitment(&mut working);
+        let world = exploration::considered(&working, &exploration::spending(opening, candidate))
+            .expect("the candidate makes a world");
+
+        exploration::judge(working.canon.history(), &world, subject.instance).expect("and scores");
+    }
+    exploration::write(&repository, &working).expect("writable");
+
+    assert_eq!(
+        measured(&repository),
+        Measured {
+            entries: OPENED + 2 + BUDGET,
+            lineage_bytes: intended.lineage_bytes,
+            worlds: 3,
+            watermark: Some("2026-01-04".to_owned()),
+        },
+        "twelve propositions arrived, the watermark moved with them, and nothing about the worlds did"
+    );
+
+    // E1's premise, checked rather than assumed: fifteen commitments are known and three are
+    // selected. A phase whose candidates had quietly ended up in a world would be measuring that
+    // selected knowledge is stable, which nobody doubted.
+    let held = exploration::read(&repository).expect("reconstructs");
+
+    assert_eq!(held.admitted.commitments.len(), 1 + 2 + BUDGET);
+    assert_eq!(
+        held.lineage
+            .decided()
+            .iter()
+            .flat_map(|world| world.selection().resolved())
+            .collect::<BTreeSet<_>>()
+            .len(),
+        3,
+        "the opening and the two intentions, and no candidate"
+    );
+
+    // E1 itself. Compared one world at one instant at a time, because a single assertion over all
+    // nine prints all eighteen readings and names neither the instant nor the world that moved.
+    for ((at, before), after) in INSTANTS
+        .iter()
+        .zip(&before_readings)
+        .zip(readings(&repository, subject.instance))
+    {
+        for (position, (before, after)) in before.iter().zip(&after).enumerate() {
+            assert_eq!(
+                before, after,
+                "world {position} read at {at}, before exploring and after"
+            );
+        }
+        assert_eq!(before.len(), after.len(), "worlds readable at {at}");
+    }
+    assert_eq!(
+        judgments(&repository, subject.instance),
+        before_judgments,
+        "and what the objective makes of every world"
+    );
+    assert_eq!(
+        transfer::reconstruct(&repository, opening, source, target).expect("still derivable"),
+        before_report,
+        "and the applicability report the pressure point pointed at"
+    );
+}
+
+fn last_commitment(working: &mut ape_cli::reading::Corroborated) -> &CommitmentId {
+    working
+        .admitted
+        .commitments
+        .last()
+        .expect("something was just admitted")
+}
+
+/// Every world read at every instant, from the repository rather than from a live process.
+fn readings(repository: &Repository, instance: ResourceInstanceId) -> Vec<Vec<Reading>> {
+    INSTANTS
+        .iter()
+        .map(|at| {
+            reading::reconstruct(repository, instance, &Date::parse(at).expect("a date"))
+                .expect("the repository reads")
+        })
+        .collect()
+}
+
+/// What the objective makes of every world the repository holds.
+fn judgments(repository: &Repository, instance: ResourceInstanceId) -> Vec<Judged> {
+    let held = exploration::read(repository).expect("reconstructs");
+
+    held.lineage
+        .decided()
+        .iter()
+        .map(|world| {
+            exploration::judge(held.canon.history(), world, instance)
+                .expect("the objective reads it")
+        })
+        .collect()
 }
