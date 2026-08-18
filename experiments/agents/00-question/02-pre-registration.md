@@ -114,6 +114,15 @@ disagreement rather than as noise.
 
 **F1 — The agent has no honest kind.**
 
+> **Correction, appended after the third experiment.** This prediction was not merely wrong, it was
+> malformed, and the original stands so the malformation is legible. It asks whether the deciding
+> *program* has a truthful `AgentKind`. The program is not in the graph at all — it acts on behalf
+> of an admitted Agent and has no relation to one — and `AgentKind` has since been removed from the
+> kernel for carrying no semantic weight even over the entities that are in it. The question the
+> prediction should have asked is whether a decider needs to appear in the record, and the answer
+> found later is that it does not: what a record can hold is a *name*, checkable as a reference and
+> not as an attribution.
+
 An LLM agent is neither a `Company` nor an `Individual`. If the decision must name the
 deciding entity as an APE Agent, no truthful variant exists.
 

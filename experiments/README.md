@@ -20,16 +20,33 @@ Every experiment here obeys the same three constraints.
 An experiment may not change `ape` to make itself succeed. If it needs a change, that need
 *is* the result, and it belongs in the record before any code is written.
 
-**Dependencies run one way, and never sideways.**
+**Dependencies run one way, and never back.**
 
 ```text
 experiment
     ↓
+ ape-cli      ← the reference implementation, where an experiment needs one
+    ↓
    ape
 ```
 
-An experiment never depends on `ape-cli`, and the CLI never depends on an experiment. They
-ask different questions and must be able to fail independently.
+The CLI never depends on an experiment. An experiment may depend on the CLI, and this rule said
+otherwise until the agents experiment had run three times.
+
+It said *never sideways*, which was right while the CLI was a sibling asking its own question
+and had nothing an experiment could stand on. Six concluded experiments later it is not a
+sibling — it is the reference application, and the agents experiment measured a weaker boundary
+than the real one by declining it. One of its published results held only because an in-memory
+adapter has no writable record to forge.
+
+The change is recorded rather than quietly made, and what the rule was protecting is kept:
+
+* **An experiment may not change the CLI to make itself succeed**, exactly as it may not change
+  the engine. If it needs something, that need is the result, and it is handed over rather than
+  taken. This has happened once already, and worked.
+* **Independent failure becomes a pinning discipline.** A run records the commit of every layer
+  beneath it. A CLI change that moves an experiment's result must read as a consumer breaking,
+  never as the result having always been different.
 
 **A failed experiment is a result.**
 
