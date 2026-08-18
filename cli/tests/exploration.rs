@@ -12,6 +12,8 @@ use ape::engine::hermeneia::Conflict;
 use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 use ape::kernel::value_objects::Date;
 
+use ape_cli::error::{JournalError, LineageError, ReadingError};
+use ape_cli::journal::EntryId;
 use ape_cli::reading::{self, Reading};
 use ape_cli::repository::Repository;
 use ape_cli::subject::exploration::{
@@ -463,6 +465,362 @@ fn phase_2_what_the_record_still_answers() {
         before_report,
         "and the applicability report the pressure point pointed at"
     );
+}
+
+/// What arrangement B's record holds once the budget is spent, written before the run.
+///
+/// Thirteen decisions and thirteen worlds — the opening plus one per candidate. The number that
+/// matters is the third: every decision witnesses every entry that stood when it was taken, so the
+/// genesis witnesses 14 and each fork one more than the last, and the total is 14+15+…+26. It is a
+/// literal, because a prediction computed from the arithmetic it predicts cannot be wrong.
+///
+/// `LINEAR` is what that total would be if a decision's record did not grow with the journal:
+/// thirteen decisions witnessing fourteen entries each. The gap between the two is E3.
+/// `BATCHED` is the same budget with the same decisions taken at the end instead of one at a time:
+/// twelve decisions witnessing all twenty-six entries, plus the genesis. Predicted here because the
+/// witness's contents are pinned exactly by corroboration, so the only thing a phase can vary — and
+/// the only thing worth measuring — is *when* a decision is taken relative to what is admitted.
+const RECORDED: usize = 1 + BUDGET;
+const WITNESSED: usize = 260;
+const LINEAR: usize = 182;
+const WITNESSED_BY_EXPLORING: usize = 246;
+const BATCHED: usize = 326;
+
+const _: () = assert!(LINEAR == RECORDED * OPENED);
+const _: () = assert!(WITNESSED_BY_EXPLORING == WITNESSED - OPENED);
+
+/// What arrangement B's record holds, counted rather than sized.
+///
+/// Counts and not bytes, because a byte count is a property of the encoding and the protocol asks
+/// which term dominates rather than how large a file is. The bytes are reported beside these and
+/// predicted by nothing.
+#[derive(Debug, PartialEq)]
+struct Counted {
+    entries: usize,
+    decisions: usize,
+    worlds: usize,
+}
+
+fn counted(repository: &Repository) -> Counted {
+    Counted {
+        entries: repository.read_journal().expect("readable").len(),
+        decisions: repository.read_lineage().expect("readable").len(),
+        worlds: repository.read_worlds().expect("readable").len(),
+    }
+}
+
+/// Phase 3 — explore recording each candidate.
+///
+/// Arrangement B, from the same starting repository, with the same twelve candidates in the same
+/// order, so that the two arrangements differ in one thing. E3 is the shape of what the record then
+/// holds, and it is written above before the numbers are read.
+#[test]
+fn phase_3_explore_recording_each_candidate() {
+    let (repository, arrangement) = founded("phase-3");
+    let subject = &arrangement.subject;
+    let opening = arrangement.opening().id();
+
+    let mut working = exploration::read(&repository).expect("reconstructs");
+
+    for (nth, spend) in CANDIDATES.iter().enumerate() {
+        exploration::admit(&mut working, subject.candidate(*spend)).expect("admissible");
+
+        let candidate = *last_commitment(&mut working);
+
+        exploration::decide(&mut working, exploration::spending(opening, candidate))
+            .expect("the candidate is decidable");
+        exploration::judge(
+            working.canon.history(),
+            working.lineage.decided().last().expect("just decided"),
+            subject.instance,
+        )
+        .expect("and scores");
+
+        exploration::write(&repository, &working).expect("writable");
+
+        assert_eq!(
+            counted(&repository),
+            Counted {
+                entries: OPENED + nth + 1,
+                decisions: 2 + nth,
+                worlds: 2 + nth,
+            },
+            "after recording candidate {spend}"
+        );
+    }
+
+    // E3. The journal grew by one per candidate; the witness grew by one *more* each time.
+    let recorded = repository.read_lineage().expect("readable");
+
+    assert_eq!(recorded.len(), RECORDED);
+
+    for (position, taken) in recorded.iter().enumerate() {
+        assert_eq!(
+            taken.witness.len(),
+            OPENED + position,
+            "decision {position} witnesses every entry that stood when it was taken"
+        );
+    }
+
+    let witnessed: usize = recorded.iter().map(|taken| taken.witness.len()).sum();
+
+    assert_eq!(witnessed, WITNESSED);
+    assert_eq!(
+        counted(&repository).entries - OPENED,
+        BUDGET,
+        "twelve candidates cost twelve journal entries"
+    );
+    assert_eq!(
+        witnessed - OPENED,
+        WITNESSED_BY_EXPLORING,
+        "and 246 witnessed entries, where a record that did not grow with the journal would cost 168"
+    );
+    assert!(
+        witnessed > LINEAR,
+        "the lineage does not grow linearly in decisions"
+    );
+
+    // The same twelve candidates and the same thirteen decisions, deciding at the end rather than as
+    // it goes. Which is what an application does when it enumerates first and judges after, and it
+    // is the more expensive of the two: every decision then witnesses the whole journal.
+    let (batched, arrangement) = founded("batched");
+    let subject = &arrangement.subject;
+    let opening = arrangement.opening().id();
+
+    let mut deferring = exploration::read(&batched).expect("reconstructs");
+    let mut candidates = Vec::new();
+
+    for spend in CANDIDATES {
+        exploration::admit(&mut deferring, subject.candidate(spend)).expect("admissible");
+        candidates.push(*last_commitment(&mut deferring));
+    }
+    for candidate in candidates {
+        exploration::decide(&mut deferring, exploration::spending(opening, candidate))
+            .expect("decidable");
+    }
+    exploration::write(&batched, &deferring).expect("writable");
+
+    assert_eq!(
+        counted(&batched),
+        Counted {
+            entries: OPENED + BUDGET,
+            decisions: RECORDED,
+            worlds: RECORDED,
+        },
+        "the same record by every count the protocol asks for"
+    );
+    assert_eq!(
+        batched
+            .read_lineage()
+            .expect("readable")
+            .iter()
+            .map(|taken| taken.witness.len())
+            .sum::<usize>(),
+        BATCHED,
+        "and 25% more witnessed entries, for enumerating before judging"
+    );
+}
+
+/// The two arrangements differ in one thing, checked rather than arranged.
+///
+/// Every candidate is weighed twice over two repositories — dropped in one, recorded in the other —
+/// and both the world it produces and what the objective makes of it come back identical. Which is
+/// what lets Phase 1's numbers and Phase 3's be read as two prices for one deliberation, rather than
+/// as two deliberations.
+#[test]
+fn recording_a_candidate_does_not_change_what_it_is_worth() {
+    let explored = |name: &str, record: bool| {
+        let (repository, arrangement) = founded(name);
+        let subject = &arrangement.subject;
+        let opening = arrangement.opening().id();
+
+        let mut working = exploration::read(&repository).expect("reconstructs");
+        let mut weighed = Vec::new();
+
+        for spend in CANDIDATES {
+            exploration::admit(&mut working, subject.candidate(spend)).expect("admissible");
+
+            let candidate = *last_commitment(&mut working);
+            let proposal = exploration::spending(opening, candidate);
+
+            let world = if record {
+                exploration::decide(&mut working, proposal).expect("decidable");
+                working
+                    .lineage
+                    .decided()
+                    .last()
+                    .expect("just decided")
+                    .clone()
+            } else {
+                exploration::considered(&working, &proposal).expect("a world")
+            };
+
+            weighed.push((
+                world.id(),
+                exploration::judge(working.canon.history(), &world, subject.instance)
+                    .expect("scored"),
+            ));
+        }
+
+        weighed
+    };
+
+    let dropped = explored("differ-dropped", false);
+    let kept = explored("differ-kept", true);
+
+    for ((spend, dropped), kept) in CANDIDATES.iter().zip(&dropped).zip(&kept) {
+        assert_eq!(
+            dropped, kept,
+            "candidate {spend}, weighed and dropped against weighed and recorded"
+        );
+    }
+    assert_eq!(dropped.len(), kept.len());
+}
+
+/// E4's first clause — a repeat costs a journal record and no knowledge.
+///
+/// Which is the mitigation an application reaches for when the record grows: revisit ground rather
+/// than enumerate fresh ground. It is free in canonical history, where identity is content, and not
+/// free in a sequence of admission records, which nothing deduplicates.
+#[test]
+fn a_repeat_costs_a_journal_record_and_no_knowledge() {
+    let (repository, arrangement) = founded("repeat");
+    let subject = &arrangement.subject;
+
+    let mut working = exploration::read(&repository).expect("reconstructs");
+    let candidate = subject.candidate(CANDIDATES[0]);
+
+    exploration::admit(&mut working, candidate.clone()).expect("admissible");
+    let first = *last_commitment(&mut working);
+
+    exploration::admit(&mut working, candidate).expect("readmissible");
+    let again = *last_commitment(&mut working);
+
+    assert_eq!(working.journal.len(), OPENED + 2, "two journal records");
+    assert_eq!(
+        first, again,
+        "and one canonical record, because identity is content"
+    );
+    assert_eq!(
+        working
+            .admitted
+            .entries
+            .iter()
+            .collect::<BTreeSet<_>>()
+            .len(),
+        OPENED + 1,
+        "so sixteen records address fifteen entries"
+    );
+}
+
+/// E4's second clause — a repeat can cost readability, and what it costs depends on the interleaving.
+///
+/// Three arrangements of one journal, and the difference between them is only what falls between the
+/// two occurrences and where the decision lands. Predicted before the run, from composing three
+/// things the laboratory already held: `Taken::after` is an address, `replay_through` resolves an
+/// address to its **first** occurrence, and corroboration weighs sets.
+///
+/// In every leg the **write succeeds**. Nothing at the moment of writing says the repository has
+/// stopped being readable.
+#[test]
+fn a_readmission_costs_readability_when_something_was_learned_between() {
+    let readmitting = |name: &str, learn_between: bool, decide_between: bool| {
+        let (repository, arrangement) = founded(name);
+        let subject = &arrangement.subject;
+        let opening = arrangement.opening().id();
+
+        let mut working = exploration::read(&repository).expect("reconstructs");
+
+        let candidate = subject.candidate(CANDIDATES[0]);
+        exploration::admit(&mut working, candidate.clone()).expect("admissible");
+        let repeated = *last_commitment(&mut working);
+
+        let mut learned = None;
+        if learn_between {
+            exploration::admit(&mut working, subject.candidate(CANDIDATES[1])).expect("admissible");
+            learned = Some(*last_commitment(&mut working));
+        }
+
+        if decide_between {
+            exploration::decide(
+                &mut working,
+                exploration::spending(opening, learned.expect("something was learned")),
+            )
+            .expect("decidable");
+        }
+
+        exploration::admit(&mut working, candidate).expect("readmissible");
+        exploration::decide(&mut working, exploration::spending(opening, repeated))
+            .expect("decidable");
+
+        exploration::write(&repository, &working).expect("the write succeeds in every leg");
+
+        let distinct = working
+            .admitted
+            .entries
+            .iter()
+            .collect::<BTreeSet<_>>()
+            .len();
+
+        (
+            repository,
+            working.journal.len(),
+            distinct,
+            repeated,
+            learned,
+        )
+    };
+
+    // Adjacent, decision after the repeat. Sixteen records, fifteen addresses, and it reconstructs —
+    // not because nothing is wrong, but because a set cannot tell fifteen-of-sixteen from
+    // fifteen-of-fifteen.
+    let (repository, records, distinct, ..) = readmitting("adjacent", false, false);
+
+    assert_eq!((records, distinct), (OPENED + 2, OPENED + 1));
+    assert_eq!(
+        reading::corroborated(&repository)
+            .expect("the adjacent readmission reconstructs")
+            .lineage
+            .decided()
+            .len(),
+        2
+    );
+
+    // Separated, decision after the repeat. Refused — and named at the readmission rather than at
+    // the innocent entry learned in between.
+    let (repository, records, distinct, repeated, learned) = readmitting("separated", true, false);
+
+    assert_eq!((records, distinct), (OPENED + 3, OPENED + 2));
+    match reading::corroborated(&repository).map(|_| ()) {
+        Err(ReadingError::Lineage(LineageError::ReadmittedEntryIsAmbiguous {
+            readmitted,
+            entry,
+        })) => {
+            assert_eq!(
+                readmitted,
+                EntryId::of(repeated),
+                "the address that repeats"
+            );
+            assert_eq!(
+                entry,
+                EntryId::of(learned.expect("something was learned")),
+                "and the entry it left unadmitted, which is not the one at fault"
+            );
+        }
+        other => panic!("expected an ambiguous readmission, found {other:?}"),
+    }
+
+    // Separated, decision taken between the two occurrences. Refused by the replay instead, which
+    // can see the repetition and says so.
+    let (repository, records, distinct, repeated, _) = readmitting("between", true, true);
+
+    assert_eq!((records, distinct), (OPENED + 3, OPENED + 2));
+    match reading::corroborated(&repository).map(|_| ()) {
+        Err(ReadingError::Lineage(LineageError::Journal(JournalError::EntryAlreadyPassed(
+            entry,
+        )))) => assert_eq!(entry, EntryId::of(repeated)),
+        other => panic!("expected an entry already passed, found {other:?}"),
+    }
 }
 
 fn last_commitment(working: &mut ape_cli::reading::Corroborated) -> &CommitmentId {
