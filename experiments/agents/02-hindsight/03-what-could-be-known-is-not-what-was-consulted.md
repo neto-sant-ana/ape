@@ -92,3 +92,39 @@ than one that answers neither.
 `02-hindsight/run-01/ANSWER.md`, item 7 of *What I could not determine*, and the whole of the
 section above it — which is the counterfactual audit performed in full, against the same graph,
 by someone who was told nothing.
+
+---
+
+## Narrowing — the unfalsifiability was a property of the substrate
+
+Appended, and the original stands.
+
+This observation ends on the counterfactual audit being *the half that cannot be falsified by the
+party being audited*. That was measured over the engine's in-memory adapters, and it is narrower than
+it reads, because those adapters have no durable record to forge. The claim was true of the boundary
+it was measured in and was never tested against a substrate that offers a way to falsify.
+
+One does. The CLI's corroboration experiment edits a repository and recomputes every derived value
+from what it wrote: nothing refuses, a different lineage comes back, and the refusal that mattered is
+gone with no file saying so. Its own words — *corroboration proves internal agreement and nothing
+about who wrote it* — and closing it needs a signature and a key, which that boundary excludes.
+
+So the honest form is a distinction the original did not draw:
+
+```text
+selective editing        →  refused, or reproduced as a disagreement
+wholesale recomputation  →  accepted, and internally consistent
+```
+
+Content-addressing makes a partial edit visible because the identities stop agreeing. It does nothing
+against an edit that recomputes the identities too, and the audit over that repository yields a
+coherent account of something that did not happen.
+
+What survives is the comparison the observation was actually making. A process log is a claim written
+by the party being audited and is worth what that party is worth. A counterfactual audit is
+recomputable by anyone holding the record — and *anyone holding the record* is doing the work that
+was being credited to the record itself. Where the record can be replaced wholesale, both halves need
+an anchor outside it, and neither is better than the other for lacking one.
+
+This is published beside the original rather than in place of it. The result of experiment 02 stands
+as the result of the boundary it was run in.
