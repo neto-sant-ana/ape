@@ -144,7 +144,13 @@ impl WorldRecord {
 /// One world, as the experiment compares it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Reading {
-    /// The end of canonical history, which the cut a Thesis holds is resolved against.
+    /// The head of the Event chain, which is the coordinate a cut resolves against.
+    ///
+    /// Not *the end of canonical history*, which is what this said before Phase 2 of the
+    /// exploration experiment looked at it. A Commitment admitted moves canonical history and does
+    /// not move this. The two coincide in an arrangement whose admissions are Events, and come apart
+    /// in one that admits twelve Commitments and expects every derived answer to hold still — where
+    /// the old wording invited reading an unchanged head as an unchanged history.
     pub canonical_head: Option<String>,
     pub thesis: String,
     pub thesis_parent: Option<String>,
