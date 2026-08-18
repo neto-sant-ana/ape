@@ -1,0 +1,71 @@
+
+=== what the house's records already say ===
+
+agents:  house(fe0e80f6), market(0d3a24e8), operations(326993e9), finance(10807723)
+roles:   spender(3d359fe8), counterparty(48845bf3)
+cash:    quantifiable within [0, 1000], one instance: account(13d1aa87)
+stmt:    8820c458 — counterparty(48845bf3) receive for spender(3d359fe8)
+stmt:    99c01bdc — spender(3d359fe8) spend for counterparty(48845bf3)   ← what a payable is stated in
+
+what the house has committed to, and who answers for it:
+  7d86cc6c  +100  due 2026-01-02  accountable market(0d3a24e8)  executors market(0d3a24e8)  beneficiaries house(fe0e80f6)  [Settled on 2026-01-02]
+  4de31818  -20  due 2026-01-10  accountable house(fe0e80f6)  executors house(fe0e80f6)  beneficiaries market(0d3a24e8)
+  0df2ea53  -60  due 2026-01-20  accountable house(fe0e80f6)  executors house(fe0e80f6)  beneficiaries market(0d3a24e8)
+
+worlds already decided, oldest first:
+  bbee1243  genesis       known_at 2026-01-06  open 4de31818  decided by nobody
+  ddef2011  advance       known_at 2026-01-07  open 4de31818  decided by operations(326993e9)
+  1cd9afbb  fork          known_at 2026-01-07  open 0df2ea53  decided by operations(326993e9)
+
+the world at the tip is 1cd9afbb, and it is what finance decides against.
+
+=== 1. what finance records ===
+
+admitted a commitment a0edbe20: house(fe0e80f6) spends 30 from account(13d1aa87) to market(0d3a24e8), committed 2026-01-07, due 2026-01-14, executed by finance(10807723).
+the journal now holds 21 admissions, and history is recorded through 2026-01-07.
+
+=== 2. what finance decides ===
+
+forked 1cd9afbb introducing a0edbe20, omitting nothing, claimed by finance(10807723).
+taken after journal entry a0edbe20, witnessed by 21 entries.
+
+the world finance is planning in is 1f1afd4e, at the cut 2026-01-07 it inherits.
+  frozen  7d86cc6c  +100  due 2026-01-02
+  open    0df2ea53  -60  due 2026-01-20
+  open    a0edbe20  -30  due 2026-01-14
+  once every movement lands, account(13d1aa87) holds 10, within the bounds [0, 1000] its resource declares.
+
+=== 3. putting it back ===
+
+21 admissions and 4 decisions written to repo/
+  repo/journal.json
+  repo/lineage.json
+  repo/worlds.json
+
+=== 4. read again, from the repository alone ===
+
+4 worlds rebuilt and corroborated against what was recorded, read at 2026-01-14:
+
+  world bbee1243  known_at 2026-01-06  frozen 7d86cc6c  open 4de31818
+    4de31818  Unsettled  Breached
+    7d86cc6c  Fulfilled  -
+    settled level of account(13d1aa87): 100   conflicts under FinalState: none
+
+  world ddef2011  known_at 2026-01-07  frozen 7d86cc6c  open 4de31818
+    4de31818  Unsettled  Breached
+    7d86cc6c  Fulfilled  -
+    settled level of account(13d1aa87): 100   conflicts under FinalState: none
+
+  world 1cd9afbb  known_at 2026-01-07  frozen 7d86cc6c  open 0df2ea53
+    0df2ea53  Unsettled  WithinDeadline
+    7d86cc6c  Fulfilled  -
+    settled level of account(13d1aa87): 100   conflicts under FinalState: none
+
+  world 1f1afd4e  known_at 2026-01-07  frozen 7d86cc6c  open 0df2ea53, a0edbe20
+    0df2ea53  Unsettled  WithinDeadline
+    7d86cc6c  Fulfilled  -
+    a0edbe20  Unsettled  WithinDeadline
+    settled level of account(13d1aa87): 100   conflicts under FinalState: none
+
+worlds the repository says finance decided: 1f1afd4e
+worlds the repository says operations decided: 1cd9afbb, ddef2011
