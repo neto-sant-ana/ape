@@ -124,6 +124,44 @@ free in the history and not in what has to be stored, read and replayed.
 > answering `AlreadyPresent` — and the journal is a sequence of admission records, which nothing
 > deduplicates. Stating it the original way would have refuted the wrong claim.
 
+*Also predicted, and added before Phase 1 ran:* **a repeat can cost readability, and whether it does
+depends on what was learned between the two occurrences.** So the second clause has its own
+refutation: *refuted if* a readmission is readable regardless of what falls between the occurrences,
+or if it is refused regardless.
+
+> Measured before Phase 1, over a journal of 14 subject entries, by composing three things this
+> laboratory already holds: `Taken::after` is an address, `replay_through` resolves an address to its
+> **first** occurrence, and `corroborate` compares **sets**.
+>
+> ```text
+> readmitted adjacently, decision after           16 records, 15 distinct   reconstructs
+> readmitted after something else was learned,
+>   decision after the repeat                     17 records, 16 distinct   REFUSED
+> the same, with a decision taken between
+>   the two occurrences                           17 records, 16 distinct   REFUSED
+> ```
+>
+> Neither refusal is a defect, and the first line is not a success. The replay is told to stop at an
+> address that occurs twice and refuses rather than guessing which occurrence was meant, which is what
+> this layer does everywhere else; the adjacent case passes only because a set cannot tell 15 distinct
+> entries out of 16 records from 15 out of 15. What is new is that **exploration produces exactly that
+> journal by accident** — a mitigation E4 already predicts an application would reach for is what
+> makes its record conditionally unreadable — and that the shape of the remedy is an application
+> asking whether it already holds an address before readmitting it. Whether that is the right place
+> for it is Phase 6's to name.
+>
+> Two things the composition also settled, and they were not the point of it. `EntryAlreadyPassed`
+> and `WitnessedKnowledgeAbsent` are exercised by no suite here, so by this sequence's own standard
+> they were hypotheses rather than guards; these are the first exercises of either. And the two are
+> **asymmetric in a way worth recording**: the refusal from the replay names the repeated entry and
+> its statement is true, because a replay can see the repetition. The refusal from corroboration
+> names the *innocent* entry learned in between, and says the journal does not offer it — which is
+> false, the journal offers it at position 15 of 17. That is not a wording defect. Corroboration
+> weighs two sets, the cause is a multiplicity, and a set cannot hold one.
+>
+> Phase 3 measures all three lines rather than one, for the same reason Phase 4 measures both of
+> E5's arrangements: which of them an application produces is not something to assume.
+
 **E5 — Exploratory worlds are leaves, so one file can be pruned and the other cannot.**
 
 *Prediction:* a candidate recorded as a decision is a leaf, and dropping it from the lineage **and its
@@ -418,6 +456,12 @@ E4 predicts that a repeat costs a journal record and no knowledge. Whether an ap
 drop the duplicate on the way in is not decided here. It would be the first place the CLI's journal
 stops being a faithful log of what was supplied, and that is a trade this experiment measures rather
 than makes.
+
+The measurement added to E4 raises what is at stake without deciding it either: a duplicate does not
+merely cost a record, it can make the repository unreadable depending on what falls between the two
+occurrences. Which means the choice is no longer *faithful log versus smaller file* — it is faithful
+log versus a journal whose addresses are unambiguous, and one of those is a property a reader depends
+on. Still not decided here, and now worth more than it was.
 
 ### What an exploratory decision is, if anything
 
