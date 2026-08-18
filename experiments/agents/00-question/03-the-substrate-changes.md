@@ -102,6 +102,29 @@ S5 is the one worth running the re-run for. The rest are bookkeeping on results 
 
 ---
 
+## The party field is in from the first run
+
+It was proposed here that `by` be withheld from the first two re-runs and introduced only in the
+third, where a narrative claims authorship, so that the comparison against the pinned runs stayed
+clean. That was decided against, and the objection does not survive being written out.
+
+The comparison was never going to isolate one variable. The substrate changes four things at once —
+the record becomes durable and therefore forgeable, admissions become enumerable, decisions name
+their own operation, and a party can be named. Holding one of the four back would not produce a
+controlled comparison; it would produce a run that differs from the originals in three ways instead
+of four, and from the following run in one, and nothing would be attributable either way.
+
+Isolating them properly would take a re-run per change, which nobody proposed and which would spend
+five runs to answer a question none of the five was asked.
+
+So `by` is present from the first re-run, and S5 is live in all three. The consequence to keep in
+view is the one S5 names: a field that is checkable as a reference and not as an attribution is
+available to every agent from the outset, including the two whose task gives them no reason to
+reach for it. Whether an agent names itself when nothing asks it to is now part of what the first
+re-run measures, and it was not part of what the first run did.
+
+---
+
 ## What the earlier runs now mean
 
 They are pinned records of a different boundary, and they are not rewritten.
