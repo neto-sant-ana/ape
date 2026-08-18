@@ -128,6 +128,30 @@ measured.
 
 ---
 
+## Assembling a briefing
+
+Written down because three runs have needed it and the next experiment needs two at once, and
+because both of its pitfalls have already cost something.
+
+1. **A directory that holds everything and points nowhere.** The engine is copied into it, so
+   nothing in the briefing names a path inside the repository. Isolation by construction: the agent
+   is never handed a route to the experiment, rather than being asked not to look for one.
+2. **The vendored engine needs a workspace root.** Its manifest inherits `version`, `edition`,
+   `license` and `repository` from one, and cut out on its own it does not parse. A briefing without
+   that block fails before any code is read — which happened on the first run, and the agent repaired
+   it and said so. **Build the briefing before invoking anybody.**
+3. **Nothing from an earlier run.** Not its answer, not its program, not the world it built. The one
+   near miss recorded here came from assembling a briefing by copying the previous one: a prior
+   analysis travelled in the comments of a file nobody meant to include, and was caught before the
+   digest rather than prevented by the process. Assemble from the source, not from the last briefing.
+4. **Digest, then invoke.** The digests of everything the agent receives are published before the
+   agent exists, and re-checked afterwards.
+5. **The thinnest possible prompt.** Point at the directory, say to read the task and work only
+   there. Everything the agent knows should come from the briefing, so that what it did is
+   attributable to the briefing.
+
+---
+
 ## Recording rules
 
 * The engine the run is measured against is pinned by commit, and the pin is recorded with
