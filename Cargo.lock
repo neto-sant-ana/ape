@@ -20,6 +20,7 @@ version = "0.1.0"
 dependencies = [
  "ape",
  "ape-cli",
+ "serde_json",
 ]
 
 [[package]]
