@@ -15,7 +15,6 @@ fn accepts_a_valid_eligibility_assignment() {
     let agent = store.add_agent(
         Agent::create(AgentInput {
             label: ident("agent"),
-            kind: AgentKind::Company,
         })
         .unwrap(),
     );
@@ -61,7 +60,6 @@ fn rejects_eligibility_assignment_for_unknown_role() {
     let agent = store.add_agent(
         Agent::create(AgentInput {
             label: ident("agent"),
-            kind: AgentKind::Company,
         })
         .unwrap(),
     );
@@ -85,7 +83,6 @@ fn rejects_executor_without_eligibility_for_an_actor_role() {
     let bad = f.store.add_agent(
         Agent::create(AgentInput {
             label: ident("bad-executor"),
-            kind: AgentKind::Individual,
         })
         .unwrap(),
     );
@@ -105,7 +102,6 @@ fn accepts_an_empty_eligibility_assignment_as_a_withdrawal() {
     let agent = store.add_agent(
         Agent::create(AgentInput {
             label: ident("agent"),
-            kind: AgentKind::Company,
         })
         .unwrap(),
     );
@@ -130,7 +126,6 @@ fn eligibility_takes_effect_on_its_own_effective_from() {
     let sameday = f.store.add_agent(
         Agent::create(AgentInput {
             label: ident("sameday"),
-            kind: AgentKind::Individual,
         })
         .unwrap(),
     );
@@ -156,7 +151,6 @@ fn eligibility_recorded_after_committed_at_is_not_yet_in_effect() {
     let latecomer = f.store.add_agent(
         Agent::create(AgentInput {
             label: ident("latecomer"),
-            kind: AgentKind::Individual,
         })
         .unwrap(),
     );
@@ -220,7 +214,6 @@ fn a_tie_on_effective_from_resolves_by_id_deterministically() {
     let agent = store.add_agent(
         Agent::create(AgentInput {
             label: ident("agent"),
-            kind: AgentKind::Individual,
         })
         .unwrap(),
     );
@@ -267,7 +260,6 @@ fn an_assignment_carrying_several_roles_satisfies_any_of_them() {
     let multi = f.store.add_agent(
         Agent::create(AgentInput {
             label: ident("multi"),
-            kind: AgentKind::Individual,
         })
         .unwrap(),
     );

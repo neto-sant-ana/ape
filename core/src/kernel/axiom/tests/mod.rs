@@ -22,8 +22,8 @@ use crate::kernel::entities::{
 };
 
 use crate::kernel::value_objects::{
-    ActionKind, ActionValue, AgentKind, Assignment, Date, Identifier, Observation, Participants,
-    ResourceKind, Settlement, Term,
+    ActionKind, ActionValue, Assignment, Date, Identifier, Observation, Participants, ResourceKind,
+    Settlement, Term,
 };
 
 #[derive(Default)]
@@ -153,21 +153,18 @@ fn discrete_graph() -> Fixture {
     let accountable = store.add_agent(
         Agent::create(AgentInput {
             label: ident("accountable"),
-            kind: AgentKind::Company,
         })
         .unwrap(),
     );
     let executor = store.add_agent(
         Agent::create(AgentInput {
             label: ident("executor"),
-            kind: AgentKind::Individual,
         })
         .unwrap(),
     );
     let beneficiary = store.add_agent(
         Agent::create(AgentInput {
             label: ident("beneficiary"),
-            kind: AgentKind::Company,
         })
         .unwrap(),
     );

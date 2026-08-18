@@ -1,8 +1,6 @@
 //! Value objects describing agents, the roles they may take, and how they are
 //! assigned to a statement.
 //!
-//! - `AgentKind` — whether an agent is a company or an individual.
-//!
 //! - `Participants` — the roles required to execute (`actors`) and to benefit from
 //!   (`recipients`) a statement.
 //!
@@ -13,13 +11,6 @@ use serde::Serialize;
 use std::collections::BTreeSet;
 
 use crate::kernel::entities::{AgentId, RoleId};
-
-define_value_object! {
-    pub enum AgentKind {
-        Company,
-        Individual,
-    }
-}
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Participants {

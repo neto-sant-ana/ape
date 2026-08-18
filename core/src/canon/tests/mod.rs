@@ -19,8 +19,8 @@ use crate::kernel::entities::{
 };
 
 use crate::kernel::value_objects::{
-    ActionKind, ActionValue, AgentKind, Assignment, Date, Identifier, Observation, Participants,
-    ResourceKind, Settlement, Term,
+    ActionKind, ActionValue, Assignment, Date, Identifier, Observation, Participants, ResourceKind,
+    Settlement, Term,
 };
 
 fn date(y: i32, m: u8, d: u8) -> Date {
@@ -112,7 +112,6 @@ fn seed_graph<H: CanonicalHistory>(canon: &mut Canon<H>) -> Seeded {
         .admit_agent(
             AgentInput {
                 label: ident("accountable"),
-                kind: AgentKind::Company,
             },
             rec,
         )
@@ -121,7 +120,6 @@ fn seed_graph<H: CanonicalHistory>(canon: &mut Canon<H>) -> Seeded {
         .admit_agent(
             AgentInput {
                 label: ident("executor"),
-                kind: AgentKind::Individual,
             },
             rec,
         )
@@ -130,7 +128,6 @@ fn seed_graph<H: CanonicalHistory>(canon: &mut Canon<H>) -> Seeded {
         .admit_agent(
             AgentInput {
                 label: ident("beneficiary"),
-                kind: AgentKind::Company,
             },
             rec,
         )

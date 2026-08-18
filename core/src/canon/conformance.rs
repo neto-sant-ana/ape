@@ -28,9 +28,7 @@ use crate::kernel::entities::{
     RoleInput, StatementId,
 };
 
-use crate::kernel::value_objects::{
-    ActionValue, AgentKind, Assignment, Date, Identifier, Observation, Term,
-};
+use crate::kernel::value_objects::{ActionValue, Assignment, Date, Identifier, Observation, Term};
 
 pub fn verify<H: CanonicalHistory>(instance: impl Fn() -> H) {
     commitment_put_is_idempotent(instance());
@@ -539,7 +537,12 @@ where
                     recorded_at,
                 );
                 let event_id = event.assertion().id();
-                (commitment, event_id, recorded_at, adapter.append_event(event))
+                (
+                    commitment,
+                    event_id,
+                    recorded_at,
+                    adapter.append_event(event),
+                )
             })
         })
         .collect();
@@ -610,7 +613,6 @@ fn sample_role(tag: u8) -> Canonical<Role> {
 fn sample_agent(tag: u8) -> Canonical<Agent> {
     let agent = Agent::create(AgentInput {
         label: Identifier::new(format!("agent-{tag}")).unwrap(),
-        kind: AgentKind::Company,
     })
     .unwrap();
 
