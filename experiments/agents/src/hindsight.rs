@@ -154,10 +154,13 @@ pub fn replay(steps: &[Step]) -> Built {
             } => {
                 journal.push(world::intention(
                     &world,
-                    *magnitude,
-                    *incoming,
-                    *due,
-                    *recorded_at,
+                    world::Intention {
+                        magnitude: *magnitude,
+                        incoming: *incoming,
+                        due: *due,
+                        recorded_at: *recorded_at,
+                        dependencies: [].into(),
+                    },
                 ));
                 admit(&mut canon, &journal, &mut admitted);
 

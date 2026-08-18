@@ -20,6 +20,12 @@
 //! verdict. The need for a floor-only form is a finding handed to the experiment that owns the
 //! journal, not a change made here.
 //!
+//! The floor became a parameter when an experiment needed to change *the world* while leaving the
+//! agents and their objectives alone, and a reserve the account must keep is the smallest such
+//! change available. [`construct`] is the arrangement the first three experiments ran against and
+//! is left saying so; [`with_cash`] is the same construction with the constraint named by the
+//! caller.
+//!
 //! **The house is a party, and the agent is not.** `by` on a decision names an admitted Agent,
 //! and the agent acting here is not one — it decides on the house's behalf and has no
 //! representation of its own. So the party recorded is the house. That is the whole of what a
@@ -30,10 +36,10 @@
 //! and an experiment about what an agent can express should not be measuring the last bit of a
 //! float.
 
+use std::collections::BTreeSet;
+
 use ape::canon::Canon;
-use ape::kernel::entities::{
-    AgentId, CommitmentId, ResourceInstanceId, RoleId, StatementId,
-};
+use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId, RoleId, StatementId};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::error::JournalError;
@@ -74,8 +80,24 @@ pub fn today() -> Date {
     on(6)
 }
 
+/// Cash as the first three experiments constrained it: a floor at zero, and no reachable ceiling.
+pub fn cash() -> ResourceKindRecord {
+    ResourceKindRecord::Between {
+        lower: 0.0,
+        upper: 1000.0,
+    }
+}
+
 /// Admit the vocabulary, then the one fact that gives the account a level.
 pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, JournalError> {
+    with_cash(canon, cash())
+}
+
+/// The same world, under a constraint the caller names.
+pub fn with_cash(
+    canon: &mut Canon<ResidentHistory>,
+    cash: ResourceKindRecord,
+) -> Result<Constructed, JournalError> {
     let mut journal = Vec::new();
     let mut admitted = Replayed::default();
 
@@ -98,10 +120,7 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         },
         Admission::Resource {
             label: "cash".into(),
-            kind: ResourceKindRecord::Between {
-                lower: 0.0,
-                upper: 1000.0,
-            },
+            kind: cash,
             recorded_at: day(1),
         },
     ]);
@@ -207,16 +226,27 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
     })
 }
 
-/// An intention of the house to move `magnitude` on the account by `due`, as a journal records
-/// one. Not admitted here — a caller admits it when its sequence says to.
-pub fn intention(
-    world: &Constructed,
-    magnitude: f64,
-    incoming: bool,
-    due: u8,
-    recorded_at: u8,
-) -> Admission {
-    let (accountable, beneficiary, statement) = if incoming {
+/// What an intention says, filled in by name.
+///
+/// Named rather than positional because two of these fields are days and a third is a boolean:
+/// three arguments in a row that the compiler cannot tell apart, in a call whose meaning depends
+/// entirely on their order.
+pub struct Intention {
+    pub magnitude: f64,
+    pub incoming: bool,
+    pub due: u8,
+    pub recorded_at: u8,
+    /// What this intention cannot stand without.
+    ///
+    /// Empty in the first three experiments, where nothing hung off anything else. A world in which
+    /// something does is what makes a removal structurally refusable rather than merely unwise.
+    pub dependencies: BTreeSet<CommitmentId>,
+}
+
+/// An intention of the house to move on the account, as a journal records one. Not admitted here —
+/// a caller admits it when its sequence says to.
+pub fn intention(world: &Constructed, input: Intention) -> Admission {
+    let (accountable, beneficiary, statement) = if input.incoming {
         (world.market, world.house, world.inbound)
     } else {
         (world.house, world.market, world.outbound)
@@ -228,10 +258,10 @@ pub fn intention(
         beneficiaries: [beneficiary].into(),
         statement,
         resource: world.account,
-        committed_at: day(recorded_at),
-        due_date: day(due),
-        magnitude: Some(magnitude),
-        dependencies: [].into(),
-        recorded_at: day(recorded_at),
+        committed_at: day(input.recorded_at),
+        due_date: day(input.due),
+        magnitude: Some(input.magnitude),
+        dependencies: input.dependencies,
+        recorded_at: day(input.recorded_at),
     }
 }
