@@ -1,0 +1,51 @@
+[
+  {
+    "thesis": "bbee1243429cb970f46358d411a0d4e8e10e829f2e3300ad5b417558c691a98a",
+    "thesis_parent": null,
+    "known_at": "2026-01-06",
+    "event_head": "ede70f26c0d9a88533c7cd801731e0377ba0d8a8c36ec8ba1c90b6e555ed5b02",
+    "frozen": [
+      "7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"
+    ],
+    "open": [
+      "4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"
+    ]
+  },
+  {
+    "thesis": "791528450d627c4523dbfa073d231ef0884c5e78c4d564be6f65059b9875f737",
+    "thesis_parent": "bbee1243429cb970f46358d411a0d4e8e10e829f2e3300ad5b417558c691a98a",
+    "known_at": "2026-01-06",
+    "event_head": "ede70f26c0d9a88533c7cd801731e0377ba0d8a8c36ec8ba1c90b6e555ed5b02",
+    "frozen": [
+      "7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"
+    ],
+    "open": [
+      "06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7",
+      "4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"
+    ]
+  },
+  {
+    "thesis": "ddef201121401c9c658d8a087d214cda57287ee630e217c2ea5bf0fd2b5ed5f4",
+    "thesis_parent": "bbee1243429cb970f46358d411a0d4e8e10e829f2e3300ad5b417558c691a98a",
+    "known_at": "2026-01-07",
+    "event_head": "ede70f26c0d9a88533c7cd801731e0377ba0d8a8c36ec8ba1c90b6e555ed5b02",
+    "frozen": [
+      "7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"
+    ],
+    "open": [
+      "4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"
+    ]
+  },
+  {
+    "thesis": "1cd9afbbe16aba8e1455be1f48e4a01b95c99e3b18ac0a4c263ea25f2d415cec",
+    "thesis_parent": "ddef201121401c9c658d8a087d214cda57287ee630e217c2ea5bf0fd2b5ed5f4",
+    "known_at": "2026-01-07",
+    "event_head": "ede70f26c0d9a88533c7cd801731e0377ba0d8a8c36ec8ba1c90b6e555ed5b02",
+    "frozen": [
+      "7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"
+    ],
+    "open": [
+      "0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e"
+    ]
+  }
+]

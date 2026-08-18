@@ -52,8 +52,14 @@ The change is recorded rather than quietly made, and what the rule was protectin
 
 An experiment that finds the application missing something does not build it. The need goes to the
 branch that owns the application, and where the need blocks, the experiment stops until that work
-lands. A command running a feasibility report after an applicability one is the current example: it
-is the application's, and no experiment writes it here.
+lands.
+
+A command running a feasibility report after an applicability one was the example this rule was
+written for, and it is now the example of the third guard below rather than of the rule: it was held
+back until the fourth experiment had run, because an application that runs the second report for its
+caller ends any question about whether the caller would have asked. The measurement exists, pinned to
+the version it met, so the work is no longer blocked by it. It is still the application's, and no
+experiment writes it here.
 
 Three things keep the rule from being either ceremony or an excuse.
 
@@ -102,4 +108,5 @@ yet.
 # Index
 
 **[`agents/`](agents)** — whether an autonomous LLM agent can express, evaluate and later
-reconstruct an operational decision through APE without extending its ontology.
+reconstruct an operational decision through APE without extending its ontology, and whether several
+of them can coordinate through it without the engine inferring what any of them meant.

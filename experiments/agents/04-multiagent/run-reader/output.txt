@@ -1,0 +1,132 @@
+== names ==
+role       spender        3d359fe8c7ff74044b22d66f9a5bf29cf848739401b16456a69ccf64829d6f4f
+role       counterparty   48845bf3932457367beba3b252731695cbef505e4c5b6bce1acf708444564626
+agent      house          fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562
+agent      market         0d3a24e8704bd9f36112a65e0e7cb15fe596d542dc5212ba5b8efeeb66c24ace
+resource   cash           c082ee5ba249962e13e050dc997111d855bb9cbbb27436ac6c5bfca54f04543c Between { lower: 0.0, upper: 1000.0 }
+instance   account        13d1aa870b332387ec2e47dcb3323a9e49bf26e89e1d276716f196a179d2f05c
+action     receive        d0aaa02ebd9b1cd223342d0df70c7a1cd90c1ab376981fa40e57daadcd640b97 Quantifiable(Increase)
+action     spend          1a96cf9608aa6e4265b704318034eec2bc964e4e702f5cc89cdbfd41a75aebdc Quantifiable(Decrease)
+commitment                7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de magnitude=Some(100.0) due=2026-01-02 recorded=2026-01-01 accountable=0d3a24e8704bd9f36112a65e0e7cb15fe596d542dc5212ba5b8efeeb66c24ace executors={AgentId([13, 58, 36, 232, 112, 75, 217, 243, 97, 18, 166, 94, 14, 124, 177, 95, 229, 150, 213, 66, 220, 82, 18, 186, 91, 142, 254, 235, 102, 194, 74, 206])}
+agent      operations     326993e96a20964d9b4317764638aea39d48c5ee990495221aecc4f437e0f8a3
+agent      finance        108077234acde7911af42ac2a820bcdb2e770e9c923608f9454a2eec6c71970b
+commitment                4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30 magnitude=Some(20.0) due=2026-01-10 recorded=2026-01-05 accountable=fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562 executors={AgentId([254, 14, 128, 246, 150, 14, 95, 19, 58, 254, 159, 152, 184, 133, 127, 173, 134, 54, 134, 90, 211, 32, 232, 186, 170, 9, 157, 232, 40, 93, 213, 98])}
+commitment                06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7 magnitude=Some(30.0) due=2026-01-14 recorded=2026-01-06 accountable=fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562 executors={AgentId([16, 128, 119, 35, 74, 205, 231, 145, 26, 244, 42, 194, 168, 32, 188, 219, 46, 119, 14, 156, 146, 54, 8, 249, 69, 74, 46, 236, 108, 113, 151, 11])}
+commitment                0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e magnitude=Some(60.0) due=2026-01-20 recorded=2026-01-07 accountable=fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562 executors={AgentId([254, 14, 128, 246, 150, 14, 95, 19, 58, 254, 159, 152, 184, 133, 127, 173, 134, 54, 134, 90, 211, 32, 232, 186, 170, 9, 157, 232, 40, 93, 213, 98])}
+
+== who decided what (the `by` claim) ==
+326993e96a20964d9b4317764638aea39d48c5ee990495221aecc4f437e0f8a3 -> {"1cd9afbbe16aba8e1455be1f48e4a01b95c99e3b18ac0a4c263ea25f2d415cec", "ddef201121401c9c658d8a087d214cda57287ee630e217c2ea5bf0fd2b5ed5f4"}
+108077234acde7911af42ac2a820bcdb2e770e9c923608f9454a2eec6c71970b -> {"791528450d627c4523dbfa073d231ef0884c5e78c4d564be6f65059b9875f737"}
+
+== worlds ==
+bbee1243429cb970f46358d411a0d4e8e10e829f2e3300ad5b417558c691a98a parent=None known_at=2026-01-06 frozen=["7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"] open=["4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"]
+791528450d627c4523dbfa073d231ef0884c5e78c4d564be6f65059b9875f737 parent=Some("bbee1243429cb970f46358d411a0d4e8e10e829f2e3300ad5b417558c691a98a") known_at=2026-01-06 frozen=["7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"] open=["06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7", "4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"]
+ddef201121401c9c658d8a087d214cda57287ee630e217c2ea5bf0fd2b5ed5f4 parent=Some("bbee1243429cb970f46358d411a0d4e8e10e829f2e3300ad5b417558c691a98a") known_at=2026-01-07 frozen=["7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"] open=["4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"]
+1cd9afbbe16aba8e1455be1f48e4a01b95c99e3b18ac0a4c263ea25f2d415cec parent=Some("ddef201121401c9c658d8a087d214cda57287ee630e217c2ea5bf0fd2b5ed5f4") known_at=2026-01-07 frozen=["7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"] open=["0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e"]
+
+== the report, asked again ==
+{
+  "base": "bbee1243429cb970f46358d411a0d4e8e10e829f2e3300ad5b417558c691a98a",
+  "source": "791528450d627c4523dbfa073d231ef0884c5e78c4d564be6f65059b9875f737",
+  "target": "1cd9afbbe16aba8e1455be1f48e4a01b95c99e3b18ac0a4c263ea25f2d415cec",
+  "omitted": [],
+  "introduced": [
+    "06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7"
+  ],
+  "status": {
+    "status": "applicable",
+    "transfer": {
+      "remove": [],
+      "introduce": [
+        "06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7"
+      ]
+    },
+    "candidate": {
+      "frozen": [
+        "7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"
+      ],
+      "open": [
+        "06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7",
+        "0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e"
+      ]
+    }
+  }
+}
+
+== the same question with the other base choices ==
+source-as-base: refused: thesis 791528450d627c4523dbfa073d231ef0884c5e78c4d564be6f65059b9875f737 is not a common ancestor of 791528450d627c4523dbfa073d231ef0884c5e78c4d564be6f65059b9875f737 and 1cd9afbbe16aba8e1455be1f48e4a01b95c99e3b18ac0a4c263ea25f2d415cec
+target-as-base: refused: thesis 1cd9afbbe16aba8e1455be1f48e4a01b95c99e3b18ac0a4c263ea25f2d415cec is not a common ancestor of 791528450d627c4523dbfa073d231ef0884c5e78c4d564be6f65059b9875f737 and 1cd9afbbe16aba8e1455be1f48e4a01b95c99e3b18ac0a4c263ea25f2d415cec
+
+== the candidate, actually built, and interpreted ==
+
+thesis 1cd9afbbe16aba8e1455be1f48e4a01b95c99e3b18ac0a4c263ea25f2d415cec open=["0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e"]
+  FinalState: []
+  OnDueDateNet: []
+  OnDueDateInAnyOrder: []
+  settled level at 2026-01-07: 100
+  settled level at 2026-01-10: 100
+  settled level at 2026-01-14: 100
+  settled level at 2026-01-20: 100
+
+thesis 052eedc1db8edd7d7b7483776b15414a92d6f27afa6ab98eb8642f4fcd63d3eb open=["06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7", "0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e"]
+  FinalState: []
+  OnDueDateNet: []
+  OnDueDateInAnyOrder: []
+  settled level at 2026-01-07: 100
+  settled level at 2026-01-10: 100
+  settled level at 2026-01-14: 100
+  settled level at 2026-01-20: 100
+
+== does the fork the report authorizes land on the candidate it names? ==
+frozen agrees: true   open agrees: true
+the world operations would land in: 052eedc1db8edd7d7b7483776b15414a92d6f27afa6ab98eb8642f4fcd63d3eb
+
+== the reverse question: operations' intention in finance's line ==
+{
+  "base": "bbee1243429cb970f46358d411a0d4e8e10e829f2e3300ad5b417558c691a98a",
+  "source": "1cd9afbbe16aba8e1455be1f48e4a01b95c99e3b18ac0a4c263ea25f2d415cec",
+  "target": "791528450d627c4523dbfa073d231ef0884c5e78c4d564be6f65059b9875f737",
+  "omitted": [
+    "4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"
+  ],
+  "introduced": [
+    "0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e"
+  ],
+  "status": {
+    "status": "conflicted",
+    "attempted": {
+      "remove": [
+        "4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"
+      ],
+      "introduce": [
+        "0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e"
+      ]
+    },
+    "conflicts": [
+      {
+        "conflict": "historical-unavailability",
+        "commitment": "0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e",
+        "recorded_at": "2026-01-07",
+        "known_at": "2026-01-06"
+      }
+    ]
+  }
+}
+
+== the same verdict on a neighbouring world, one decision away ==
+world 46192bc00447afe3806511715315b47e6c7e34489633f503f271d15edeba4d1a open=["0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e", "4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"]
+  status: {"status":"applicable","transfer":{"remove":[],"introduce":["06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7"]},"candidate":{"frozen":["7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de"],"open":["06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7","0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e","4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30"]}}
+  its own feasibility (FinalState): []
+  after taking the transfer it calls applicable: [OutOfBounds { instance: ResourceInstanceId([19, 209, 170, 135, 11, 51, 35, 135, 236, 46, 71, 220, 179, 50, 58, 158, 73, 191, 38, 232, 158, 29, 39, 103, 22, 241, 150, 161, 121, 210, 240, 92]), level: -10.0 }]
+
+== can the record check whose line the Source is? ==
+a copy whose `by` says `market` instead of `finance` rebuilds fine
+  the copy says market decided {"791528450d627c4523dbfa073d231ef0884c5e78c4d564be6f65059b9875f737"}
+  the copy says finance decided {}
+  what the check does buy: the decision is attributed to 3d359fe8c7ff74044b22d66f9a5bf29cf848739401b16456a69ccf64829d6f4f, whom nothing had admitted when it was taken
+
+== movements, so the arithmetic is not guessed ==
+7d86cc6c3ebd7e8d7e8209f4c6e5c3339903f12cd5fa57c2f58653c7471594de -> Some(("13d1aa870b332387ec2e47dcb3323a9e49bf26e89e1d276716f196a179d2f05c", 100.0))
+4de31818a8f96a29a696fcc5182c2b50cd76d489a558f6335067b0d769ef7a30 -> Some(("13d1aa870b332387ec2e47dcb3323a9e49bf26e89e1d276716f196a179d2f05c", -20.0))
+06b94c41827b09c3aeb817b8be12954c877ec94102a8f690adeb0c0b5bb5c9c7 -> Some(("13d1aa870b332387ec2e47dcb3323a9e49bf26e89e1d276716f196a179d2f05c", -30.0))
+0df2ea53f9055f2344ad3d4b2bff16f161ce92414dab3919dd94e602ccee063e -> Some(("13d1aa870b332387ec2e47dcb3323a9e49bf26e89e1d276716f196a179d2f05c", -60.0))
