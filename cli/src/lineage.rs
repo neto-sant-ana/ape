@@ -354,7 +354,7 @@ pub fn rebuild(
     for taken in decisions {
         journal::replay_through(canon, journal, &mut admitted, &taken.after)?;
 
-        corroborate(&admitted, taken)?;
+        corroborate(&admitted, taken).map_err(|refusal| diagnosed(journal, taken, refusal))?;
         attributed(&admitted, taken)?;
 
         decide(canon.history(), &mut lineage, &taken.decision)?;
@@ -388,6 +388,47 @@ fn corroborate(admitted: &Replayed, taken: &Taken) -> Result<(), LineageError> {
     }
 
     Ok(())
+}
+
+/// Say why a witness outran the replay, where the reason is a readmission.
+///
+/// [`corroborate`] weighs two sets, and the cause of this particular disagreement is a
+/// **multiplicity** — an address the journal admits twice, resolved to its earlier occurrence — which
+/// a set cannot hold. So the set comparison cannot explain itself, and blames the entry learned in
+/// between: a reader told the journal does not offer an entry the journal *does* offer goes looking
+/// for a truncated file that is not there.
+///
+/// The diagnosis therefore happens here, where the whole journal is in hand, and only after something
+/// has already been refused. It replays into a canon of its own rather than the caller's, because a
+/// refusal must leave nothing behind, and it falls back to the original refusal wherever it cannot
+/// establish the cause — a witness naming an entry no journal ever held is a different fault and
+/// keeps its own name.
+fn diagnosed(journal: &[Admission], taken: &Taken, refusal: LineageError) -> LineageError {
+    let absent = match &refusal {
+        LineageError::WitnessedKnowledgeAbsent { entry } => entry.clone(),
+        _ => return refusal,
+    };
+
+    let mut aside = Canon::new(ResidentHistory::new());
+
+    let Ok(whole) = journal::replay(&mut aside, journal) else {
+        return refusal;
+    };
+
+    if whole
+        .entries
+        .iter()
+        .filter(|held| *held == &taken.after)
+        .count()
+        > 1
+    {
+        return LineageError::ReadmittedEntryIsAmbiguous {
+            readmitted: taken.after.clone(),
+            entry: absent,
+        };
+    }
+
+    refusal
 }
 
 /// Weigh a decision's claim about who took it against the knowledge that stood when it was taken.
