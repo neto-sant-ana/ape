@@ -48,6 +48,36 @@ The change is recorded rather than quietly made, and what the rule was protectin
   beneath it. A CLI change that moves an experiment's result must read as a consumer breaking,
   never as the result having always been different.
 
+**A need is handed over, and the experiment waits for it.**
+
+An experiment that finds the application missing something does not build it. The need goes to the
+branch that owns the application, and where the need blocks, the experiment stops until that work
+lands. A command running a feasibility report after an applicability one is the current example: it
+is the application's, and no experiment writes it here.
+
+Three things keep the rule from being either ceremony or an excuse.
+
+*What counts as blocking.* Whether the experiment can still measure what it set out to measure. A
+floor-only resource constraint was not expressible in the journal, and the world was restated as a
+range whose ceiling nothing reaches — with every number shown unchanged, which is what made
+restating it legitimate instead of convenient. A restatement is available exactly as far as it can be
+*shown* not to move the measurement, and the showing is the price.
+
+*The pressure runs one way.* Waiting is expensive and a workaround is cheap, so the temptation is
+always to find the need non-blocking. That is the same move as reclassifying an obligation downward
+until it evaporates, and the guard against it is the paragraph above: demonstrate that nothing moved,
+or wait. Asserting it is not demonstrating it.
+
+*And handing over can destroy the measurement.* Work that closes a gap makes the gap unmeasurable —
+an application that runs feasibility for its caller ends any question about whether the caller would
+have asked. So an experiment whose subject *is* a gap runs before the work that fills it, its result
+pins the version it met, and the finding becomes the reason the work exists rather than a casualty of
+it.
+
+This has happened once already, in both directions. A finding about a decision's coordinate went from
+here to the branch that owned it, was refuted there in its first form, and was repaired on that
+experiment's terms — and the repair came back as a substrate this one now stands on.
+
 **A failed experiment is a result.**
 
 The reason something did not work is worth more than a passing test obtained by relaxing
