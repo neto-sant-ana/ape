@@ -1097,3 +1097,188 @@ fn phase_4_prune_the_leaves() {
         "so the indelible proposition was indelible only while something referred to it"
     );
 }
+
+/// Every kind of place a repository mentions one commitment, with positions dropped.
+///
+/// Derived by walking the three files rather than listed from the record types that hold a
+/// `CommitmentId`. A list would be a second copy of the record vocabulary and would stop being closed
+/// the moment a field were added — silently, which is the only way this kind of guard fails.
+///
+/// Array indices are dropped because *where in a sequence* an identity appears says nothing about the
+/// identity: a commitment admitted early is witnessed by more later decisions than one admitted late,
+/// and that is a fact about order.
+fn mentioned(repository: &Repository, commitment: CommitmentId) -> BTreeSet<String> {
+    let needle = commitment.to_string();
+    let mut found = BTreeSet::new();
+
+    for (file, path) in [
+        ("journal", repository.journal_path()),
+        ("lineage", repository.lineage_path()),
+        ("worlds", repository.worlds_path()),
+    ] {
+        let encoded: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).expect("readable"))
+                .expect("the repository is JSON");
+
+        walk(&encoded, file, &needle, &mut found);
+    }
+
+    found
+}
+
+fn walk(value: &serde_json::Value, at: &str, needle: &str, found: &mut BTreeSet<String>) {
+    match value {
+        serde_json::Value::String(text) if text == needle => {
+            found.insert(at.to_owned());
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                walk(item, at, needle, found);
+            }
+        }
+        serde_json::Value::Object(fields) => {
+            for (key, item) in fields {
+                walk(item, &format!("{at}.{key}"), needle, found);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The commitments some world selects, which is the query that answers what was ever intended.
+fn selected(repository: &Repository) -> BTreeSet<CommitmentId> {
+    reading::corroborated(repository)
+        .expect("reconstructs")
+        .lineage
+        .decided()
+        .iter()
+        .flat_map(|world| world.selection().resolved())
+        .collect()
+}
+
+/// A magnitude no candidate and no intention has, for a commitment nobody ever weighs.
+const INCIDENTAL: f64 = 7.0;
+
+/// Phase 5 — ask the repository what it can say.
+///
+/// E6 as a closed set, and measured **positively**: not by failing to find a query, but by showing that
+/// two commitments a reader would need to tell apart come back identical across every place the record
+/// mentions either of them.
+///
+/// The incidental commitment is admitted last in both arrangements, after every decision. Otherwise a
+/// decision taken after it would name it in `after` and in its witness, and the arrangement would be
+/// measuring the order of admissions rather than what the record says.
+#[test]
+fn phase_5_ask_the_repository_what_it_can_say() {
+    // ---------- arrangement A ----------
+    let (dropped, arrangement) = founded("phase-5-dropped");
+    let subject = &arrangement.subject;
+    let opening = arrangement.opening().id();
+
+    let mut working = exploration::read(&dropped).expect("reconstructs");
+    let mut weighed = Vec::new();
+
+    for spend in CANDIDATES {
+        exploration::admit(&mut working, subject.candidate(spend)).expect("admissible");
+
+        let candidate = *last_commitment(&mut working);
+        exploration::considered(&working, &exploration::spending(opening, candidate))
+            .expect("weighed, and dropped");
+
+        weighed.push(candidate);
+    }
+
+    exploration::admit(&mut working, subject.candidate(INCIDENTAL)).expect("admissible");
+    let incidental = *last_commitment(&mut working);
+    exploration::write(&dropped, &working).expect("writable");
+
+    // What it can say: fourteen commitments are known, one is selected by anything.
+    assert_eq!(counted(&dropped).entries, OPENED + BUDGET + 1);
+    assert_eq!(selected(&dropped), BTreeSet::from([subject.opening]));
+
+    // What it cannot: a candidate weighed twelve times over and a commitment nobody ever looked at
+    // are mentioned in exactly the same places, and that set is empty.
+    assert_eq!(
+        mentioned(&dropped, weighed[0]),
+        BTreeSet::new(),
+        "a candidate arrangement A weighed is named nowhere in the repository"
+    );
+    assert_eq!(
+        mentioned(&dropped, weighed[0]),
+        mentioned(&dropped, incidental),
+        "and so a rejected candidate and an incidental admission are the same silence"
+    );
+
+    // ---------- arrangement B ----------
+    let (kept, arrangement) = founded("phase-5-kept");
+    let subject = &arrangement.subject;
+    let opening = arrangement.opening().id();
+
+    let mut working = exploration::read(&kept).expect("reconstructs");
+    let candidates = explore_recording(&mut working, subject, opening);
+
+    exploration::admit(&mut working, subject.candidate(INTENDED)).expect("admissible");
+    let intention = *last_commitment(&mut working);
+    exploration::decide(&mut working, exploration::spending(opening, intention))
+        .expect("decidable");
+
+    exploration::admit(&mut working, subject.candidate(INCIDENTAL)).expect("admissible");
+    let incidental = *last_commitment(&mut working);
+    exploration::write(&kept, &working).expect("writable");
+
+    // What it can say: sixteen known, fourteen selected — the opening, twelve candidates nobody
+    // intended, and one intention.
+    assert_eq!(counted(&kept).entries, OPENED + BUDGET + 2);
+    assert_eq!(selected(&kept).len(), 1 + BUDGET + 1);
+
+    // What it cannot, and it is a different silence from arrangement A's: a candidate that was only
+    // weighed is mentioned in the same kinds of place as a commitment the application means.
+    // The closed set itself, as a literal. Two empty sets compare equal, so the comparisons below
+    // would pass over a scan that found nothing — and this is also what fails if a record type gains
+    // a field holding a `CommitmentId`, which is the only way the enumeration stops being closed.
+    //
+    // `journal` is absent from it, and that is not an omission: an `Admission::Commitment` carries the
+    // fields a commitment is built from and never its identity, which is derived. What propositions a
+    // journal admits is answerable by replaying it, not by reading it.
+    let places = BTreeSet::from([
+        "lineage.after".to_owned(),
+        "lineage.introduced".to_owned(),
+        "lineage.witness".to_owned(),
+        "worlds.open".to_owned(),
+    ]);
+
+    assert_eq!(
+        mentioned(&kept, candidates[0]),
+        places,
+        "every place the record mentions a commitment at all"
+    );
+    assert_eq!(
+        mentioned(&kept, candidates[0]),
+        mentioned(&kept, intention),
+        "a weighed candidate and an intention are the same claim"
+    );
+    assert_eq!(
+        mentioned(&kept, candidates[ADMISSIBLE - 1]),
+        mentioned(&kept, intention),
+        "including the one the objective chose, which nothing records as chosen"
+    );
+    assert_eq!(
+        mentioned(&kept, incidental),
+        BTreeSet::new(),
+        "while a commitment nothing decided about is still named nowhere"
+    );
+
+    // And the one thing arrangement B *can* separate, which is on another axis entirely: the worlds
+    // the floor refuses are refused again on reconstruction. That distinguishes infeasible from
+    // feasible, never weighed from intended.
+    let refused = reading::reconstruct(&kept, subject.instance, &exploration::asked_at())
+        .expect("the repository reads")
+        .iter()
+        .filter(|world| !world.conflicts.is_empty())
+        .count();
+
+    assert_eq!(
+        refused, REFUSED,
+        "two worlds report a conflict, and say nothing about why they exist"
+    );
+}
