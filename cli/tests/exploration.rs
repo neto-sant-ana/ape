@@ -9,15 +9,18 @@ use std::collections::BTreeSet;
 
 use ape::canon::CanonicalHistory;
 use ape::engine::hermeneia::Conflict;
+use ape::engine::thesis::ThesisId;
 use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 use ape::kernel::value_objects::Date;
 
 use ape_cli::error::{JournalError, LineageError, ReadingError};
 use ape_cli::journal::EntryId;
-use ape_cli::reading::{self, Reading};
+use ape_cli::lineage::Taken;
+use ape_cli::reading::{self, Corroborated, Reading, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::subject::exploration::{
-    self, ADMISSIBLE, BEST, BUDGET, CANDIDATES, Founded, Judged, OPENED, OPENING, REFUSED,
+    self, ADMISSIBLE, BEST, BUDGET, CANDIDATES, Constructed, Founded, Judged, OPENED, OPENING,
+    REFUSED,
 };
 use ape_cli::transfer;
 
@@ -854,4 +857,243 @@ fn judgments(repository: &Repository, instance: ResourceInstanceId) -> Vec<Judge
                 .expect("the objective reads it")
         })
         .collect()
+}
+
+/// Weigh and record the whole budget, returning the candidate commitments in order.
+fn explore_recording(
+    working: &mut Corroborated,
+    subject: &Constructed,
+    opening: ThesisId,
+) -> Vec<CommitmentId> {
+    CANDIDATES
+        .iter()
+        .map(|spend| {
+            exploration::admit(working, subject.candidate(*spend)).expect("admissible");
+
+            let candidate = *last_commitment(working);
+            exploration::decide(working, exploration::spending(opening, candidate))
+                .expect("decidable");
+
+            candidate
+        })
+        .collect()
+}
+
+/// Arrangement C: drop the decisions `keep` rejects, and their witnesses, leaving the journal whole.
+///
+/// There is no code in the application that prunes, so this writes the two files — which is the same
+/// technique the corroboration experiment used to tamper. The difference between tampering and pruning
+/// is intent rather than mechanism, which means the repository cannot tell them apart either.
+fn prune(repository: &Repository, keep: impl Fn(usize) -> bool) {
+    let decisions: Vec<Taken> = repository
+        .read_lineage()
+        .expect("readable")
+        .into_iter()
+        .enumerate()
+        .filter_map(|(at, taken)| keep(at).then_some(taken))
+        .collect();
+
+    let worlds: Vec<WorldRecord> = repository
+        .read_worlds()
+        .expect("readable")
+        .into_iter()
+        .enumerate()
+        .filter_map(|(at, world)| keep(at).then_some(world))
+        .collect();
+
+    repository.write_lineage(&decisions).expect("writable");
+    repository.write_worlds(&worlds).expect("writable");
+}
+
+/// Drop the entries the exploration added, keeping everything admitted before and after it.
+fn prune_journal(repository: &Repository) {
+    let mut journal = repository.read_journal().expect("readable");
+
+    journal.drain(OPENED..OPENED + BUDGET);
+
+    repository.write_journal(&journal).expect("writable");
+}
+
+/// How many of `candidates` any surviving witness still names.
+fn named(repository: &Repository, candidates: &[CommitmentId]) -> usize {
+    let witnessed: BTreeSet<EntryId> = repository
+        .read_lineage()
+        .expect("readable")
+        .into_iter()
+        .flat_map(|taken| taken.witness)
+        .collect();
+
+    candidates
+        .iter()
+        .filter(|id| witnessed.contains(&EntryId::of(**id)))
+        .count()
+}
+
+fn witnessed_entries(repository: &Repository) -> usize {
+    repository
+        .read_lineage()
+        .expect("readable")
+        .iter()
+        .map(|taken| taken.witness.len())
+        .sum()
+}
+
+/// The whole of a repository, as three strings, so that two of them can be compared for identity.
+fn bytes(repository: &Repository) -> (String, String, String) {
+    let read = |path: std::path::PathBuf| std::fs::read_to_string(path).expect("readable");
+
+    (
+        read(repository.journal_path()),
+        read(repository.lineage_path()),
+        read(repository.worlds_path()),
+    )
+}
+
+/// A magnitude no candidate has, for the intention that follows the exploration.
+const INTENDED: f64 = 5.0;
+
+/// What survives in the disposition where a decision follows the exploration: the genesis witnessing
+/// 14, and the intention witnessing all 27. Written before the run.
+const WITNESSED_AFTER: usize = 41;
+
+/// Phase 4 — prune the leaves.
+///
+/// Arrangement C, in both dispositions the protocol's E5 note said to measure rather than assume: a
+/// lineage whose exploratory decisions are its last ones, and one where a decision follows the
+/// exploration. They differ in what a surviving witness names — and, predicted here before the run,
+/// in whether the journal can be pruned at all, which is the half of E5 that says it cannot.
+#[test]
+fn phase_4_prune_the_leaves() {
+    // ---------- the exploratory decisions are the last ones ----------
+    let (last, arrangement) = founded("phase-4-last");
+    let opened = bytes(&last);
+
+    let mut working = exploration::read(&last).expect("reconstructs");
+    let candidates = explore_recording(
+        &mut working,
+        &arrangement.subject,
+        arrangement.opening().id(),
+    );
+    exploration::write(&last, &working).expect("writable");
+
+    prune(&last, |at| at == 0);
+
+    assert_eq!(
+        counted(&last),
+        Counted {
+            entries: OPENED + BUDGET,
+            decisions: 1,
+            worlds: 1,
+        },
+        "twelve leaves dropped and the journal untouched"
+    );
+    reading::corroborated(&last).expect("the pruned repository reconstructs and corroborates");
+
+    // E5's first half: what pruning recovers is the whole of what recording cost, byte for byte.
+    let (_, lineage, worlds) = bytes(&last);
+
+    assert_eq!(
+        lineage, opened.1,
+        "the lineage this arrangement started from"
+    );
+    assert_eq!(worlds, opened.2);
+    assert_eq!(witnessed_entries(&last), OPENED);
+    assert_eq!(
+        named(&last, &candidates),
+        0,
+        "and the genesis predates every candidate, so nothing names one"
+    );
+
+    // E5's second half. Nothing refers to the twelve admissions any more.
+    prune_journal(&last);
+
+    reading::corroborated(&last).expect("the journal-pruned repository reconstructs too");
+    assert_eq!(
+        bytes(&last),
+        opened,
+        "byte for byte the repository nobody explored from"
+    );
+
+    // ---------- a decision follows the exploration ----------
+    let (after, arrangement) = founded("phase-4-after");
+    let subject = &arrangement.subject;
+    let opening = arrangement.opening().id();
+
+    let mut working = exploration::read(&after).expect("reconstructs");
+    let candidates = explore_recording(&mut working, subject, opening);
+
+    exploration::admit(&mut working, subject.candidate(INTENDED)).expect("admissible");
+    let intention = *last_commitment(&mut working);
+    exploration::decide(&mut working, exploration::spending(opening, intention))
+        .expect("decidable");
+    exploration::write(&after, &working).expect("writable");
+
+    prune(&after, |at| at == 0 || at == RECORDED);
+
+    assert_eq!(
+        counted(&after),
+        Counted {
+            entries: OPENED + BUDGET + 1,
+            decisions: 2,
+            worlds: 2,
+        }
+    );
+    reading::corroborated(&after).expect("this pruned repository reconstructs as well");
+
+    // The opposite audit consequence: the surviving decision witnessed every entry that stood when it
+    // was taken, so it names all twelve of the candidates that are gone.
+    assert_eq!(
+        witnessed_entries(&after),
+        WITNESSED_AFTER,
+        "the genesis witnessing 14 and a decision taken after the exploration witnessing all 27"
+    );
+    assert_eq!(
+        named(&after, &candidates),
+        BUDGET,
+        "every pruned candidate is still named by what survived"
+    );
+
+    // And the same journal prune, refused. One measurement, two dispositions, opposite answers.
+    prune_journal(&after);
+
+    match reading::corroborated(&after).map(|_| ()) {
+        Err(ReadingError::Lineage(LineageError::WitnessedKnowledgeAbsent { entry })) => {
+            assert!(
+                candidates.iter().any(|id| EntryId::of(*id) == entry),
+                "refused at a candidate the surviving decision witnesses"
+            )
+        }
+        other => panic!("expected the surviving witness to refuse it, found {other:?}"),
+    }
+
+    // ---------- the same argument, applied to arrangement A ----------
+    // Observation 2 reported that arrangement A leaves its propositions in the journal permanently,
+    // *because* nothing identifies them. Nothing was ever recorded here, so there are no leaves to
+    // drop — and that reasoning is the thing being measured rather than a premise being used.
+    let (ephemeral, arrangement) = founded("phase-4-ephemeral");
+    let unexplored = bytes(&ephemeral);
+    let subject = &arrangement.subject;
+    let opening = arrangement.opening().id();
+
+    let mut working = exploration::read(&ephemeral).expect("reconstructs");
+
+    for spend in CANDIDATES {
+        exploration::admit(&mut working, subject.candidate(spend)).expect("admissible");
+
+        let candidate = *last_commitment(&mut working);
+        exploration::considered(&working, &exploration::spending(opening, candidate))
+            .expect("weighed, and dropped");
+    }
+    exploration::write(&ephemeral, &working).expect("writable");
+
+    assert_eq!(counted(&ephemeral).entries, OPENED + BUDGET);
+
+    prune_journal(&ephemeral);
+
+    reading::corroborated(&ephemeral).expect("arrangement A's leftovers prune as well");
+    assert_eq!(
+        bytes(&ephemeral),
+        unexplored,
+        "so the indelible proposition was indelible only while something referred to it"
+    );
 }
