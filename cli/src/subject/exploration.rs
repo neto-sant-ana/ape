@@ -130,17 +130,34 @@ impl Constructed {
     /// Every field but the magnitude is fixed, so two candidates of equal magnitude are one
     /// commitment by identity — which is what makes repetition measurable rather than arranged.
     pub fn candidate(&self, magnitude: f64) -> Admission {
+        self.outflowing(magnitude, 4)
+    }
+
+    /// The same admission, recorded one day earlier: something the arrangement means, not weighs.
+    ///
+    /// It exists so that a phase can have knowledge in place *before* the recording instant that
+    /// exploration will advance to. Without the gap, everything derived before exploration is
+    /// derived at the same watermark as everything derived after, and a phase asking whether the
+    /// watermark moves any derived answer would be asking about a watermark that never moved.
+    ///
+    /// Nothing else distinguishes the two, which is Observation 2's measurement rather than an
+    /// oversight here: an intention and a candidate are one shape, and only their values differ.
+    pub fn intention(&self, magnitude: f64) -> Admission {
+        self.outflowing(magnitude, 3)
+    }
+
+    fn outflowing(&self, magnitude: f64, recorded_on: u8) -> Admission {
         Admission::Commitment {
             accountable: self.merchant,
             executors: [self.merchant].into(),
             beneficiaries: [self.customer].into(),
             statement: self.outflow,
             resource: self.instance,
-            committed_at: day(4),
+            committed_at: day(recorded_on),
             due_date: day(20),
             magnitude: Some(magnitude),
             dependencies: [].into(),
-            recorded_at: day(4),
+            recorded_at: day(recorded_on),
         }
     }
 }
@@ -371,6 +388,32 @@ pub fn considered(working: &Corroborated, decision: &Decision) -> Result<Thesis,
     let (thesis, _) = lineage::produced(working.canon.history(), &working.lineage, decision)?;
 
     Ok(thesis)
+}
+
+/// Record a decision against what this arrangement holds — arrangement B's verb.
+///
+/// One call apart from [`considered`], and that call is what the experiment is about: this one keeps
+/// the world, and keeps a record of having decided it.
+///
+/// Phase 1 had no use for it, and its absence was what kept arrangement A from recording anything by
+/// accident. Phase 2 is what needed it: an applicability report is derived from three worlds, and
+/// three worlds have to be in a repository before anything can ask.
+pub fn decide(working: &mut Corroborated, decision: Decision) -> Result<ThesisId, SubjectError> {
+    let taken = Taken::now(decision, &working.admitted)?;
+
+    lineage::decide(
+        working.canon.history(),
+        &mut working.lineage,
+        &taken.decision,
+    )?;
+    working.decisions.push(taken);
+
+    Ok(working
+        .lineage
+        .decided()
+        .last()
+        .ok_or(SubjectError::NothingDecided)?
+        .id())
 }
 
 /// Put back everything this arrangement holds, whole.
