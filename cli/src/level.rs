@@ -19,21 +19,54 @@ use crate::error::LevelError;
 
 /// The level an instance holds counting only commitments a projection reports as fulfilled.
 ///
+/// What has landed: the criterion a reader uses to ask where an account actually stands.
+pub fn settled<K: Knowledge>(
+    knowledge: &K,
+    conditions: &ProjectedConditions,
+    instance: ResourceInstanceId,
+) -> Result<f64, LevelError> {
+    folded(knowledge, conditions, instance, |outcome| {
+        outcome == &Outcome::Fulfilled
+    })
+}
+
+/// The level an instance would hold once every movement the projection names has landed.
+///
+/// What will have landed if nothing slips: everything a world selects counts, whatever its
+/// outcome, except a commitment already cancelled — one of those moves nothing and never will.
+///
+/// It is deliberately the criterion `Hypothesis::FinalState` weighs against the resource's
+/// bounds, and that is not a coincidence to be tidied away. An objective that ranked worlds by a
+/// level the engine never checked would prefer a candidate the engine refuses, and would be
+/// comparing its own arithmetic rather than the world.
+pub fn intended<K: Knowledge>(
+    knowledge: &K,
+    conditions: &ProjectedConditions,
+    instance: ResourceInstanceId,
+) -> Result<f64, LevelError> {
+    folded(knowledge, conditions, instance, |outcome| {
+        outcome != &Outcome::Cancelled
+    })
+}
+
+/// Sum the movements on one instance over the commitments `counts` admits.
+///
 /// Every instance begins at zero, because nothing in the ontology gives one an opening
 /// balance: a level exists only as the sum of what moved it.
 ///
 /// A commitment the projection names but knowledge cannot resolve is an error rather than
 /// a zero. Summing over a world one cannot fully read produces a number that looks like an
 /// answer, and this number is about to be compared across a process boundary.
-pub fn settled<K: Knowledge>(
+fn folded<K: Knowledge>(
     knowledge: &K,
     conditions: &ProjectedConditions,
     instance: ResourceInstanceId,
+    counts: impl Fn(&Outcome) -> bool,
 ) -> Result<f64, LevelError> {
     let mut level = 0.0;
 
     for (id, condition) in conditions.conditions() {
-        if condition.outcome() != &Outcome::Fulfilled {
+        if !counts(condition.outcome()) {
             continue;
         }
 
