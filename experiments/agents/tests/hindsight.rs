@@ -1,49 +1,19 @@
 //! The setup experiment 02 audits, checked before an auditor is asked anything.
 //!
-//! Criteria 1 to 3 of the protocol are mechanical, and they are the part that must hold for
-//! the audit to be measuring anything at all: the obligation has to be genuinely out of reach
-//! of the cut the decision was taken under, the decision has to read the same with it in
-//! history, and the world that contains it has to genuinely conflict.
+//! Migrated to the repository substrate. Every assertion keeps the value and the wording it had
+//! over the in-memory adapters; where one moved it would be a finding, and none did.
 //!
 //! The plot lives here and not in `hindsight.rs`, because that file is handed to the auditor.
-//! What the sequence withholds it withholds from the auditor, never from the checks that keep
-//! the auditor honest.
 
 use ape::engine::hermeneia::{Conflict, Hypothesis};
-use ape::engine::thesis::{GenesisInput, Interpretation, KnowledgeCut, Thesis, ThesisId, ThesisLookup};
+use ape::engine::thesis::{GenesisInput, Interpretation, KnowledgeCut, Thesis};
 use ape::kernel::entities::CommitmentId;
 
-use ape_agents::hindsight::{self, Replay, january};
+use ape_agents::hindsight::{self, Built};
 use ape_agents::world;
 
-fn decided_at() -> ape::kernel::value_objects::Date {
-    january(6)
-}
-
-fn audited_at() -> ape::kernel::value_objects::Date {
-    january(12)
-}
-
-fn priority(replay: &Replay) -> CommitmentId {
-    replay.intentions[0]
-}
-
-fn standard(replay: &Replay) -> CommitmentId {
-    replay.intentions[1]
-}
-
-fn obligation(replay: &Replay) -> CommitmentId {
-    replay.intentions[2]
-}
-
-/// The world the decision under audit was taken in: the third opened, counting the two that
-/// only carried knowledge forward.
-fn decision(replay: &Replay) -> ThesisId {
-    replay.worlds[2]
-}
-
-fn conflicts(replay: &Replay, thesis: &Thesis) -> Vec<Conflict> {
-    Interpretation::of(thesis, replay.graph.canon.history())
+fn conflicts(built: &Built, thesis: &Thesis) -> Vec<Conflict> {
+    Interpretation::of(thesis, built.canon.history())
         .expect("the Thesis is interpretable")
         .feasibility_under(Hypothesis::FinalState)
         .expect("feasibility is derivable")
@@ -51,27 +21,34 @@ fn conflicts(replay: &Replay, thesis: &Thesis) -> Vec<Conflict> {
         .to_vec()
 }
 
-fn resolve(replay: &Replay, id: ThesisId) -> Thesis {
-    replay
-        .graph
-        .archive
-        .thesis(id)
-        .expect("the archive holds what was stored in it")
+fn priority(built: &Built) -> CommitmentId {
+    built.intentions[0]
+}
+
+fn standard(built: &Built) -> CommitmentId {
+    built.intentions[1]
+}
+
+fn obligation(built: &Built) -> CommitmentId {
+    built.intentions[2]
+}
+
+/// The world the decision under audit was taken in: the third opened, counting the two that
+/// only carried knowledge forward.
+fn decision(built: &Built) -> Thesis {
+    built.world_at(built.worlds[2])
 }
 
 /// Criterion 1 — the obligation cannot be selected at the instant the decision was taken.
-///
-/// It was recorded after that instant, so a cut there does not reach it. This is the property
-/// the whole experiment rests on, and asserting it is cheaper than trusting it.
 #[test]
 fn the_obligation_is_out_of_reach_of_the_decision_instant() {
-    let replay = hindsight::build();
+    let built = hindsight::build();
 
     let refused = Thesis::genesis(
-        replay.graph.canon.history(),
+        built.canon.history(),
         GenesisInput {
-            cut: KnowledgeCut::at(replay.graph.canon.history(), decided_at()),
-            selection: [obligation(&replay)].into(),
+            cut: KnowledgeCut::at(built.canon.history(), world::on(6)),
+            selection: [obligation(&built)].into(),
         },
     );
 
@@ -84,58 +61,48 @@ fn the_obligation_is_out_of_reach_of_the_decision_instant() {
 /// Criterion 2 — the decision reads the same with the obligation sitting in history.
 #[test]
 fn the_decision_still_reads_clean() {
-    let replay = hindsight::build();
-    let decision = resolve(&replay, decision(&replay));
+    let built = hindsight::build();
+    let decision = decision(&built);
 
-    assert_eq!(decision.cut().known_at(), &decided_at());
-    assert!(!decision.selection().contains(obligation(&replay)));
+    assert_eq!(decision.cut().known_at(), &world::on(6));
+    assert!(!decision.selection().contains(obligation(&built)));
 
     assert!(
-        conflicts(&replay, &decision).is_empty(),
+        conflicts(&built, &decision).is_empty(),
         "spending 30 of 100 conflicts with nothing under what could be known"
     );
 }
 
 /// Criterion 3 — and the world that knows the obligation genuinely does not.
-///
-/// Without this the comparison would be between two readings that agree, and agreement
-/// proves nothing about hindsight.
 #[test]
 fn the_world_that_knows_the_obligation_is_short() {
-    let replay = hindsight::build();
-    let current = resolve(&replay, replay.graph.current);
+    let built = hindsight::build();
+    let current = built.world_at(built.current());
 
-    assert_eq!(current.cut().known_at(), &audited_at());
-    assert!(current.selection().contains(obligation(&replay)));
+    assert_eq!(current.cut().known_at(), &world::on(12));
+    assert!(current.selection().contains(obligation(&built)));
 
     assert_eq!(
-        conflicts(&replay, &current),
+        conflicts(&built, &current),
         vec![Conflict::OutOfBounds {
-            instance: world::build().account,
+            instance: built.world.account,
             level: -20.0,
         }],
         "100 in, 30 spent and 90 owed leaves the account 20 below its floor"
     );
 }
 
-/// What one entry point reaches.
-///
-/// The engine's reads are by identity: nothing enumerates commitments and nothing enumerates
-/// theses. So an auditor's reach is exactly the transitive closure of walking `parent` from
-/// the thesis it is handed, and reading the selections it finds on the way.
-///
-/// This records that the walk finds both candidates — the one taken and the one abandoned —
-/// which is what makes an audit of the deliberation conceivable rather than hopeless.
+/// What one entry point reaches, by walking `parent` and reading the selections found on the way.
 #[test]
 fn walking_the_lineage_reaches_both_candidates() {
-    let replay = hindsight::build();
+    let built = hindsight::build();
 
     let mut reached: Vec<CommitmentId> = Vec::new();
     let mut visited = 0;
-    let mut next = Some(replay.graph.current);
+    let mut next = Some(built.current());
 
     while let Some(id) = next {
-        let thesis = resolve(&replay, id);
+        let thesis = built.world_at(id);
         visited += 1;
         reached.extend(thesis.selection().resolved());
         next = *thesis.parent();
@@ -145,83 +112,95 @@ fn walking_the_lineage_reaches_both_candidates() {
     // decisions in this lineage is preceded by the advancement that made it possible.
     assert_eq!(visited, 5, "two forks, two advancements, and the genesis");
 
+    assert!(reached.contains(&standard(&built)), "the intention taken is reached");
     assert!(
-        reached.contains(&standard(&replay)),
-        "the intention taken is reached"
-    );
-    assert!(
-        reached.contains(&priority(&replay)),
+        reached.contains(&priority(&built)),
         "the intention abandoned is reached, through the ancestor that selected it"
     );
     assert!(
-        reached.contains(&obligation(&replay)),
+        reached.contains(&obligation(&built)),
         "the knowledge that made the decision look bad is reached"
     );
 }
 
 /// The genesis's cut cannot be rebuilt today, and that refusal is evidence.
-///
-/// Its instant is 2026-01-06 and its head is the event that settled the opening, recorded on
-/// the 2nd. Today that instant addresses the cancellation, recorded on the 6th. Neither public
-/// path reconstructs the original: `at` resolves the later head, and `within` refuses a head
-/// belonging to an earlier instant.
-///
-/// So a Thesis holding that cut could not have been manufactured after the cancellation was
-/// recorded, which dates it without anything having been recorded to date it.
 #[test]
 fn the_genesis_cut_cannot_be_rebuilt_today() {
-    let replay = hindsight::build();
-    let history = replay.graph.canon.history();
+    let built = hindsight::build();
+    let history = built.canon.history();
 
-    let genesis = resolve(&replay, replay.worlds[0]);
+    let genesis = built.world_at(built.worlds[0]);
     let taken_under = genesis.cut().event_head().expect("the opening had settled");
 
-    assert_eq!(genesis.cut().known_at(), &decided_at());
+    assert_eq!(genesis.cut().known_at(), &world::on(6));
 
-    let addressed_now = KnowledgeCut::at(history, decided_at());
     assert_ne!(
-        addressed_now.event_head(),
+        KnowledgeCut::at(history, world::on(6)).event_head(),
         Some(taken_under),
         "the instant now addresses the cancellation, not what the genesis was taken under"
     );
 
     assert!(
-        KnowledgeCut::within(history, decided_at(), taken_under).is_err(),
+        KnowledgeCut::within(history, world::on(6), taken_under).is_err(),
         "a head from an earlier instant cannot be named as a finer cut within a later one"
     );
 }
 
 /// The limit of that evidence, stated so it is not overclaimed.
-///
-/// A day that nothing was recorded after still resolves the head it resolved then, so a cut
-/// naming such a day is constructible at any later time. The dating above works because
-/// knowledge moved *within* the instant, and nothing guarantees that.
 #[test]
 fn a_cut_on_a_day_nothing_followed_is_still_constructible() {
-    let replay = hindsight::build();
-    let history = replay.graph.canon.history();
-
-    let genesis = resolve(&replay, replay.worlds[0]);
+    let built = hindsight::build();
+    let genesis = built.world_at(built.worlds[0]);
     let taken_under = genesis.cut().event_head().expect("the opening had settled");
 
     assert_eq!(
-        KnowledgeCut::at(history, january(5)).event_head(),
+        KnowledgeCut::at(built.canon.history(), world::on(5)).event_head(),
         Some(taken_under),
         "a quiet day still addresses the head it addressed then"
     );
 }
 
 /// The world is a function of the sequence.
-///
-/// This is what makes handing an auditor the sequence equivalent to handing it the world,
-/// rather than a convenience of the harness: two replays of the same steps agree on every
-/// identity, and identities here are derived from content.
 #[test]
 fn the_same_sequence_produces_the_same_worlds() {
     let once = hindsight::replay(&hindsight::scenario());
     let twice = hindsight::replay(&hindsight::scenario());
 
-    assert_eq!(once.graph.current, twice.graph.current);
+    assert_eq!(once.current(), twice.current());
     assert_eq!(once.worlds, twice.worlds);
     assert_eq!(once.intentions, twice.intentions);
+}
+
+/// New with the substrate: the two records agree, and the coordinate is what makes them able to.
+///
+/// Every decision names the journal entry that stood when it was taken, and its witness is that
+/// same prefix said a second way. This is the property the in-memory adapters had no way to
+/// carry, and the reason a claim of unfalsifiability had nothing to be tested against.
+#[test]
+fn every_decision_names_a_journal_entry_that_exists() {
+    let built = hindsight::build();
+
+    let entries: Vec<_> = built.world.admitted.entries.clone();
+    assert!(!built.taken.is_empty(), "the sequence takes decisions");
+
+    for taken in &built.taken {
+        assert!(
+            built.witnessed(&taken.after),
+            "a decision names an entry the journal does not hold"
+        );
+        assert!(
+            taken.witness.contains(&taken.after),
+            "the prefix a decision witnesses ends at the entry it names"
+        );
+        assert_eq!(
+            taken.by,
+            Some(built.world.house),
+            "every decision here is claimed by the house"
+        );
+    }
+
+    assert!(
+        entries.len() >= 5,
+        "the scan ran against a journal, not against an empty one"
+    );
 }

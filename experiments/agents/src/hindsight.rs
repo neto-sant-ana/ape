@@ -1,227 +1,268 @@
-//! A history of the house's spending, written as the sequence of steps that produced it,
-//! and the fold that turns that sequence back into the world it describes.
+//! A history of the house's spending, written as the sequence of steps that produced it, and
+//! the fold that turns that sequence into the repository it describes.
 //!
-//! A [`Step`] is one thing that happened, in the order it happened. Intentions are addressed
-//! by the position of the `Intend` that produced them, counting from zero.
+//! A [`Step`] is one thing that happened, in the order it happened. Intentions are addressed by
+//! the position of the `Intend` that produced them, counting from zero.
 //!
-//! [`replay`] folds a sequence into knowledge, the worlds opened over it, and the identity of
-//! the one current at the end. Every world produced is archived, including the ones that only
-//! carry knowledge forward: the archive refuses a child whose parent it does not hold, and a
-//! walk that skipped them would end in a hole rather than at a beginning.
+//! [`replay`] folds a sequence into two records rather than one, because the substrate keeps
+//! them apart: a journal of admissions, and a lineage of decisions each carrying the journal
+//! entry that stood when it was taken. That coordinate is the half a decision cannot re-derive,
+//! and folding the two together in one pass is what makes them agree.
+//!
+//! Every decision here is attributed to the house, through the constructor whose name says it is
+//! a claim. Nothing about a decision produces the party, so nothing about it can disagree —
+//! which is the property the re-run is here to measure rather than to rely on.
 
-use ape::canon::{Canon, EventSubmission, InMemoryHistory};
-use ape::engine::thesis::{
-    ForkInput, GenesisInput, InMemoryArchive, KnowledgeCut, Thesis, ThesisArchive, ThesisId,
-};
-use ape::kernel::entities::{CommitmentId, CommitmentInput};
-use ape::kernel::value_objects::{ActionValue, Assignment, Date, Term};
+use ape::canon::Canon;
+use ape::engine::thesis::{Thesis, ThesisId, ThesisLookup};
+use ape::kernel::entities::CommitmentId;
 
-use crate::world::{self, World, cancelling};
+use ape_cli::archive::ResidentArchive;
+use ape_cli::history::ResidentHistory;
+use ape_cli::journal::{self, Admission, EntryId, Replayed};
+use ape_cli::lineage::{self, Decision, Lineage, Taken};
+
+use crate::world::{self, CANCELLING, Constructed};
 
 /// One thing that happened, in the order it happened.
-///
-/// Intentions are addressed by the position of the `Intend` that produced them, counting
-/// from zero, because a position says nothing about what the intention was for.
 #[derive(Debug, Clone)]
 pub enum Step {
-    /// The house intends to spend `amount` by `due`, recorded at `recorded_at`.
+    /// The house intends to move `magnitude` on the account by `due`.
     Intend {
-        amount: f64,
-        due: Date,
-        recorded_at: Date,
+        magnitude: f64,
+        incoming: bool,
+        due: u8,
+        recorded_at: u8,
     },
     /// It was observed that intention `which` will not happen.
-    Cancel { which: usize, at: Date },
+    Cancel { which: usize, at: u8 },
     /// A world is opened at `known_at`, proposing intentions `select`.
-    Open { known_at: Date, select: Vec<usize> },
+    Open { known_at: u8, select: Vec<usize> },
     /// The current world is carried to `known_at`, recognizing what became known.
-    Carry { known_at: Date },
-    /// The current world is replaced by one that adds intentions `introduce`.
-    Add { introduce: Vec<usize> },
+    Carry { known_at: u8 },
+    /// The current world is replaced by one that drops `omit` and adds `introduce`.
+    Add {
+        omit: Vec<usize>,
+        introduce: Vec<usize>,
+    },
 }
 
-/// Knowledge, the archived worlds, and the identity of the one current at the end.
-pub struct Graph {
-    pub canon: Canon<InMemoryHistory>,
-    pub archive: InMemoryArchive,
-    pub current: ThesisId,
-}
-
-/// What a sequence produced, in the order it produced it.
-pub struct Replay {
-    pub graph: Graph,
+/// What a sequence produced: the two records, and the handles the harness needs.
+pub struct Built {
+    pub canon: Canon<ResidentHistory>,
+    pub world: Constructed,
+    pub journal: Vec<Admission>,
+    pub admitted: Replayed,
+    pub taken: Vec<Taken>,
+    pub lineage: Lineage,
     pub intentions: Vec<CommitmentId>,
     pub worlds: Vec<ThesisId>,
 }
 
-/// A day in January 2026.
-pub fn january(day: u8) -> Date {
-    Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
+impl Built {
+    /// The worlds by identity, as Synthesis and a walk both read them.
+    pub fn archive(&self) -> &ResidentArchive {
+        self.lineage.archive()
+    }
+
+    /// The world current at the end of the sequence.
+    pub fn current(&self) -> ThesisId {
+        *self.worlds.last().expect("the sequence opens a world")
+    }
+
+    /// Whether the journal holds the entry an address names.
+    pub fn witnessed(&self, entry: &EntryId) -> bool {
+        self.admitted.entries.contains(entry)
+    }
+
+    /// Resolve a world the sequence produced.
+    pub fn world_at(&self, id: ThesisId) -> Thesis {
+        self.archive()
+            .thesis(id)
+            .expect("the archive holds every world the lineage decided")
+    }
+}
+
+/// The world, with nothing decided about it.
+pub fn nothing_decided() -> Built {
+    replay(&[])
 }
 
 /// What happened.
 pub fn scenario() -> Vec<Step> {
     vec![
         Step::Intend {
-            amount: 120.0,
-            due: january(8),
-            recorded_at: january(6),
+            magnitude: 120.0,
+            incoming: false,
+            due: 8,
+            recorded_at: 6,
         },
         Step::Open {
-            known_at: january(6),
+            known_at: 6,
             select: vec![0],
         },
         Step::Intend {
-            amount: 30.0,
-            due: january(14),
-            recorded_at: january(6),
+            magnitude: 30.0,
+            incoming: false,
+            due: 14,
+            recorded_at: 6,
         },
-        Step::Cancel {
-            which: 0,
-            at: january(6),
-        },
-        Step::Carry {
-            known_at: january(6),
-        },
+        Step::Cancel { which: 0, at: 6 },
+        Step::Carry { known_at: 6 },
         Step::Add {
+            omit: vec![],
             introduce: vec![1],
         },
         Step::Intend {
-            amount: 90.0,
-            due: january(20),
-            recorded_at: january(9),
+            magnitude: 90.0,
+            incoming: false,
+            due: 20,
+            recorded_at: 9,
         },
-        Step::Carry {
-            known_at: january(12),
-        },
+        Step::Carry { known_at: 12 },
         Step::Add {
+            omit: vec![],
             introduce: vec![2],
         },
     ]
 }
 
-pub fn build() -> Replay {
+pub fn build() -> Built {
     replay(&scenario())
 }
 
-/// Fold a sequence of steps into the world it describes.
-///
-/// Every thesis produced is archived, including the ones that only carry knowledge forward:
-/// the archive refuses a child whose parent it does not hold, and a walk that skipped them
-/// would end in a hole rather than at a beginning.
-pub fn replay(steps: &[Step]) -> Replay {
-    let mut world = world::build();
-    let mut archive = InMemoryArchive::default();
+/// Fold a sequence of steps into the records it describes.
+pub fn replay(steps: &[Step]) -> Built {
+    let mut canon = Canon::new(ResidentHistory::default());
+    let world = world::construct(&mut canon).expect("the world is admissible");
+
+    let mut journal = world.journal.clone();
+    let mut admitted = world.admitted.clone();
+    let mut lineage = Lineage::new();
 
     let mut intentions: Vec<CommitmentId> = Vec::new();
     let mut worlds: Vec<ThesisId> = Vec::new();
-    let mut current: Option<Thesis> = None;
+    let mut taken: Vec<Taken> = Vec::new();
 
     for step in steps {
         match step {
             Step::Intend {
-                amount,
+                magnitude,
+                incoming,
                 due,
                 recorded_at,
-            } => intentions.push(intend(&mut world, *amount, *due, *recorded_at)),
+            } => {
+                journal.push(world::intention(
+                    &world,
+                    *magnitude,
+                    *incoming,
+                    *due,
+                    *recorded_at,
+                ));
+                admit(&mut canon, &journal, &mut admitted);
+
+                intentions.push(
+                    *admitted
+                        .commitments
+                        .last()
+                        .expect("an intention was just admitted"),
+                );
+            }
 
             Step::Cancel { which, at } => {
-                world
-                    .canon
-                    .admit_event(
-                        EventSubmission {
-                            commitment_id: intentions[*which],
-                            observation: cancelling(),
-                            occurred_at: *at,
-                        },
-                        *at,
-                    )
-                    .expect("an intention may be cancelled");
+                journal.push(Admission::Event {
+                    commitment: intentions[*which],
+                    observation: CANCELLING.into(),
+                    occurred_at: world::day(*at),
+                    recorded_at: world::day(*at),
+                });
+                admit(&mut canon, &journal, &mut admitted);
             }
 
-            Step::Open { known_at, select } => {
-                let thesis = Thesis::genesis(
-                    world.canon.history(),
-                    GenesisInput {
-                        cut: KnowledgeCut::at(world.canon.history(), *known_at),
-                        selection: select.iter().map(|at| intentions[*at]).collect(),
-                    },
-                )
-                .expect("the proposed intentions are selectable at that instant");
+            Step::Open { known_at, select } => decide(
+                Decision::Genesis {
+                    known_at: world::day(*known_at),
+                    selection: select.iter().map(|at| intentions[*at]).collect(),
+                },
+                &canon,
+                &world,
+                &admitted,
+                &mut lineage,
+                &mut taken,
+                &mut worlds,
+            ),
 
-                current = Some(keep(&mut archive, &mut worlds, thesis));
-            }
+            Step::Carry { known_at } => decide(
+                Decision::Advance {
+                    extends: *worlds.last().expect("a world must be open to be carried"),
+                    known_at: world::day(*known_at),
+                },
+                &canon,
+                &world,
+                &admitted,
+                &mut lineage,
+                &mut taken,
+                &mut worlds,
+            ),
 
-            Step::Carry { known_at } => {
-                let thesis = current
-                    .as_ref()
-                    .expect("a world must be open before it is carried")
-                    .advance(
-                        world.canon.history(),
-                        KnowledgeCut::at(world.canon.history(), *known_at),
-                    )
-                    .expect("the instant recognizes knowledge the world had not")
-                    .into_thesis();
-
-                current = Some(keep(&mut archive, &mut worlds, thesis));
-            }
-
-            Step::Add { introduce } => {
-                let thesis = current
-                    .as_ref()
-                    .expect("a world must be open before it is added to")
-                    .fork(
-                        world.canon.history(),
-                        ForkInput {
-                            omitted: [].into(),
-                            introduced: introduce.iter().map(|at| intentions[*at]).collect(),
-                        },
-                    )
-                    .expect("the intentions are introducible at that cut");
-
-                current = Some(keep(&mut archive, &mut worlds, thesis));
-            }
+            Step::Add { omit, introduce } => decide(
+                Decision::Fork {
+                    extends: *worlds.last().expect("a world must be open to be added to"),
+                    omitted: omit.iter().map(|at| intentions[*at]).collect(),
+                    introduced: introduce.iter().map(|at| intentions[*at]).collect(),
+                },
+                &canon,
+                &world,
+                &admitted,
+                &mut lineage,
+                &mut taken,
+                &mut worlds,
+            ),
         }
     }
 
-    let current = current.expect("the sequence opens a world");
-
-    Replay {
-        graph: Graph {
-            canon: world.canon,
-            archive,
-            current: current.id(),
-        },
+    Built {
+        canon,
+        world,
+        journal,
+        admitted,
+        taken,
+        lineage,
         intentions,
         worlds,
     }
 }
 
-fn keep(archive: &mut InMemoryArchive, worlds: &mut Vec<ThesisId>, thesis: Thesis) -> Thesis {
-    worlds.push(thesis.id());
-
-    archive
-        .put_thesis(thesis.clone())
-        .expect("a thesis is archived after its parent");
-
-    thesis
+fn admit(canon: &mut Canon<ResidentHistory>, journal: &[Admission], admitted: &mut Replayed) {
+    journal::replay_remaining(canon, journal, admitted).expect("the journal is admissible");
 }
 
-/// Admit an intention of the house to spend `amount` by `due`, recorded at `recorded_at`.
-fn intend(world: &mut World, amount: f64, due: Date, recorded_at: Date) -> CommitmentId {
-    world
-        .canon
-        .admit_commitment(
-            CommitmentInput {
-                assignment: Assignment::new(world.house, [world.house], [world.market])
-                    .expect("both sides are staffed"),
-                statement: world.outbound,
-                resource: world.account,
-                term: Term::new(recorded_at, due).expect("committed before due"),
-                action_value: ActionValue::value(amount).expect("a positive, finite magnitude"),
-                dependencies: [].into(),
-            },
-            recorded_at,
-        )
-        .expect("the house may commit to spend")
+/// Take a decision, record it against the entry that stood, and keep the world it produced.
+///
+/// The two happen together on purpose. A decision and the coordinate it was taken at are one
+/// record, and writing them at different moments is how a lineage comes to read back as a
+/// different lineage.
+fn decide(
+    decision: Decision,
+    canon: &Canon<ResidentHistory>,
+    world: &Constructed,
+    admitted: &Replayed,
+    lineage: &mut Lineage,
+    taken: &mut Vec<Taken>,
+    worlds: &mut Vec<ThesisId>,
+) {
+    taken.push(
+        Taken::claimed(decision.clone(), world.house, admitted)
+            .expect("something was admitted before anything was decided"),
+    );
+
+    lineage::decide(canon.history(), lineage, &decision).expect("the decision is takeable");
+
+    worlds.push(
+        lineage
+            .decided()
+            .last()
+            .expect("a decision produces a world")
+            .id(),
+    );
 }

@@ -1,40 +1,52 @@
-//! The world an agent is given, and the only file it receives beyond the engine's own
-//! documentation.
+//! The world an agent is given, accumulated as the journal that describes it.
 //!
 //! ```text
-//! Resource   cash, constrained to  cash >= 0
-//! Instance   account
-//! Known      a fulfilled Commitment that moved +100
+//! cash ∈ [0, 1000]
+//! account          the instance every intention moves
+//! opening  +100    received and settled, and the only money the account has held
 //! ```
 //!
-//! What this module does is admit a vocabulary and one settled fact. What it deliberately
-//! does not do is construct the options: the world offers a Statement under which cash can
-//! be spent, and turning an option into an intention is the agent's job. Pre-constructing
-//! either would answer the first question the experiment is asking.
+//! What this admits is a vocabulary and one settled fact. What it deliberately does not admit
+//! is either option: the world offers a Statement under which cash can be spent, and turning an
+//! option into an intention is the agent's job. Pre-constructing one would answer the first
+//! question the experiment asks.
 //!
-//! The knowledge is held in the engine's reference adapter. That adapter exists to
-//! demonstrate the history contract rather than to back an application, which is exactly
-//! right here: this experiment ends when the process does, and durability across process
-//! death is a different experiment with a different boundary.
+//! # Two things about this world are the substrate's doing
 //!
-//! Every quantity is an integer. Levels accumulate in `f64`, where addition is not
-//! associative, and an experiment about what an agent can express should not be measuring
-//! the last bit of a float.
+//! **The floor is written as a range.** The world it describes is *cash may not go below zero*,
+//! with no ceiling. A journal records `Between { lower, upper }` and nothing else, following the
+//! rule that an unused form is absent rather than approximated — so the floor is restated as a
+//! range whose upper bound nothing in the scenario reaches, and the ceiling takes no part in any
+//! verdict. The need for a floor-only form is a finding handed to the experiment that owns the
+//! journal, not a change made here.
+//!
+//! **The house is a party, and the agent is not.** `by` on a decision names an admitted Agent,
+//! and the agent acting here is not one — it decides on the house's behalf and has no
+//! representation of its own. So the party recorded is the house. That is the whole of what a
+//! record can hold about who decided: a name that resolves against knowledge, and nothing about
+//! who operated it.
+//!
+//! Every quantity is an integer. Levels accumulate in `f64`, where addition is not associative,
+//! and an experiment about what an agent can express should not be measuring the last bit of a
+//! float.
 
-use ape::canon::{Canon, EventSubmission, InMemoryHistory};
+use ape::canon::Canon;
 use ape::kernel::entities::{
-    ActionInput, AgentId, AgentInput, CommitmentId, CommitmentInput, EligibilityAssignmentInput,
-    ResourceInput, ResourceInstanceId, ResourceInstanceInput, RoleId, RoleInput, StatementId,
-    StatementInput,
+    AgentId, CommitmentId, ResourceInstanceId, RoleId, StatementId,
 };
-use ape::kernel::value_objects::{
-    ActionKind, ActionValue, AgentKind, Assignment, Constraint, Date, Effect, Identifier,
-    Observation, Participants, ResourceKind, Settlement, Term,
+use ape::kernel::value_objects::Date;
+
+use ape_cli::error::JournalError;
+use ape_cli::history::ResidentHistory;
+use ape_cli::journal::{
+    self, ActionKindRecord, Admission, EffectRecord, Replayed, ResourceKindRecord,
 };
+
+pub const FULFILLING: &str = "Settled";
+pub const CANCELLING: &str = "Cancelled";
 
 /// The world, and every handle needed to act within it.
-pub struct World {
-    pub canon: Canon<InMemoryHistory>,
+pub struct Constructed {
     pub house: AgentId,
     pub market: AgentId,
     pub spender: RoleId,
@@ -43,187 +55,145 @@ pub struct World {
     pub outbound: StatementId,
     pub account: ResourceInstanceId,
     pub opening: CommitmentId,
+    pub journal: Vec<Admission>,
+    pub admitted: Replayed,
+}
+
+/// A day of January 2026, as a journal records one.
+pub fn day(day: u8) -> String {
+    on(day).to_iso()
+}
+
+/// The same instant, as the engine takes one.
+pub fn on(day: u8) -> Date {
+    Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
 }
 
 /// The instant the world is current as of.
 pub fn today() -> Date {
-    day(6)
-}
-
-/// The observation that settles a Commitment made under either Statement.
-pub fn settling() -> Observation {
-    observation("Settled")
-}
-
-/// The observation that cancels one.
-pub fn cancelling() -> Observation {
-    observation("Cancelled")
+    on(6)
 }
 
 /// Admit the vocabulary, then the one fact that gives the account a level.
-pub fn build() -> World {
-    let mut canon = Canon::new(InMemoryHistory::default());
-    let at = day(1);
+pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, JournalError> {
+    let mut journal = Vec::new();
+    let mut admitted = Replayed::default();
 
-    let spender = canon
-        .admit_role(
-            RoleInput {
-                label: name("spender"),
+    journal.extend([
+        Admission::Role {
+            label: "spender".into(),
+            recorded_at: day(1),
+        },
+        Admission::Role {
+            label: "counterparty".into(),
+            recorded_at: day(1),
+        },
+        Admission::Agent {
+            label: "house".into(),
+            recorded_at: day(1),
+        },
+        Admission::Agent {
+            label: "market".into(),
+            recorded_at: day(1),
+        },
+        Admission::Resource {
+            label: "cash".into(),
+            kind: ResourceKindRecord::Between {
+                lower: 0.0,
+                upper: 1000.0,
             },
-            at,
-        )
-        .expect("a role is admissible");
+            recorded_at: day(1),
+        },
+    ]);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    let counterparty = canon
-        .admit_role(
-            RoleInput {
-                label: name("counterparty"),
-            },
-            at,
-        )
-        .expect("a role is admissible");
+    let (spender, counterparty) = (admitted.roles[0], admitted.roles[1]);
+    let (house, market) = (admitted.agents[0], admitted.agents[1]);
+    let cash = admitted.resources[0];
 
-    let house = canon
-        .admit_agent(
-            AgentInput {
-                label: name("house"),
-                kind: AgentKind::Company,
-            },
-            at,
-        )
-        .expect("an agent is admissible");
+    journal.extend([
+        Admission::Eligibility {
+            agent: house,
+            roles: [spender].into(),
+            effective_from: day(1),
+            recorded_at: day(1),
+        },
+        Admission::Eligibility {
+            agent: market,
+            roles: [counterparty].into(),
+            effective_from: day(1),
+            recorded_at: day(1),
+        },
+        Admission::ResourceInstance {
+            label: "account".into(),
+            resource: cash,
+            recorded_at: day(1),
+        },
+        Admission::Action {
+            verb: "receive".into(),
+            kind: ActionKindRecord::Quantifiable(EffectRecord::Increase),
+            resource: cash,
+            recorded_at: day(1),
+        },
+        Admission::Action {
+            verb: "spend".into(),
+            kind: ActionKindRecord::Quantifiable(EffectRecord::Decrease),
+            resource: cash,
+            recorded_at: day(1),
+        },
+    ]);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    let market = canon
-        .admit_agent(
-            AgentInput {
-                label: name("market"),
-                kind: AgentKind::Company,
-            },
-            at,
-        )
-        .expect("an agent is admissible");
+    let account = admitted.instances[0];
+    let (receive, spend) = (admitted.actions[0], admitted.actions[1]);
 
-    canon
-        .admit_eligibility(
-            EligibilityAssignmentInput {
-                agent: house,
-                roles: [spender].into(),
-                effective_from: at,
-            },
-            at,
-        )
-        .expect("the house may spend");
+    journal.extend([
+        Admission::Statement {
+            actors: [counterparty].into(),
+            recipients: [spender].into(),
+            action: receive,
+            fulfills: [FULFILLING.into()].into(),
+            cancels: [CANCELLING.into()].into(),
+            recorded_at: day(1),
+        },
+        Admission::Statement {
+            actors: [spender].into(),
+            recipients: [counterparty].into(),
+            action: spend,
+            fulfills: [FULFILLING.into()].into(),
+            cancels: [CANCELLING.into()].into(),
+            recorded_at: day(1),
+        },
+    ]);
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    canon
-        .admit_eligibility(
-            EligibilityAssignmentInput {
-                agent: market,
-                roles: [counterparty].into(),
-                effective_from: at,
-            },
-            at,
-        )
-        .expect("the market may be paid");
+    let (inbound, outbound) = (admitted.statements[0], admitted.statements[1]);
 
-    let cash = canon
-        .admit_resource(
-            ResourceInput {
-                label: name("cash"),
-                kind: ResourceKind::Quantifiable(
-                    Constraint::greater_than_or_equal(0.0).expect("a finite bound"),
-                ),
-            },
-            at,
-        )
-        .expect("a resource is admissible");
+    journal.push(Admission::Commitment {
+        accountable: market,
+        executors: [market].into(),
+        beneficiaries: [house].into(),
+        statement: inbound,
+        resource: account,
+        committed_at: day(1),
+        due_date: day(2),
+        magnitude: Some(100.0),
+        dependencies: [].into(),
+        recorded_at: day(1),
+    });
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    let account = canon
-        .admit_resource_instance(
-            ResourceInstanceInput {
-                label: name("account"),
-                resource: cash,
-            },
-            at,
-        )
-        .expect("an instance is admissible");
+    let opening = admitted.commitments[0];
 
-    let receive = canon
-        .admit_action(
-            ActionInput {
-                verb: name("receive"),
-                kind: ActionKind::Quantifiable(Effect::Increase),
-                resource: cash,
-            },
-            at,
-        )
-        .expect("an action is admissible");
+    journal.push(Admission::Event {
+        commitment: opening,
+        observation: FULFILLING.into(),
+        occurred_at: day(2),
+        recorded_at: day(2),
+    });
+    journal::replay_remaining(canon, &journal, &mut admitted)?;
 
-    let spend = canon
-        .admit_action(
-            ActionInput {
-                verb: name("spend"),
-                kind: ActionKind::Quantifiable(Effect::Decrease),
-                resource: cash,
-            },
-            at,
-        )
-        .expect("an action is admissible");
-
-    let settlement =
-        Settlement::new([settling()], [cancelling()]).expect("both outcomes are named");
-
-    let inbound = canon
-        .admit_statement(
-            StatementInput {
-                participants: Participants::new([counterparty], [spender])
-                    .expect("both sides are named"),
-                action: receive,
-                settlement: settlement.clone(),
-            },
-            at,
-        )
-        .expect("a statement is admissible");
-
-    let outbound = canon
-        .admit_statement(
-            StatementInput {
-                participants: Participants::new([spender], [counterparty])
-                    .expect("both sides are named"),
-                action: spend,
-                settlement,
-            },
-            at,
-        )
-        .expect("a statement is admissible");
-
-    let opening = canon
-        .admit_commitment(
-            CommitmentInput {
-                assignment: Assignment::new(market, [market], [house])
-                    .expect("both sides are staffed"),
-                statement: inbound,
-                resource: account,
-                term: Term::new(day(1), day(2)).expect("committed before due"),
-                action_value: ActionValue::value(100.0).expect("a positive, finite magnitude"),
-                dependencies: [].into(),
-            },
-            day(1),
-        )
-        .expect("the opening is admissible");
-
-    canon
-        .admit_event(
-            EventSubmission {
-                commitment_id: opening,
-                observation: settling(),
-                occurred_at: day(2),
-            },
-            day(2),
-        )
-        .expect("the opening settles");
-
-    World {
-        canon,
+    Ok(Constructed {
         house,
         market,
         spender,
@@ -232,17 +202,36 @@ pub fn build() -> World {
         outbound,
         account,
         opening,
+        journal,
+        admitted,
+    })
+}
+
+/// An intention of the house to move `magnitude` on the account by `due`, as a journal records
+/// one. Not admitted here — a caller admits it when its sequence says to.
+pub fn intention(
+    world: &Constructed,
+    magnitude: f64,
+    incoming: bool,
+    due: u8,
+    recorded_at: u8,
+) -> Admission {
+    let (accountable, beneficiary, statement) = if incoming {
+        (world.market, world.house, world.inbound)
+    } else {
+        (world.house, world.market, world.outbound)
+    };
+
+    Admission::Commitment {
+        accountable,
+        executors: [accountable].into(),
+        beneficiaries: [beneficiary].into(),
+        statement,
+        resource: world.account,
+        committed_at: day(recorded_at),
+        due_date: day(due),
+        magnitude: Some(magnitude),
+        dependencies: [].into(),
+        recorded_at: day(recorded_at),
     }
-}
-
-fn day(day: u8) -> Date {
-    Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
-}
-
-fn name(value: &str) -> Identifier {
-    Identifier::new(value).expect("a non-blank identifier")
-}
-
-fn observation(value: &str) -> Observation {
-    Observation::new(value).expect("a non-blank observation")
 }

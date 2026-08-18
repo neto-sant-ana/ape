@@ -9,3 +9,4 @@ publish = false
 
 [dependencies]
 ape = { path = "../../core", features = ["reference"] }
+ape-cli = { path = "../../cli" }
