@@ -12,6 +12,8 @@
 //!
 //! Single-process by construction, because the experiment excludes concurrency. Nothing
 //! here is shared between threads, and `verify_thread_safe` is not claimed.
+//!
+//! Earned by: 00-reconstruction (Confirmed)
 
 use std::collections::BTreeMap;
 

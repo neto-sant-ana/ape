@@ -10,6 +10,8 @@
 //! So the criterion is the application's and lives here. The arithmetic is not, and does
 //! not: how much a single commitment moves an instance comes from `movement_of`, because a
 //! second copy of it here would be a second place for `Increase` to mean something.
+//!
+//! Earned by: 00-reconstruction (Confirmed), 06-exploration (Confirmed)
 
 use ape::engine::hermeneia::{Outcome, ProjectedConditions, movement_of};
 use ape::kernel::axiom::Knowledge;

@@ -11,6 +11,8 @@
 //! Behavior lives in the library, because nothing can construct a type that lives inside a
 //! binary — not an integration test, not the engine's conformance suites. The binary reads
 //! arguments and writes output.
+//!
+//! Earned by: nothing — the crate root declares modules and implements no behaviour of its own.
 
 pub mod archive;
 pub mod converge;

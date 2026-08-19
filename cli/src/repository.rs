@@ -19,6 +19,8 @@
 //! A laboratory whose repository cannot be read by eye hides half of what it is for; the
 //! cost is a format wordier than the engine's own postcard encoding, which nothing here
 //! measures and nothing here depends on.
+//!
+//! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed)
 
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -21,6 +21,8 @@
 //! That is why the record carries all three identities and not only the two it moves between.
 //! Whether a repository must carry them too is a different question, and this module does not
 //! answer it.
+//!
+//! Earned by: 03-convergence (Confirmed)
 
 use std::collections::BTreeSet;
 

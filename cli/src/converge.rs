@@ -36,6 +36,8 @@
 //! The merged repository is rebuilt in memory before any of it is written. A merge that does not
 //! reconstruct is refused, and a refusal leaves the repository exactly as it was — which is the
 //! other half of what the Canon promises a writer who lost.
+//!
+//! Earned by: 05-coordination (Confirmed)
 
 use std::collections::BTreeSet;
 

@@ -12,6 +12,8 @@
 //! experiment compares worlds that agree on which commitments they select and disagree on
 //! how those are partitioned, so a record naming a single commitment would report two worlds
 //! as the same world.
+//!
+//! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed)
 
 use std::collections::{BTreeMap, BTreeSet};
 

@@ -31,6 +31,8 @@
 //! [`replay_through`] is what a reconstruction uses instead of [`replay`]: it admits up to a
 //! named entry and stops, so that something else can happen against exactly the knowledge
 //! that stood then.
+//!
+//! Earned by: 00-reconstruction (Confirmed), 05-coordination (Confirmed)
 
 use std::collections::BTreeSet;
 

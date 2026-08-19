@@ -15,6 +15,8 @@
 //! identity in this engine is re-derived, never read — so an archive can be written out and
 //! never read back in. Whatever crosses a process boundary is therefore a comparison, not a
 //! source, and the boundary makes that a fact rather than a discipline.
+//!
+//! Earned by: 02-corroboration (Confirmed), 03-convergence (Confirmed)
 
 use std::collections::BTreeMap;
 

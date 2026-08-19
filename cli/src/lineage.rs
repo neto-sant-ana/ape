@@ -34,6 +34,9 @@
 //! So a persisted decision is a [`Taken`]: the decision, plus the entry that was the journal's
 //! most recent one when it was taken. [`rebuild`] is what reads it, admitting the journal in
 //! step with the lineage rather than wholly before it.
+//!
+//! Earned by: 01-divergence (Confirmed), 03-convergence (Confirmed), 05-coordination (Confirmed),
+//! 06-exploration (Confirmed)
 
 use std::collections::BTreeSet;
 

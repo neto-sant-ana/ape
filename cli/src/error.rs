@@ -3,6 +3,8 @@
 //! An engine error carried through unchanged says where it came from; what this adds is
 //! the cases the engine has no opinion about, because they arise from the application
 //! reading a world it assembled itself.
+//!
+//! Earned by: nothing — every refusal here belongs to the module that raises it, and is cited there.
 
 use ape::canon::CanonError;
 use ape::engine::hermeneia::HermeneiaError;

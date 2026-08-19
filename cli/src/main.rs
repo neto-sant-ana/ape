@@ -10,6 +10,8 @@
 //! It prints the whole lineage rather than its tip. Which world an application ended at is a
 //! smaller question than which worlds it considered, and only the second is worth a
 //! repository that keeps decisions.
+//!
+//! Earned by: 00-reconstruction (Confirmed), 03-convergence (Confirmed), 05-coordination (Confirmed)
 
 use std::process::ExitCode;
 
