@@ -34,6 +34,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ape-cli-lab"
+version = "0.1.0"
+dependencies = [
+ "ape",
+ "ape-cli",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "atomic-polyfill"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

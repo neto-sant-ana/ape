@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["core", "cli", "experiments/agents"]
+members = ["core", "cli/app", "cli/lab", "experiments/agents"]
 
 [workspace.package]
 version = "0.1.0"

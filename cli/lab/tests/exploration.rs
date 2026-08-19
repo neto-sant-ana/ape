@@ -18,11 +18,11 @@ use ape_cli::journal::EntryId;
 use ape_cli::lineage::Taken;
 use ape_cli::reading::{self, Corroborated, Reading, WorldRecord};
 use ape_cli::repository::Repository;
-use ape_cli::subject::exploration::{
+use ape_cli::transfer;
+use ape_cli_lab::subject::exploration::{
     self, ADMISSIBLE, BEST, BUDGET, CANDIDATES, Constructed, Founded, Judged, OPENED, OPENING,
     REFUSED,
 };
-use ape_cli::transfer;
 
 /// A repository path no other process shares.
 fn scratch(name: &str) -> std::path::PathBuf {

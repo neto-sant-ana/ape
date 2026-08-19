@@ -53,13 +53,13 @@ use ape::engine::synthesis::{ApplicabilityReport, ApplicabilityStatus, synthesiz
 use ape::engine::thesis::{Thesis, ThesisId};
 use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 
-use crate::error::{JournalError, SubjectError};
-use crate::history::ResidentHistory;
-use crate::journal::{
+use ape_cli::error::{JournalError, SubjectError};
+use ape_cli::history::ResidentHistory;
+use ape_cli::journal::{
     self, ActionKindRecord, Admission, EffectRecord, Replayed, ResourceKindRecord,
 };
-use crate::lineage::{self, Decision, Lineage, Taken};
-use crate::transfer;
+use ape_cli::lineage::{self, Decision, Lineage, Taken};
+use ape_cli::transfer;
 
 pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";

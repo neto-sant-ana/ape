@@ -24,12 +24,12 @@ use ape::canon::Canon;
 use ape::engine::thesis::ThesisId;
 use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId, StatementId};
 
-use crate::error::{JournalError, SubjectError};
-use crate::history::ResidentHistory;
-use crate::journal::{
+use ape_cli::error::{JournalError, SubjectError};
+use ape_cli::history::ResidentHistory;
+use ape_cli::journal::{
     self, ActionKindRecord, Admission, EffectRecord, Replayed, ResourceKindRecord,
 };
-use crate::lineage::{self, Decision, Lineage, Taken};
+use ape_cli::lineage::{self, Decision, Lineage, Taken};
 
 pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";

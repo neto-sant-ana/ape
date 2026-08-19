@@ -18,7 +18,7 @@ use ape_cli::level;
 use ape_cli::lineage::{self, Decision, Lineage, Taken};
 use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading, WorldRecord};
 use ape_cli::repository::Repository;
-use ape_cli::subject::divergence::{self, Begun, Reasoned};
+use ape_cli_lab::subject::divergence::{self, Begun, Reasoned};
 
 /// The instant every world is interpreted at, from Phase 5 on.
 ///
@@ -648,7 +648,7 @@ fn phase_5_terminate() {
     let repository = Repository::open(scratch("phase-5"));
     persist(&repository, &reasoned);
 
-    let dead = std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli"));
+    let dead = &ape_cli_lab::binary();
 
     let refused =
         rebuild_in_fresh_process(dead, &scratch("phase-5-absent"), reasoned.subject.instance);
@@ -724,7 +724,7 @@ fn phase_8_compare() {
     .expect("the living lineage reads");
 
     let rebuilt = rebuild_in_fresh_process(
-        std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli")),
+        &ape_cli_lab::binary(),
         repository.root(),
         reasoned.subject.instance,
     );

@@ -1,0 +1,19 @@
+[package]
+name = "ape-cli-lab"
+description = "The reference application's laboratory: one subject and one suite per experiment."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+# The laboratory depends on the application, and the application never depends back. That is what
+# makes an obligation discovered here have to be *earned* into the application by a commit somebody
+# reviews, rather than reached for in the same module.
+[dependencies]
+ape = { path = "../../core" }
+ape-cli = { path = "../app" }
+
+[dev-dependencies]
+serde = "1.0.228"
+serde_json = "1.0"

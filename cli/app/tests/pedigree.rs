@@ -128,10 +128,11 @@ fn declared(module: &Path) -> Result<Vec<Claim>, String> {
 /// Only that line is read: a bold span anywhere else in the document says nothing about the answer,
 /// and matching against the whole file is how this kind of check starts passing for the wrong reason.
 fn verdicts(experiment: &str) -> Result<Vec<String>, String> {
-    let result = root()
-        .join("src/docs")
-        .join(experiment)
-        .join("99-result.md");
+    // The experiment record sits above both crates because it belongs to neither: the laboratory
+    // writes it and the application cites it, so it is the interface between them rather than a
+    // library either one owns. This is the application's one deliberate reach outside itself, and it
+    // is a test reading a file rather than the library depending on anything.
+    let result = root().join("../docs").join(experiment).join("99-result.md");
 
     let document = std::fs::read_to_string(&result).map_err(|_| {
         format!(

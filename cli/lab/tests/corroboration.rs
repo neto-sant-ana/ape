@@ -15,7 +15,7 @@ use ape_cli::journal::{self, Admission, EntryId};
 use ape_cli::lineage::{Decision, Taken};
 use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, Reading, WorldRecord};
 use ape_cli::repository::Repository;
-use ape_cli::subject::divergence::{self, Reasoned};
+use ape_cli_lab::subject::divergence::{self, Reasoned};
 
 /// The instant every world is interpreted at, as the divergence experiment fixed it.
 const EFFECTIVE: &str = "2026-01-25";
@@ -104,7 +104,7 @@ fn rebuild(
     repository: &Repository,
     instance: ape::kernel::entities::ResourceInstanceId,
 ) -> Rebuilt {
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_ape-cli"))
+    let output = std::process::Command::new(ape_cli_lab::binary())
         .arg(repository.root())
         .arg(instance.to_string())
         .arg(EFFECTIVE)

@@ -1,10 +1,19 @@
 # APE CLI
 
-APE CLI is an executable laboratory for the Assertion Projection Engine.
+APE CLI is the reference application for the Assertion Projection Engine, and the laboratory that earned it.
 
 It demonstrates how an application can persist, reconstruct, inspect, and operate over APE semantics outside the engine’s in-memory environment.
 
 Its purpose is architectural.
+
+```text
+cli/
+├── docs/   the experiments — protocol, observations, result
+├── app/    the reference application       (ape-cli)
+└── lab/    the subjects and the phases     (ape-cli-lab)
+```
+
+The laboratory discovers obligations; the application implements the ones already earned. Every module of `app/` declares which experiment earned it, and `app/tests/pedigree.rs` refuses a claim whose experiment did not reach the verdict it cites.
 
 ---
 
@@ -160,9 +169,11 @@ Its role is to remain minimal enough to expose the engine clearly.
 The architecture enforces a strict one-way dependency:
 
 ```text
-ape-cli
-   ↓
-  ape
+ape-cli-lab
+    ↓
+ ape-cli
+    ↓
+   ape
 ```
 
 The engine must remain independent of application concerns.
@@ -172,6 +183,10 @@ This ensures that:
 * semantics remain stable;
 * applications can evolve freely;
 * implementation details do not leak into the model.
+
+The laboratory sits above the application for the same reason, and it is a crate boundary rather than a convention. An obligation discovered by an experiment has to be **earned into** the application by a change somebody reviews — it cannot be reached for in the same module. And a change to the application that moves an experiment's result reads as a consumer breaking, because the two cannot move in one commit without saying so.
+
+The experiment record sits above both, because it belongs to neither: the laboratory writes it and the application cites it.
 
 ---
 

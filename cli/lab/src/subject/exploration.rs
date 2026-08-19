@@ -45,15 +45,15 @@ use ape::engine::thesis::{Interpretation, Thesis, ThesisId};
 use ape::kernel::entities::{AgentId, CommitmentId, ResourceInstanceId, StatementId};
 use ape::kernel::value_objects::Date;
 
-use crate::error::{JournalError, ReadingError, SubjectError};
-use crate::history::ResidentHistory;
-use crate::journal::{
+use ape_cli::error::{JournalError, ReadingError, SubjectError};
+use ape_cli::history::ResidentHistory;
+use ape_cli::journal::{
     self, ActionKindRecord, Admission, EffectRecord, Replayed, ResourceKindRecord,
 };
-use crate::level;
-use crate::lineage::{self, Decision, Lineage, Taken};
-use crate::reading::{self, Corroborated, WorldRecord};
-use crate::repository::Repository;
+use ape_cli::level;
+use ape_cli::lineage::{self, Decision, Lineage, Taken};
+use ape_cli::reading::{self, Corroborated, WorldRecord};
+use ape_cli::repository::Repository;
 
 pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";

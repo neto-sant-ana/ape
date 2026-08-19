@@ -31,12 +31,12 @@ use ape::canon::Canon;
 use ape::engine::thesis::ThesisId;
 use ape::kernel::entities::{CommitmentId, ResourceInstanceId};
 
-use crate::error::JournalError;
-use crate::history::ResidentHistory;
-use crate::journal::{
+use ape_cli::error::JournalError;
+use ape_cli::history::ResidentHistory;
+use ape_cli::journal::{
     self, ActionKindRecord, Admission, EffectRecord, Replayed, ResourceKindRecord,
 };
-use crate::lineage::Decision;
+use ape_cli::lineage::Decision;
 
 pub const FULFILLING: &str = "Delivered";
 pub const CANCELLING: &str = "Cancelled";

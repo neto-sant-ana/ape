@@ -17,8 +17,8 @@ use ape_cli::error::{ConvergeError, JournalError, LineageError, ReadingError, Tr
 use ape_cli::lineage::Decision;
 use ape_cli::reading;
 use ape_cli::repository::Repository;
-use ape_cli::subject::coordination::{self, Founded};
 use ape_cli::transfer::{self, StatusRecord};
+use ape_cli_lab::subject::coordination::{self, Founded};
 
 /// A repository path no other process shares.
 fn scratch(name: &str) -> std::path::PathBuf {
@@ -1306,7 +1306,7 @@ fn a_decider_makes_agreement_look_like_duplication() {
 
 /// Ask an operating-system process of its own, given the repository and nothing else.
 fn asked(repository: &std::path::Path, question: &[&str]) -> std::process::Output {
-    std::process::Command::new(std::path::Path::new(env!("CARGO_BIN_EXE_ape-cli")))
+    std::process::Command::new(ape_cli_lab::binary())
         .arg(repository)
         .args(question)
         .output()
