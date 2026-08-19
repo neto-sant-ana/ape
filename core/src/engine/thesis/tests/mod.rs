@@ -27,6 +27,7 @@ mod archive;
 mod cut;
 mod fork;
 mod genesis;
+mod identity;
 mod lineage;
 mod projection;
 
