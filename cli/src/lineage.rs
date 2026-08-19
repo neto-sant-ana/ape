@@ -134,10 +134,15 @@ pub struct Taken {
     pub witness: BTreeSet<EntryId>,
     /// The party that took it, where anything says.
     ///
-    /// Optional, and that is not a choice made here. Four concluded experiments hold repositories
-    /// whose decisions name nobody, and a published result whose subject moved underneath it is a
-    /// result nobody can run again — so the field the coordination experiment needed had its shape
-    /// decided by the experiments before it.
+    /// Optional because a decision that claims nobody is the ordinary case rather than a legacy
+    /// one. An application reasoning alone has no party to name, and a mandatory field would make
+    /// every such decision carry an agent invented to fill it — which is the one thing an
+    /// unwitnessed claim must not be made to do.
+    ///
+    /// It is **not** optional in order to keep already-written records readable. That was the
+    /// reason given here first, and it was wrong about where such records are: a suite that writes
+    /// and reads with one version of this type is not constrained by it at all. The rule that
+    /// governs what a concluded experiment does and does not own is in `lab/README.md`.
     ///
     /// An [`AgentId`] rather than a label, because it is the strongest checkable thing available:
     /// an identity resolves against the knowledge that stood when the decision was taken, and a
