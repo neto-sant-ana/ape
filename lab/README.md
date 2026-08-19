@@ -1,13 +1,32 @@
-# Experiments
+# Laboratory
 
-This directory holds questions asked *of* APE that no crate in the workspace owns.
+This directory holds the questions. `core/` is the engine and `cli/` is the reference application;
+neither of them asks anything — they are what the answers were built into.
 
-`ape` defines operational meaning. `ape-cli` explores what an application must do to carry
-that meaning across a process. Neither answers whether the meaning survives a different
-kind of pressure — a caller the engine was not designed for, a use nobody had in mind when
-the ontology was fixed.
+`ape` defines operational meaning. An experiment exists to apply exactly one pressure to it and
+report what happened.
 
-An experiment exists to apply exactly one such pressure and report what happened.
+There are two rows, and they differ in **what they are the subject of**:
+
+```text
+frontier/   what must an application do to carry that meaning across a process?
+agents/     does the meaning survive a caller the engine was not designed for?
+```
+
+Named after where the pressure is applied, which is why neither is named after a crate. `frontier/`
+studies the join between what the engine means and what an application must carry; the reference
+application is its instrument, not its subject.
+
+Both depend on `ape-cli` and neither is depended on by it. What differs is what each may ask of it,
+and the difference is not a matter of trust:
+
+* **`frontier/` produces the obligations the application implements.** A finding here is *meant* to
+  become application behaviour — that is what the row is for. It becomes one by a reviewed change that
+  records which experiment earned it, and `cli/tests/pedigree.rs` in the application refuses a claim
+  whose experiment did not reach the verdict it cites.
+* **`agents/` measures the application as a subject.** A need it finds is recorded as a **request**,
+  verbatim, and handed over — never built there. An experiment that repaired what it was measuring
+  would be measuring its own repair.
 
 ---
 
@@ -106,6 +125,10 @@ yet.
 ---
 
 # Index
+
+**[`frontier/`](frontier)** — what an application must do to persist, reconstruct and reason over APE's
+meaning outside the engine's memory. Seven concluded experiments, whose record is in
+[`frontier/docs/`](frontier/docs) and whose subjects and phases are the `ape-frontier` crate.
 
 **[`agents/`](agents)** — whether an autonomous LLM agent can express, evaluate and later
 reconstruct an operational decision through APE without extending its ontology, and whether several

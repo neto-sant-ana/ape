@@ -60,21 +60,27 @@ The philosophy is intentionally shared.
 
 # Repository
 
-The workspace holds two crates.
+Two crates are the answers, and the rest of the workspace is the questions.
 
 **[`ape`](core)** — the engine, in [`core/`](core). The ontology, the canonical history that accumulates it, and the interpretation built over that history. It executes no business logic, stores no operational state and orchestrates no workflow.
 
-**[`ape-cli`](cli)** — an executable laboratory, in [`cli/`](cli). APE exercised as a dependency of an application, so the boundary between semantics and use can be inspected rather than assumed.
+**[`ape-cli`](cli)** — the reference application, in [`cli/`](cli). APE exercised as a dependency of an application, so the boundary between semantics and use can be inspected rather than assumed. Nothing in it is there without an experiment that earned it, and a guard refuses a claim whose experiment did not reach the verdict it cites.
+
+**[`lab/`](lab)** — where the questions are asked, in two rows: [`lab/frontier/`](lab/frontier) asks what an application must do to carry the meaning across a process, and [`lab/agents/`](lab/agents) asks whether the meaning survives a caller the engine was not designed for.
 
 The dependency runs one way, and never back.
 
 ```text
-ape-cli
-   ↓
-  ape
+lab/frontier   lab/agents
+           ↘   ↙
+           ape-cli
+              ↓
+             ape
 ```
 
 Storage format, addressing strategy, command vocabulary and presentation are decisions of the application. None of them may become a decision of the engine.
+
+No experiment may change the engine to make itself succeed. Where one needs something, the need *is* the result. What each row may ask of the **application** differs, and [`lab/README.md`](lab/README.md) says which and why.
 
 ---
 

@@ -1,17 +1,17 @@
 [package]
 name = "ape-cli"
 description = "The reference application for the Assertion Projection Engine."
-readme = "../README.md"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
 [dependencies]
-ape = { path = "../../core" }
+ape = { path = "../core" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0.18"
 
 [dev-dependencies]
-ape = { path = "../../core", features = ["conformance"] }
+ape = { path = "../core", features = ["conformance"] }

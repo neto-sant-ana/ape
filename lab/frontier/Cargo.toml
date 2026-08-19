@@ -1,6 +1,6 @@
 [package]
-name = "ape-cli-lab"
-description = "The reference application's laboratory: one subject and one suite per experiment."
+name = "ape-frontier"
+description = "The frontier between the engine's meaning and an application: one subject and one suite per experiment."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,7 +12,7 @@ publish = false
 # reviews, rather than reached for in the same module.
 [dependencies]
 ape = { path = "../../core" }
-ape-cli = { path = "../app" }
+ape-cli = { path = "../../cli" }
 
 [dev-dependencies]
 serde = "1.0.228"

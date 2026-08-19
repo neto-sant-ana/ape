@@ -9,5 +9,5 @@ publish = false
 
 [dependencies]
 ape = { path = "../../core", features = ["reference"] }
-ape-cli = { path = "../../cli/app" }
+ape-cli = { path = "../../cli" }
 serde_json = "1.0"

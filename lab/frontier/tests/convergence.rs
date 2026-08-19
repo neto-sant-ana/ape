@@ -18,7 +18,7 @@ use ape_cli::repository::Repository;
 use ape_cli::transfer::{
     Applicability, CandidateRecord, ConflictRecord, StatusRecord, TransferRecord,
 };
-use ape_cli_lab::subject::convergence::{self, Branched, Diverged};
+use ape_frontier::subject::convergence::{self, Branched, Diverged};
 
 /// The instant every world is interpreted at.
 ///
@@ -828,7 +828,7 @@ fn phase_5_terminate() {
     let repository = Repository::open(scratch("phase-5"));
     persist(&repository, &arrangement);
 
-    let dead = &ape_cli_lab::binary();
+    let dead = &ape_frontier::binary();
 
     let refused = rebuild_in_fresh_process(
         dead,
@@ -965,7 +965,7 @@ fn phase_6_compare() {
     persist(&repository, &arrangement);
 
     let living = synthesized(&arrangement);
-    let dead = &ape_cli_lab::binary();
+    let dead = &ape_frontier::binary();
 
     let ask = |source: &str, target: &str| {
         let produced = transfer_in_fresh_process(
@@ -1174,7 +1174,7 @@ fn phase_7_apply() {
     );
 
     // Reproduced through the same path as every other decision, in a process of its own.
-    let dead = &ape_cli_lab::binary();
+    let dead = &ape_frontier::binary();
     let survived = rebuild_in_fresh_process(dead, repository.root(), subject.instance);
 
     assert!(

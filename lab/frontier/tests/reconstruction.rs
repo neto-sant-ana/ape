@@ -17,7 +17,7 @@ use ape_cli::level;
 use ape_cli::lineage::{self, Decision, Taken};
 use ape_cli::reading::{self, OutcomeRecord, Reading, WorldRecord};
 use ape_cli::repository::Repository;
-use ape_cli_lab::subject::reconstruction::{self as subject, Constructed};
+use ape_frontier::subject::reconstruction::{self as subject, Constructed};
 
 fn day(day: u8) -> Date {
     Date::from_ymd(2026, 1, day).expect("a real date in January 2026")
@@ -413,7 +413,7 @@ fn phase_4_terminate() {
     let living = persisted(&repository);
     let (commitment, instance) = (living.commitment, living.instance);
 
-    let dead = &ape_cli_lab::binary();
+    let dead = &ape_frontier::binary();
 
     let refused = reconstruct_in_fresh_process(dead, &scratch("phase-4-absent"), instance);
 
@@ -461,7 +461,7 @@ fn phase_7_compare() {
     let living = persisted(&repository);
 
     let rebuilt =
-        reconstruct_in_fresh_process(&ape_cli_lab::binary(), repository.root(), living.instance);
+        reconstruct_in_fresh_process(&ape_frontier::binary(), repository.root(), living.instance);
 
     assert!(
         rebuilt.status.success(),

@@ -15,7 +15,7 @@ use ape_cli::lineage::{self, Decision, Lineage};
 use ape_cli::reading::{self, ConflictRecord, OutcomeRecord, WorldRecord};
 use ape_cli::repository::Repository;
 use ape_cli::transfer::{self, Applicability, StatusRecord};
-use ape_cli_lab::subject::provenance::{self, Adopted};
+use ape_frontier::subject::provenance::{self, Adopted};
 
 /// The instant every world is interpreted at, past every deadline the subject carries.
 const EFFECTIVE: &str = "2026-01-28";

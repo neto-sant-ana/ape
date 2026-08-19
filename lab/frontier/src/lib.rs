@@ -1,7 +1,11 @@
-//! The reference application's laboratory: what each experiment arranged in order to be able to fail.
+//! The frontier between the engine's meaning and an application, and what each experiment arranged
+//! there in order to be able to fail.
+//!
+//! The reference application is this row's **instrument**, not its subject. What is under study is the
+//! join: what an application must do to carry meaning across a process, and what it costs.
 //!
 //! This crate holds the **subjects**. The phases that measure them are the integration suites beside
-//! it, one per experiment, and the record of what they found is in `cli/docs/`.
+//! it, one per experiment, and the record of what they found is in `docs/`.
 //!
 //! # Why this is a crate and not a module
 //!

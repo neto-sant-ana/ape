@@ -9,7 +9,7 @@
 //!
 //! Every module declares what earned it, and `tests/pedigree.rs` refuses a claim whose experiment
 //! did not reach the verdict it cites. The laboratory that produced those obligations is
-//! `ape-cli-lab`, which depends on this crate and is never depended on by it — so an obligation
+//! `ape-frontier`, which depends on this crate and is never depended on by it — so an obligation
 //! discovered there has to be earned into here by a change somebody reviews.
 //!
 //! # Library and binary
