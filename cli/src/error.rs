@@ -206,6 +206,22 @@ pub enum LineageError {
     #[error("the decision was taken against entry {entry}, which the journal does not offer")]
     WitnessedKnowledgeAbsent { entry: crate::journal::EntryId },
 
+    /// The same disagreement, once its cause is known to be a readmission.
+    ///
+    /// Kept apart because the two send a reader to opposite places. `WitnessedKnowledgeAbsent` is
+    /// about a journal that lacks something; this is about a journal that holds it twice, where the
+    /// entry named by the first would be **innocent** — the replay resolved an address to its
+    /// earlier occurrence and stopped before reaching what was learned in between.
+    ///
+    /// Both are needed. A witness can name an entry no journal ever held, and that is not this.
+    #[error(
+        "the decision names entry {readmitted}, which the journal admits more than once; resolving it to the first occurrence leaves witnessed entry {entry} unadmitted"
+    )]
+    ReadmittedEntryIsAmbiguous {
+        readmitted: crate::journal::EntryId,
+        entry: crate::journal::EntryId,
+    },
+
     /// A decision attributed to a party the knowledge behind it does not hold.
     ///
     /// One refusal for two things, because at this coordinate they are one: an identity that names

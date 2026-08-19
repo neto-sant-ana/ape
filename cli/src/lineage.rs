@@ -238,16 +238,34 @@ impl Lineage {
 /// decision at once, through [`replay`]. Which is to say the two run the same code and
 /// differ only in *when* — and a decision resolves its cut against the knowledge standing at
 /// the moment it is applied.
-///
-/// A genesis imposes nothing, and that is a statement about the report rather than about the
-/// world: whatever its cut froze is absorbed into the selection with no one told, because
-/// there is no prior intention for it to have been absent from.
 pub fn decide<K: CanonicalKnowledge>(
     knowledge: &K,
     lineage: &mut Lineage,
     decision: &Decision,
 ) -> Result<BTreeSet<CommitmentId>, LineageError> {
-    let (thesis, imposed) = match decision {
+    let (thesis, imposed) = produced(knowledge, lineage, decision)?;
+
+    lineage.record(thesis)?;
+
+    Ok(imposed)
+}
+
+/// The world a decision makes, and what history imposed on it, keeping neither.
+///
+/// [`decide`] is this followed by recording, and the seam between the two is not a convenience: it
+/// is the difference between weighing a world and keeping one. An application that only wants to
+/// know what an intention would come to needs the first half and has no use for the second — and
+/// because both halves start here, the world it weighs is the world the other would have recorded.
+///
+/// A genesis imposes nothing, and that is a statement about the report rather than about the
+/// world: whatever its cut froze is absorbed into the selection with no one told, because
+/// there is no prior intention for it to have been absent from.
+pub fn produced<K: CanonicalKnowledge>(
+    knowledge: &K,
+    lineage: &Lineage,
+    decision: &Decision,
+) -> Result<(Thesis, BTreeSet<CommitmentId>), LineageError> {
+    let produced = match decision {
         Decision::Genesis {
             known_at,
             selection,
@@ -288,9 +306,7 @@ pub fn decide<K: CanonicalKnowledge>(
         ),
     };
 
-    lineage.record(thesis)?;
-
-    Ok(imposed)
+    Ok(produced)
 }
 
 /// Apply a whole lineage against knowledge as it stands, oldest first.
@@ -338,7 +354,7 @@ pub fn rebuild(
     for taken in decisions {
         journal::replay_through(canon, journal, &mut admitted, &taken.after)?;
 
-        corroborate(&admitted, taken)?;
+        corroborate(&admitted, taken).map_err(|refusal| diagnosed(journal, taken, refusal))?;
         attributed(&admitted, taken)?;
 
         decide(canon.history(), &mut lineage, &taken.decision)?;
@@ -372,6 +388,47 @@ fn corroborate(admitted: &Replayed, taken: &Taken) -> Result<(), LineageError> {
     }
 
     Ok(())
+}
+
+/// Say why a witness outran the replay, where the reason is a readmission.
+///
+/// [`corroborate`] weighs two sets, and the cause of this particular disagreement is a
+/// **multiplicity** — an address the journal admits twice, resolved to its earlier occurrence — which
+/// a set cannot hold. So the set comparison cannot explain itself, and blames the entry learned in
+/// between: a reader told the journal does not offer an entry the journal *does* offer goes looking
+/// for a truncated file that is not there.
+///
+/// The diagnosis therefore happens here, where the whole journal is in hand, and only after something
+/// has already been refused. It replays into a canon of its own rather than the caller's, because a
+/// refusal must leave nothing behind, and it falls back to the original refusal wherever it cannot
+/// establish the cause — a witness naming an entry no journal ever held is a different fault and
+/// keeps its own name.
+fn diagnosed(journal: &[Admission], taken: &Taken, refusal: LineageError) -> LineageError {
+    let absent = match &refusal {
+        LineageError::WitnessedKnowledgeAbsent { entry } => entry.clone(),
+        _ => return refusal,
+    };
+
+    let mut aside = Canon::new(ResidentHistory::new());
+
+    let Ok(whole) = journal::replay(&mut aside, journal) else {
+        return refusal;
+    };
+
+    if whole
+        .entries
+        .iter()
+        .filter(|held| *held == &taken.after)
+        .count()
+        > 1
+    {
+        return LineageError::ReadmittedEntryIsAmbiguous {
+            readmitted: taken.after.clone(),
+            entry: absent,
+        };
+    }
+
+    refusal
 }
 
 /// Weigh a decision's claim about who took it against the knowledge that stood when it was taken.

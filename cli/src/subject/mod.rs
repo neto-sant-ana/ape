@@ -11,5 +11,6 @@
 pub mod convergence;
 pub mod coordination;
 pub mod divergence;
+pub mod exploration;
 pub mod provenance;
 pub mod reconstruction;
