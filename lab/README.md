@@ -32,7 +32,7 @@ and the difference is not a matter of trust:
 
 # Rules
 
-Every experiment here obeys the same three constraints.
+Every experiment here obeys the same constraints.
 
 **The engine is the subject, not the material.**
 
@@ -102,6 +102,46 @@ it.
 This has happened once already, in both directions. A finding about a decision's coordinate went from
 here to the branch that owned it, was refuted there in its first form, and was repaired on that
 experiment's terms — and the repair came back as a substrate this one now stands on.
+
+**A concluded experiment is pinned, not frozen.**
+
+An improvement to `ape` or `ape-cli` that a later experiment earns is not blocked by an earlier
+experiment having been run. Three different things are preserved under that one word, and only one of
+them can veto anything:
+
+```text
+a published claim        "23,553 bytes of lineage", "six of six refused"
+                         kept true by the commit it was taken against
+                         → never a veto. The obligation is to record the change
+
+a runnable arrangement   a subject and its suite, which `cargo test` runs today
+                         kept honest by the compiler and by red
+                         → not a veto, a bill — and it must read as a consumer
+                           breaking, never as the result having always been different
+
+an irreproducible        a record that exists because something happened once
+artifact                 → the only real veto
+```
+
+There are two of the third kind, both in `agents/`: the repositories two LLM parties wrote in
+`04-multiagent`, read as data by that row's suites. Nobody can re-run the parties that produced them.
+
+And even that veto dissolves rather than standing. A **recorded migration, with the file as its author
+wrote it kept beside the migrated one**, translates a record whose content does not change —
+re-encoding is not re-running, and what must survive is what the parties chose.
+
+*What is not preservation, and is mistaken for it.* Whether a change forces a concluded arrangement to
+express something the experiment was built to leave unexpressed — a decision that claims nobody, a
+selection with an empty half. That is a design question about the change, not a claim by the past, and
+it decides more cases than the veto does.
+
+**Why this rule is written down.** One field's shape was justified by the fear instead of by the
+design. `Taken::by` is optional, and the reason recorded beside it was that four concluded experiments
+hold repositories whose decisions name nobody. They hold none: every suite in `frontier/` builds its
+repository from its own subject, on every run, in a temporary directory. The conclusion was right for a
+different reason — a decision that claims nobody is the ordinary case — and the reason taught the wrong
+rule, which is how it came to be offered as a veto over a later experiment's remedy. Found while
+deciding Part B of `07-atomicity`, and the sweep that followed found no second decision made that way.
 
 **A failed experiment is a result.**
 
