@@ -57,7 +57,7 @@ use ape_cli::journal::{
 use ape_cli::level;
 use ape_cli::lineage::{self, Decision, Lineage, Taken};
 use ape_cli::reading::WorldRecord;
-use ape_cli::repository::Repository;
+use ape_cli::repository::{Repository, RepositoryInput};
 
 pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";
@@ -169,6 +169,23 @@ pub fn put(repository: &Repository, files: &Files, file: File) -> Result<(), Rep
         File::Lineage => repository.write_lineage(&files.lineage),
         File::Worlds => repository.write_worlds(&files.worlds),
     }
+}
+
+/// The three files as the application's own write path takes them.
+pub fn input(files: &Files) -> RepositoryInput<'_> {
+    RepositoryInput {
+        journal: &files.journal,
+        lineage: &files.lineage,
+        worlds: &files.worlds,
+    }
+}
+
+/// Put a whole repository there the way an application does — one call, all or nothing.
+///
+/// Phases 0 to 4 do not use this and must not: they measure what three separate writes leave, which
+/// is what the application did when they were run. This is what Phase 6 measures instead.
+pub fn write_whole(repository: &Repository, files: &Files) -> Result<(), RepositoryError> {
+    repository.write_whole(input(files))
 }
 
 /// Write all three, in the given order.

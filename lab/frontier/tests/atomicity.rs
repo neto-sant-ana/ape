@@ -712,6 +712,100 @@ fn a_refusal_says_nothing_about_what_survived() {
     );
 }
 
+/// Phase 6 — the repair, and the states it puts out of reach.
+///
+/// Part B. Its shape was decided by Phases 1 to 4 and by the criterion the coordination experiment
+/// set: *it removes a state a reader can be misled by, and the repository before an interrupted write
+/// survives.* Both halves are measured here, and the first one is measured by producing every state
+/// Phase 4 enumerated and finding that none of them is visible.
+///
+/// The prefixes are produced in the generation the pointer does not name, using the same three
+/// single-file writes Phases 1 to 4 used — because a prefix of a write is still a prefix, and what has
+/// changed is not that the files stop being written one at a time but *where* they land.
+#[test]
+fn phase_6_a_write_that_is_whole() {
+    let repository = Repository::open(scratch("phase-6"));
+    let arrangement = atomicity::arranged().expect("the arrangement holds");
+
+    // The previous repository, put there the way an application puts one there.
+    let first = repository
+        .prepare(atomicity::input(&arrangement.before))
+        .expect("preparable");
+    let replaced = first.generation();
+
+    first.turn().expect("the pointer turns");
+
+    let was_there = bytes(&repository);
+    let answered = answers(&repository, &arrangement).expect("the whole repository reconstructs");
+
+    assert_eq!(
+        answered.len(),
+        BEFORE_WORLDS,
+        "two worlds, as Phase 0 read them"
+    );
+
+    // Where the commit that follows would land, and it is not where a reader looks.
+    let staged = repository
+        .prepare(atomicity::input(&arrangement.after))
+        .expect("preparable");
+    let pending = staged.generation();
+
+    assert_ne!(
+        pending, replaced,
+        "a whole write puts its files somewhere other than the generation being read"
+    );
+    assert_eq!(
+        bytes(&repository),
+        was_there,
+        "and a staged write, complete and unturned, is invisible"
+    );
+
+    // Every state Phase 4 enumerated, produced in the pending generation. Twelve schedules, six
+    // states, and the repository answers Phase 0 through all of them.
+    for order in File::orders() {
+        for reached in 1..=File::ALL.len() {
+            let _ = std::fs::remove_dir_all(&pending);
+
+            let into = Repository::open(&pending);
+
+            for file in &order[..reached] {
+                atomicity::put(&into, &arrangement.after, *file).expect("writable");
+            }
+
+            assert_eq!(
+                bytes(&repository),
+                was_there,
+                "no prefix of a whole write reaches a reader"
+            );
+            assert_eq!(
+                answers(&repository, &arrangement).expect("the repository reconstructs"),
+                answered,
+                "and it answers what it answered before, by value"
+            );
+        }
+    }
+
+    // The turn, and the other half of the criterion: what the write replaces is still on disk, whole.
+    repository
+        .prepare(atomicity::input(&arrangement.after))
+        .expect("preparable")
+        .turn()
+        .expect("the pointer turns");
+
+    assert_eq!(
+        answers(&repository, &arrangement)
+            .expect("the repository reconstructs")
+            .len(),
+        AFTER_WORLDS,
+        "the commit landed, and it landed whole"
+    );
+    assert_eq!(
+        bytes(&Repository::open(&replaced)),
+        was_there,
+        "and the repository it replaced survives it, byte for byte"
+    );
+}
+
 /// The instrument writes what the application writes, and nothing else.
 ///
 /// A guard on the arrangement rather than a measurement. Every partial state in this experiment is
