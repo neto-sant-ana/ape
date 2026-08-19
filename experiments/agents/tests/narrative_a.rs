@@ -88,7 +88,10 @@ fn claim_the_undertaken_arrangement_leaves_seventy_and_conflicts_with_nothing() 
         .map(|movement| movement.magnitude())
         .sum();
 
-    assert_eq!(level, 70.0, "100 received, 30 intended, the refused one cancelled");
+    assert_eq!(
+        level, 70.0,
+        "100 received, 30 intended, the refused one cancelled"
+    );
 }
 
 /// > "only one of them is selected by the world the house ends up in."

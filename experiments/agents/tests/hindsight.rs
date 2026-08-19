@@ -112,7 +112,10 @@ fn walking_the_lineage_reaches_both_candidates() {
     // decisions in this lineage is preceded by the advancement that made it possible.
     assert_eq!(visited, 5, "two forks, two advancements, and the genesis");
 
-    assert!(reached.contains(&standard(&built)), "the intention taken is reached");
+    assert!(
+        reached.contains(&standard(&built)),
+        "the intention taken is reached"
+    );
     assert!(
         reached.contains(&priority(&built)),
         "the intention abandoned is reached, through the ancestor that selected it"

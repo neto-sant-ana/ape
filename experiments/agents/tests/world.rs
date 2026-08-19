@@ -17,8 +17,8 @@ use ape_agents::policy::{self, Verdict};
 fn ruling(built: &Built) -> Verdict {
     let world = built.world_at(built.current());
 
-    let interpretation = Interpretation::of(&world, built.canon.history())
-        .expect("the Thesis is interpretable");
+    let interpretation =
+        Interpretation::of(&world, built.canon.history()).expect("the Thesis is interpretable");
 
     policy::rule(&interpretation, Hypothesis::FinalState).expect("feasibility is derivable")
 }

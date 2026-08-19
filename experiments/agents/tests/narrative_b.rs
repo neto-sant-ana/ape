@@ -88,9 +88,12 @@ fn claim_the_hundred_is_intact_and_nothing_is_late() {
         .map(|movement| movement.magnitude())
         .sum();
 
-    assert_eq!(settled, 100.0, "one receipt has landed and nothing has left");
+    assert_eq!(
+        settled, 100.0,
+        "one receipt has landed and nothing has left"
+    );
 
-    for (_, condition) in projected.conditions() {
+    for condition in projected.conditions().values() {
         assert_ne!(condition.timeliness(), Some(&Timeliness::Breached));
     }
 }
