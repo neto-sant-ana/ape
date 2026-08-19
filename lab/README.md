@@ -122,6 +122,17 @@ Directories appear as their experiment begins. An experiment that has been plann
 started has no directory — its absence is the honest signal that nothing has been observed
 yet.
 
+A **candidate** is different from a planned experiment, and has a file rather than a directory. It is
+what one row's findings have accumulated for a question **neither row owns** — gathered so that it is
+not five times inherited and never held. A candidate names no shape and predicts nothing; the protocol
+is written when its experiment begins, with these in hand.
+
+They live in [`candidates/`](candidates), numbered as experiments are.
+
+**[`candidates/00-authenticity.md`](candidates/00-authenticity.md)** — five results name it and each says
+*unchanged*. What three of them cannot tell apart is not a reporting defect: the fact that would refute
+the record was never in it.
+
 ---
 
 # Index

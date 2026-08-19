@@ -45,19 +45,32 @@ fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
-/// The application's modules: the crate's own sources, without the laboratory's.
+/// Every module of the application: every `.rs` file under `src/`, at any depth.
 ///
-/// `subject/` is a fixture per experiment and `docs/` is the experimental record — both are the
-/// laboratory, and neither is something the application implements.
+/// It recurses, and that is the whole of the fix it once needed. The first version read one directory,
+/// which was **right by coincidence** — the two things it had to leave out were `subject/` and `docs/`,
+/// and both were directories, so the extension filter dropped them without meaning to. Once the
+/// bifurcation moved them to the laboratory the coincidence stopped being load-bearing and the gap it
+/// was hiding stayed: a module in a folder would not have been asked to declare anything.
 fn modules() -> Vec<PathBuf> {
-    let mut found: Vec<PathBuf> = std::fs::read_dir(root().join("src"))
-        .expect("the application's sources are there")
-        .map(|entry| entry.expect("readable").path())
-        .filter(|path| path.extension().is_some_and(|kind| kind == "rs"))
-        .collect();
+    let mut found = Vec::new();
 
+    walk_sources(&root().join("src"), &mut found);
     found.sort();
+
     found
+}
+
+fn walk_sources(directory: &Path, found: &mut Vec<PathBuf>) {
+    for entry in std::fs::read_dir(directory).expect("the application's sources are there") {
+        let path = entry.expect("readable").path();
+
+        if path.is_dir() {
+            walk_sources(&path, found);
+        } else if path.extension().is_some_and(|kind| kind == "rs") {
+            found.push(path);
+        }
+    }
 }
 
 /// One claim: the experiment's directory, and the verdict the module says it rests on.
@@ -67,13 +80,25 @@ struct Claim {
     verdict: String,
 }
 
+/// A module's name as a reader would have to type it, relative to `src/`.
+///
+/// The path and not the file name, because every folder submodule is called `mod.rs` — a report that
+/// named the file would name three of them identically and locate none.
+fn named(module: &Path) -> String {
+    module
+        .strip_prefix(root().join("src"))
+        .unwrap_or(module)
+        .display()
+        .to_string()
+}
+
 /// Read a module's declaration, or say what is missing.
 ///
 /// The message names the module and the form, because a guard that answers "the pedigree is
 /// inconsistent" hands back the work of finding out which file and what to write.
 fn declared(module: &Path) -> Result<Vec<Claim>, String> {
     let source = std::fs::read_to_string(module).expect("readable");
-    let name = module.file_name().expect("a file").to_string_lossy();
+    let name = named(module);
 
     let at = source
         .lines()
@@ -197,11 +222,7 @@ fn nothing_is_in_the_application_without_an_experiment_that_earned_it() {
     let mut citations = 0;
 
     for module in &modules {
-        let name = module
-            .file_name()
-            .expect("a file")
-            .to_string_lossy()
-            .into_owned();
+        let name = named(module);
 
         match declared(module) {
             Err(missing) => refused.push(missing),
