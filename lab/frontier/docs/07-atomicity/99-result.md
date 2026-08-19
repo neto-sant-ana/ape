@@ -151,9 +151,9 @@ of six are still refused. What this adds is who the promise is to: a refusal is 
 **reader**, and five experiments' worth of them say nothing about the record. Reporting a refusal as a
 success was right; reporting it as safety would not be.
 
-**Corroboration's tampering note gains a fourth intent.** It could not tell tampering from pruning
+**Corroboration's tampering note gains a third intent.** It could not tell tampering from pruning
 because the difference is intent; exploration measured that there is nothing to tell apart. An
-interruption is now the fourth, on the same mechanism.
+interruption is now the third, on the same mechanism.
 
 **Provenance's rule is extended and not relaxed.** *Nothing derived is persisted unless something
 compares it* turns out to be what makes rollback possible at all — the derived witness kept for a reader
@@ -196,7 +196,8 @@ refuses it. Excluded, and now the nearest unanswered question after this one.
 **More than one step of rollback.** Two generations keep one previous state. What would justify a series,
 and what would prune it, is not asked.
 
-**Authenticity.** Seventh appearance, unchanged, and gathered as a candidate of its own.
+**Authenticity.** Named again and unchanged, and this time **gathered** rather than only named: the
+candidate holds what removing one of its faces did to the question.
 
 **Benchmarking.** No timing was taken.
 

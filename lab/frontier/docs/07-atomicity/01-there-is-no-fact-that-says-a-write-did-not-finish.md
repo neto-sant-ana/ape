@@ -47,15 +47,15 @@ the case corroboration cannot see* is true because the case is not a gap in the 
 contains, and the record contains no distinction between a commit that stopped and a commit that
 stopped meaning to.
 
-## The fourth intent, and it is not this experiment's
+## The third intent, and it is not this experiment's
 
 Corroboration reported that the repository cannot tell pruning from tampering because the difference
 is intent. Exploration sharpened it past its own wording: there is nothing to tell apart, since a
 pruned repository and one that never explored are the same bytes.
 
-An interruption now joins that set — four intents, one mechanism, and the record distinguishes none of
-them. Which is the authenticity candidate appearing again, and the protocol excluded it from this
-experiment before it arrived.
+An interruption now joins that set — three intents, one mechanism, and the record distinguishes none of
+them, which is the count the protocol made before this ran. Which is the authenticity candidate
+appearing again, and the protocol excluded it from this experiment before it arrived.
 
 ## What it does not say
 

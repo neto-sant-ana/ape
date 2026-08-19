@@ -56,7 +56,7 @@ is excluded, and nothing here measured it.
 
 ## Request 5 — *"Tell an interruption from a tampering, and from a pruning."*
 
-Observation 1, and it is **not this experiment's to answer**. Four intents now share one mechanism and
+Observation 1, and it is **not this experiment's to answer**. Three intents now share one mechanism and
 the record distinguishes none of them. It is the authenticity candidate, gathered in
 [`candidates/00-authenticity.md`](../../../candidates/00-authenticity.md), appearing for the sixth time
 and named here only so that it is not counted as something this experiment left undone.

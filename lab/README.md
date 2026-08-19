@@ -169,17 +169,17 @@ is written when its experiment begins, with these in hand.
 
 They live in [`candidates/`](candidates), numbered as experiments are.
 
-**[`candidates/00-authenticity.md`](candidates/00-authenticity.md)** — five results name it and each says
-*unchanged*. What three of them cannot tell apart is not a reporting defect: the fact that would refute
-the record was never in it.
+**[`candidates/00-authenticity.md`](candidates/00-authenticity.md)** — every result since corroboration
+names it, and each says *unchanged*. What several of them cannot tell apart is not a reporting defect:
+the fact that would refute the record was never in it.
 
 ---
 
 # Index
 
 **[`frontier/`](frontier)** — what an application must do to persist, reconstruct and reason over APE's
-meaning outside the engine's memory. Seven concluded experiments, whose record is in
-[`frontier/docs/`](frontier/docs) and whose subjects and phases are the `ape-frontier` crate.
+meaning outside the engine's memory. Its concluded experiments keep one directory each in
+[`frontier/docs/`](frontier/docs), and their subjects and phases are the `ape-frontier` crate.
 
 **[`agents/`](agents)** — whether an autonomous LLM agent can express, evaluate and later
 reconstruct an operational decision through APE without extending its ontology, and whether several

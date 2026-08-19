@@ -75,7 +75,9 @@ after Part B    three writes, and only something that is not the application mak
 
 So the record still cannot tell an interruption from a tampering — it now cannot *be* interrupted into
 one, which is a different promise and a smaller one than it sounds. That is the authenticity candidate
-for the seventh time, and it is still not this experiment's to answer.
+again, and it is still not this experiment's to answer — but it is gathered rather than only named:
+[`candidates/00-authenticity.md`](../../../candidates/00-authenticity.md) now holds what removing this
+face did to the question.
 
 ## What an interrupted write leaves behind
 
