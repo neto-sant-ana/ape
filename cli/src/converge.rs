@@ -37,7 +37,13 @@
 //! reconstruct is refused, and a refusal leaves the repository exactly as it was — which is the
 //! other half of what the Canon promises a writer who lost.
 //!
-//! Earned by: 05-coordination (Confirmed)
+//! **And neither does a party that stops.** That sentence was a promise without a mechanism until the
+//! atomicity experiment went looking: the three writes this function ended with were the one place in
+//! the application where a process could stop and leave a repository nobody wrote — and one of the
+//! states it could leave reconstructs, so nothing on the reader's side would have said so. The write
+//! is now whole, and the repository this one replaces is still on disk.
+//!
+//! Earned by: 05-coordination (Confirmed), 07-atomicity (Confirmed)
 
 use std::collections::BTreeSet;
 
@@ -49,7 +55,7 @@ use crate::history::ResidentHistory;
 use crate::journal::{Admission, EntryId};
 use crate::lineage::{self, Taken};
 use crate::reading::{Corroborated, WorldRecord};
-use crate::repository::Repository;
+use crate::repository::{Repository, RepositoryInput};
 
 /// Put back what a party holds, keeping whatever arrived while it was thinking.
 ///
@@ -67,15 +73,17 @@ pub fn converge(
     let mut canon = Canon::new(ResidentHistory::new());
     let (lineage, admitted) = lineage::rebuild(&mut canon, &journal.records, &decisions)?;
 
-    repository.write_journal(&journal.records)?;
-    repository.write_lineage(&decisions)?;
-    repository.write_worlds(
-        &lineage
-            .decided()
-            .iter()
-            .map(WorldRecord::of)
-            .collect::<Vec<_>>(),
-    )?;
+    let worlds = lineage
+        .decided()
+        .iter()
+        .map(WorldRecord::of)
+        .collect::<Vec<_>>();
+
+    repository.write_whole(RepositoryInput {
+        journal: &journal.records,
+        lineage: &decisions,
+        worlds: &worlds,
+    })?;
 
     Ok(Corroborated {
         canon,
