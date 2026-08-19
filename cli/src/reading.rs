@@ -378,6 +378,137 @@ fn corroborate(lineage: &[Thesis], recorded: &[WorldRecord]) -> Result<(), Readi
 mod tests {
     use super::*;
 
+    use crate::journal::{ActionKindRecord, EffectRecord, ResourceKindRecord};
+    use crate::lineage::Decision;
+
+    /// The smallest world a `Reading` can be taken of: one commitment, and one decision selecting it.
+    ///
+    /// The application's own rather than an experiment's subject. Borrowing one coupled this guard to
+    /// a concluded experiment in **both** directions: the guard broke if that subject's shape moved,
+    /// and the subject could not move without breaking a guard that is not about it — which is the
+    /// opposite of what a subject is promised.
+    fn smallest() -> (Canon<ResidentHistory>, Lineage, ResourceInstanceId) {
+        let mut canon = Canon::new(ResidentHistory::new());
+        let day = |day: u8| format!("2026-01-{day:02}");
+
+        let mut journal = vec![
+            Admission::Role {
+                label: "actor".into(),
+                recorded_at: day(1),
+            },
+            Admission::Role {
+                label: "recipient".into(),
+                recorded_at: day(1),
+            },
+            Admission::Agent {
+                label: "one".into(),
+                recorded_at: day(1),
+            },
+            Admission::Agent {
+                label: "other".into(),
+                recorded_at: day(1),
+            },
+            Admission::Resource {
+                label: "cash".into(),
+                kind: ResourceKindRecord::Between {
+                    lower: 0.0,
+                    upper: 100.0,
+                },
+                recorded_at: day(1),
+            },
+        ];
+        let mut admitted = crate::journal::replay(&mut canon, &journal).expect("admissible");
+
+        let (actor, recipient) = (admitted.roles[0], admitted.roles[1]);
+        let (one, other) = (admitted.agents[0], admitted.agents[1]);
+        let cash = admitted.resources[0];
+
+        journal.extend([
+            Admission::Eligibility {
+                agent: one,
+                roles: [actor].into(),
+                effective_from: day(1),
+                recorded_at: day(1),
+            },
+            Admission::Eligibility {
+                agent: other,
+                roles: [recipient].into(),
+                effective_from: day(1),
+                recorded_at: day(1),
+            },
+            Admission::ResourceInstance {
+                label: "account".into(),
+                resource: cash,
+                recorded_at: day(1),
+            },
+            Admission::Action {
+                verb: "receive".into(),
+                kind: ActionKindRecord::Quantifiable(EffectRecord::Increase),
+                resource: cash,
+                recorded_at: day(1),
+            },
+        ]);
+        crate::journal::replay_remaining(&mut canon, &journal, &mut admitted).expect("admissible");
+
+        let instance = admitted.instances[0];
+
+        journal.push(Admission::Statement {
+            actors: [actor].into(),
+            recipients: [recipient].into(),
+            action: admitted.actions[0],
+            fulfills: ["Settled".to_owned()].into(),
+            cancels: ["Void".to_owned()].into(),
+            recorded_at: day(1),
+        });
+        crate::journal::replay_remaining(&mut canon, &journal, &mut admitted).expect("admissible");
+
+        // Two commitments, and an Event settling one of them. Both halves of the partition are
+        // therefore non-empty, which is what makes the assertions below bite: a world with nothing
+        // frozen and nothing open would have this guard comparing empty sets and reporting agreement.
+        let flowing = |magnitude: f64| Admission::Commitment {
+            accountable: one,
+            executors: [one].into(),
+            beneficiaries: [other].into(),
+            statement: admitted.statements[0],
+            resource: instance,
+            committed_at: day(2),
+            due_date: day(20),
+            magnitude: Some(magnitude),
+            dependencies: [].into(),
+            recorded_at: day(2),
+        };
+
+        journal.extend([flowing(10.0), flowing(20.0)]);
+        crate::journal::replay_remaining(&mut canon, &journal, &mut admitted).expect("admissible");
+
+        let (settled, open) = (admitted.commitments[0], admitted.commitments[1]);
+
+        journal.push(Admission::Event {
+            commitment: settled,
+            observation: "Settled".into(),
+            occurred_at: day(3),
+            recorded_at: day(3),
+        });
+        crate::journal::replay_remaining(&mut canon, &journal, &mut admitted).expect("admissible");
+
+        let mut built = Lineage::new();
+        lineage::decide(
+            canon.history(),
+            &mut built,
+            &Decision::Genesis {
+                known_at: day(10),
+                selection: [settled, open].into(),
+            },
+        )
+        .expect("the genesis is decidable");
+
+        let world = &built.decided()[0];
+        assert_eq!(world.selection().frozen().count(), 1, "the Event froze one");
+        assert_eq!(world.selection().open().count(), 1, "and one is still open");
+
+        (canon, built, instance)
+    }
+
     /// The two field lists of this module describe one thing, and neither derives the other.
     ///
     /// They are adjacent so that anyone editing one sees the other, and this reads both to say
@@ -385,10 +516,7 @@ mod tests {
     /// the record that witnesses it would make a repository refuse itself.
     #[test]
     fn a_reading_reports_the_world_its_witness_records() {
-        let (canon, subject, _, lineage) = {
-            let begun = crate::subject::divergence::begun().expect("the subject is admissible");
-            (begun.canon, begun.subject, begun.decisions, begun.lineage)
-        };
+        let (canon, lineage, instance) = smallest();
 
         let thesis = lineage.decided().last().expect("the genesis");
         let record = WorldRecord::of(thesis);
@@ -396,7 +524,7 @@ mod tests {
         let reading = of(
             canon.history(),
             thesis,
-            subject.instance,
+            instance,
             &Date::parse("2026-01-10").expect("a date"),
         )
         .expect("the world reads");
