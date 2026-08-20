@@ -31,7 +31,7 @@ fn conflicts(built: &Built, thesis: &Thesis, hypothesis: Hypothesis) -> Vec<Conf
         .to_vec()
 }
 
-fn out_of_bounds(built: &Built, level: f64) -> Vec<Conflict> {
+fn out_of_bounds(built: &Built, level: i128) -> Vec<Conflict> {
     vec![Conflict::OutOfBounds {
         instance: built.world.account,
         level,
@@ -61,7 +61,7 @@ fn claim_the_breach_is_minus_twenty_under_all_three_ways_of_asking() {
     for hypothesis in EVERY_HYPOTHESIS {
         assert_eq!(
             conflicts(&built, &world, hypothesis),
-            out_of_bounds(&built, -20.0)
+            out_of_bounds(&built, -20)
         );
     }
 }
@@ -77,7 +77,7 @@ fn claim_the_hundred_is_intact_and_nothing_is_late() {
         .conditions_at(&world::on(12))
         .expect("conditions project");
 
-    let settled: f64 = projected
+    let settled: i128 = projected
         .conditions()
         .iter()
         .filter(|(_, condition)| condition.outcome() == &Outcome::Fulfilled)
@@ -88,10 +88,7 @@ fn claim_the_hundred_is_intact_and_nothing_is_late() {
         .map(|movement| movement.magnitude())
         .sum();
 
-    assert_eq!(
-        settled, 100.0,
-        "one receipt has landed and nothing has left"
-    );
+    assert_eq!(settled, 100, "one receipt has landed and nothing has left");
 
     for condition in projected.conditions().values() {
         assert_ne!(condition.timeliness(), Some(&Timeliness::Breached));
@@ -217,7 +214,7 @@ fn claim_the_warning_was_available_three_days_earlier() {
 
     assert_eq!(
         conflicts(&built, &on_the_ninth, Hypothesis::FinalState),
-        out_of_bounds(&built, -20.0),
+        out_of_bounds(&built, -20),
         "the same warning, three days earlier"
     );
 }
@@ -244,7 +241,7 @@ fn claim_all_four_ways_out_clear_the_floor() {
             "secure 20 in",
             vec![
                 Step::Intend {
-                    magnitude: 20.0,
+                    magnitude: 20,
                     incoming: true,
                     due: 19,
                     recorded_at: 12,
@@ -259,7 +256,7 @@ fn claim_all_four_ways_out_clear_the_floor() {
             "reduce 90 to 70",
             vec![
                 Step::Intend {
-                    magnitude: 70.0,
+                    magnitude: 70,
                     incoming: false,
                     due: 20,
                     recorded_at: 12,
@@ -293,7 +290,7 @@ fn claim_twenty_is_the_minimum_that_works() {
     let mut steps = hindsight::scenario();
     steps.extend([
         Step::Intend {
-            magnitude: 19.0,
+            magnitude: 19,
             incoming: true,
             due: 19,
             recorded_at: 12,
@@ -308,7 +305,7 @@ fn claim_twenty_is_the_minimum_that_works() {
 
     assert_eq!(
         conflicts(&built, &current(&built), Hypothesis::FinalState),
-        out_of_bounds(&built, -1.0),
+        out_of_bounds(&built, -1),
         "19 leaves the account one short, so 20 is the least that clears"
     );
 }

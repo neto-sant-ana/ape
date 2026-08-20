@@ -102,8 +102,8 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         Admission::Resource {
             label: "cash".into(),
             kind: ResourceKindRecord::Between {
-                lower: 0.0,
-                upper: 100.0,
+                lower: 0,
+                upper: 100,
             },
             recorded_at: day(1),
         },
@@ -176,7 +176,7 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
     // fixed by the statement rather than chosen here. An inflow is the customer's to execute; an
     // outflow is the merchant's.
     let flowing =
-        |statement, executor, beneficiary, magnitude: f64, day_of: u8| Admission::Commitment {
+        |statement, executor, beneficiary, magnitude: u128, day_of: u8| Admission::Commitment {
             accountable: executor,
             executors: [executor].into(),
             beneficiaries: [beneficiary].into(),
@@ -190,9 +190,9 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         };
 
     journal.extend([
-        flowing(inflow, customer, merchant, 50.0, 2),
-        flowing(outflow, merchant, customer, 20.0, 3),
-        flowing(outflow, merchant, customer, 15.0, 3),
+        flowing(inflow, customer, merchant, 50, 2),
+        flowing(outflow, merchant, customer, 20, 3),
+        flowing(outflow, merchant, customer, 15, 3),
     ]);
     journal::replay_remaining(canon, &journal, &mut admitted)?;
 
@@ -200,8 +200,8 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         budget: admitted.commitments[0],
         hiring: admitted.commitments[1],
         equipment: admitted.commitments[2],
-        grant: flowing(inflow, customer, merchant, 30.0, 4),
-        rebate: flowing(inflow, customer, merchant, 10.0, 4),
+        grant: flowing(inflow, customer, merchant, 30, 4),
+        rebate: flowing(inflow, customer, merchant, 10, 4),
         planner: deciding("planner"),
         steward: deciding("steward"),
         instance,

@@ -29,7 +29,7 @@ use crate::kernel::value_objects::{ActionKind, Constraint, Effect, ResourceKind}
 #[derive(Debug, Clone, PartialEq)]
 pub struct Movement {
     instance: ResourceInstanceId,
-    magnitude: f64,
+    magnitude: i128,
 }
 
 impl Movement {
@@ -37,8 +37,8 @@ impl Movement {
         self.instance
     }
 
-    /// Positive for an increase, negative for a decrease.
-    pub fn magnitude(&self) -> f64 {
+    /// Positive for an increase, negative for a decrease, as a count of the resource's own unit.
+    pub fn magnitude(&self) -> i128 {
         self.magnitude
     }
 }
@@ -99,6 +99,13 @@ pub(crate) fn bounded_movement_of<K: Knowledge>(
     };
 
     let (effect, magnitude) = effect;
+
+    // Where the sign enters. A magnitude is unsigned because the direction is the effect's, so this
+    // is the one place the two become one signed number — and the one place a magnitude can be too
+    // large to be a movement, which is refused rather than wrapped into a level of the wrong sign.
+    let magnitude = i128::try_from(magnitude).map_err(|_| HermeneiaError::MagnitudeUnmovable {
+        commitment: commitment.id(),
+    })?;
 
     Ok(Some((
         Movement {

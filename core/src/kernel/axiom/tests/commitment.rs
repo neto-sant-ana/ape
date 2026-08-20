@@ -41,7 +41,7 @@ fn rejects_discrete_commitment_carrying_a_value() {
     let f = discrete_graph();
     let mut input = commitment_input(&f);
 
-    input.action_value = ActionValue::value(5.0).unwrap();
+    input.action_value = ActionValue::value(5).unwrap();
 
     let result = Axiom::new(&f.store).emit_commitment(input);
 

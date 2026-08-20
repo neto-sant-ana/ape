@@ -134,7 +134,7 @@ fn phase_1_construct() {
     assert_eq!(
         level::settled(canon.history(), &projected, subject.instance)
             .expect("the world reads whole"),
-        0.0,
+        0,
         "an unsettled commitment has moved nothing"
     );
 
@@ -149,7 +149,7 @@ fn phase_1_construct() {
         feasibility.conflicts(),
         [Conflict::OutOfBounds {
             instance: subject.instance,
-            level: -70.0,
+            level: -70,
         }],
         "receiving 50 and spending 120 leaves the account outside 0..100"
     );
@@ -205,7 +205,7 @@ fn phase_2_observe() {
             .conflicts(),
         [Conflict::OutOfBounds {
             instance: subject.instance,
-            level: -70.0,
+            level: -70,
         }],
         "and stays refused, because what refused it has not changed"
     );
@@ -311,7 +311,7 @@ fn phase_2_observe() {
     assert_eq!(
         level::settled(canon.history(), &projected, subject.instance)
             .expect("the world reads whole"),
-        0.0,
+        0,
     );
 
     assert!(
@@ -401,7 +401,7 @@ fn phase_3_diverge() {
     assert_eq!(
         level::settled(canon.history(), &projected, subject.instance)
             .expect("the world reads whole"),
-        0.0,
+        0,
         "choosing an intention lands nothing",
     );
 
@@ -816,12 +816,12 @@ fn phase_8_compare() {
         OutcomeRecord::Unsettled,
         "the reconstruction does not learn an Event the decision could not have known"
     );
-    assert_eq!(genesis.level, 0.0, "nothing was ever fulfilled");
+    assert_eq!(genesis.level, 0, "nothing was ever fulfilled");
     assert_eq!(
         genesis.conflicts,
         [ConflictRecord::OutOfBounds {
             instance: reasoned.subject.instance.to_string(),
-            level: -70.0,
+            level: -70,
         }],
         "the refused world comes back refused, by the same instance at the same level"
     );
@@ -898,7 +898,7 @@ fn phase_8_compare() {
         ]),
         "revising only what was open, by what the decision introduced"
     );
-    assert_eq!(forked.level, 0.0, "choosing an intention lands nothing");
+    assert_eq!(forked.level, 0, "choosing an intention lands nothing");
     assert_eq!(forked.effective_at, EFFECTIVE);
     assert!(
         forked.conflicts.is_empty(),

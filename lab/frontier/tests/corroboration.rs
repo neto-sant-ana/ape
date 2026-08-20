@@ -187,7 +187,7 @@ fn phase_1_construct() {
         worlds[0].conflicts,
         [ConflictRecord::OutOfBounds {
             instance: reasoned.subject.instance.to_string(),
-            level: -70.0,
+            level: -70,
         }],
         "and its own bounds refuse it"
     );
@@ -203,7 +203,7 @@ fn phase_1_construct() {
         worlds[2].conditions[&reasoned.subject.overspend.to_string()].outcome,
         OutcomeRecord::Cancelled
     );
-    assert_eq!(worlds[2].level, 0.0, "nothing was ever fulfilled");
+    assert_eq!(worlds[2].level, 0, "nothing was ever fulfilled");
     assert_eq!(worlds[2].effective_at, EFFECTIVE);
 
     // And the derivation is live: reading the same worlds from the process that built them
@@ -312,7 +312,7 @@ fn phase_2_corrupt() {
     });
 
     let (commitments, _) = corrupted("commitments-reordered", &baseline, |journal, _, _| {
-        let (first, second) = (position(journal, 50.0), position(journal, 120.0));
+        let (first, second) = (position(journal, 50), position(journal, 120));
         journal.swap(first, second);
     });
 
@@ -392,7 +392,7 @@ fn phase_2_corrupt() {
     let _ = baseline;
 }
 
-fn position(journal: &[Admission], magnitude: f64) -> usize {
+fn position(journal: &[Admission], magnitude: u128) -> usize {
     journal
         .iter()
         .position(|entry| {

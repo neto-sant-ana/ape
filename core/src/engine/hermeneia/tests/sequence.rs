@@ -27,9 +27,13 @@ impl Ledgered {
 }
 
 /// `moves` is `(statement-picking closure, magnitude, due date)`, instantiated in order.
-fn ledgered(ceiling: f64, moves: &[(bool, f64, Date)]) -> Ledgered {
+///
+/// The ceiling is signed and the magnitudes are not, which is the ledger's own shape rather than a
+/// nuisance: a bound is a level and a level can be negative, while a magnitude's direction is the
+/// statement's to give.
+fn ledgered(ceiling: i128, moves: &[(bool, u128, Date)]) -> Ledgered {
     let mut knowledge = Fixture::default();
-    let ledger = knowledge.ledger(Constraint::between(0.0, ceiling).unwrap());
+    let ledger = knowledge.ledger(Constraint::between(0, ceiling).unwrap());
 
     let ids = moves
         .iter()
@@ -56,10 +60,10 @@ fn ledgered(ceiling: f64, moves: &[(bool, f64, Date)]) -> Ledgered {
 #[test]
 fn a_sequence_that_ends_within_bounds_can_still_breach_along_the_way() {
     let l = ledgered(
-        50.0,
+        50,
         &[
-            (true, 60.0, date(2026, 3, 31)),
-            (false, 20.0, date(2026, 4, 30)),
+            (true, 60, date(2026, 3, 31)),
+            (false, 20, date(2026, 4, 30)),
         ],
     );
 
@@ -72,7 +76,7 @@ fn a_sequence_that_ends_within_bounds_can_still_breach_along_the_way() {
         l.under(Hypothesis::OnDueDateInAnyOrder, &[]),
         vec![Conflict::OutOfBounds {
             instance: l.ledger.instance,
-            level: 60.0,
+            level: 60,
         }],
         "the level they pass through is not",
     );
@@ -81,10 +85,10 @@ fn a_sequence_that_ends_within_bounds_can_still_breach_along_the_way() {
 #[test]
 fn a_settled_movement_lands_where_it_was_observed() {
     let l = ledgered(
-        100.0,
+        100,
         &[
-            (true, 60.0, date(2026, 3, 31)),
-            (false, 20.0, date(2026, 4, 30)),
+            (true, 60, date(2026, 3, 31)),
+            (false, 20, date(2026, 4, 30)),
         ],
     );
 
@@ -105,7 +109,7 @@ fn a_settled_movement_lands_where_it_was_observed() {
         l.under(Hypothesis::OnDueDateInAnyOrder, &[observed_early]),
         vec![Conflict::OutOfBounds {
             instance: l.ledger.instance,
-            level: -20.0,
+            level: -20,
         }],
         "observed in February, the debit lands before the credit and takes the level below zero",
     );
@@ -114,13 +118,13 @@ fn a_settled_movement_lands_where_it_was_observed() {
 fn same_day_pair(debit_waits_on_credit: bool) -> Ledgered {
     let due = date(2026, 3, 31);
     let mut knowledge = Fixture::default();
-    let ledger = knowledge.ledger(Constraint::between(0.0, 100.0).unwrap());
+    let ledger = knowledge.ledger(Constraint::between(0, 100).unwrap());
 
     let credit = commit(
         &mut knowledge,
         ledger.credit,
         ledger.instance,
-        ActionValue::value(10.0).unwrap(),
+        ActionValue::value(10).unwrap(),
         due,
         BTreeSet::new(),
     );
@@ -128,7 +132,7 @@ fn same_day_pair(debit_waits_on_credit: bool) -> Ledgered {
         &mut knowledge,
         ledger.debit,
         ledger.instance,
-        ActionValue::value(10.0).unwrap(),
+        ActionValue::value(10).unwrap(),
         due,
         if debit_waits_on_credit {
             BTreeSet::from([credit])
@@ -166,7 +170,7 @@ fn without_the_dependency_the_same_two_movements_do_breach() {
         free.under(Hypothesis::OnDueDateInAnyOrder, &[]),
         vec![Conflict::OutOfBounds {
             instance: free.ledger.instance,
-            level: -10.0,
+            level: -10,
         }],
         "nothing orders them, so debit first is admissible and takes the level below the floor",
     );
@@ -177,7 +181,7 @@ fn without_the_dependency_the_same_two_movements_do_breach() {
 #[test]
 fn simultaneous_movements_are_judged_by_every_arrangement() {
     let due = date(2026, 3, 31);
-    let l = ledgered(100.0, &[(true, 60.0, due), (false, 20.0, due)]);
+    let l = ledgered(100, &[(true, 60, due), (false, 20, due)]);
 
     assert!(
         l.under(Hypothesis::FinalState, &[]).is_empty(),
@@ -188,7 +192,7 @@ fn simultaneous_movements_are_judged_by_every_arrangement() {
         l.under(Hypothesis::OnDueDateInAnyOrder, &[]),
         vec![Conflict::OutOfBounds {
             instance: l.ledger.instance,
-            level: -20.0,
+            level: -20,
         }],
         "debit first reaches -20, so the group is not safe however the credit is ordered",
     );
@@ -197,10 +201,10 @@ fn simultaneous_movements_are_judged_by_every_arrangement() {
 #[test]
 fn ordering_the_same_movements_removes_the_breach() {
     let l = ledgered(
-        100.0,
+        100,
         &[
-            (true, 60.0, date(2026, 3, 30)),
-            (false, 20.0, date(2026, 3, 31)),
+            (true, 60, date(2026, 3, 30)),
+            (false, 20, date(2026, 3, 31)),
         ],
     );
 
@@ -210,7 +214,7 @@ fn ordering_the_same_movements_removes_the_breach() {
 #[test]
 fn a_cancelled_movement_never_enters_the_sequence() {
     let due = date(2026, 3, 31);
-    let l = ledgered(100.0, &[(true, 60.0, due), (false, 20.0, due)]);
+    let l = ledgered(100, &[(true, 60, due), (false, 20, due)]);
 
     assert!(
         l.under(
@@ -228,8 +232,8 @@ fn a_cancelled_movement_never_enters_the_sequence() {
 #[test]
 fn a_group_too_large_to_decide_is_refused_rather_than_approximated() {
     let due = date(2026, 3, 31);
-    let moves: Vec<_> = (1..=17).map(|n| (true, f64::from(n), due)).collect();
-    let l = ledgered(1000.0, &moves);
+    let moves: Vec<_> = (1u128..=17).map(|n| (true, n, due)).collect();
+    let l = ledgered(1000, &moves);
 
     assert!(matches!(
         l.accumulate(&[])
@@ -241,8 +245,8 @@ fn a_group_too_large_to_decide_is_refused_rather_than_approximated() {
 #[test]
 fn the_net_reading_answers_where_the_arrangement_reading_refuses() {
     let due = date(2026, 3, 31);
-    let moves: Vec<_> = (1..=17).map(|n| (true, f64::from(n), due)).collect();
-    let l = ledgered(1000.0, &moves);
+    let moves: Vec<_> = (1u128..=17).map(|n| (true, n, due)).collect();
+    let l = ledgered(1000, &moves);
 
     assert!(
         l.under(Hypothesis::OnDueDateNet, &[]).is_empty(),
@@ -256,7 +260,7 @@ fn the_net_reading_answers_where_the_arrangement_reading_refuses() {
 #[test]
 fn an_excursion_inside_one_date_is_seen_by_one_reading_and_not_the_other() {
     let due = date(2026, 3, 31);
-    let l = ledgered(100.0, &[(true, 60.0, due), (false, 20.0, due)]);
+    let l = ledgered(100, &[(true, 60, due), (false, 20, due)]);
 
     assert!(
         l.under(Hypothesis::OnDueDateNet, &[]).is_empty(),
@@ -267,7 +271,7 @@ fn an_excursion_inside_one_date_is_seen_by_one_reading_and_not_the_other() {
         l.under(Hypothesis::OnDueDateInAnyOrder, &[]),
         vec![Conflict::OutOfBounds {
             instance: l.ledger.instance,
-            level: -20.0,
+            level: -20,
         }],
         "but it can reach -20 on the way there",
     );
@@ -276,16 +280,16 @@ fn an_excursion_inside_one_date_is_seen_by_one_reading_and_not_the_other() {
 #[test]
 fn a_breach_that_outlives_its_date_is_seen_by_both_readings() {
     let l = ledgered(
-        50.0,
+        50,
         &[
-            (true, 60.0, date(2026, 3, 31)),
-            (false, 20.0, date(2026, 4, 30)),
+            (true, 60, date(2026, 3, 31)),
+            (false, 20, date(2026, 4, 30)),
         ],
     );
 
     let breach = vec![Conflict::OutOfBounds {
         instance: l.ledger.instance,
-        level: 60.0,
+        level: 60,
     }];
 
     assert_eq!(l.under(Hypothesis::OnDueDateNet, &[]), breach);

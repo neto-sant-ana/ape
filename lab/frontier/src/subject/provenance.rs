@@ -104,8 +104,8 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         Admission::Resource {
             label: "cash".into(),
             kind: ResourceKindRecord::Between {
-                lower: 0.0,
-                upper: 100.0,
+                lower: 0,
+                upper: 100,
             },
             recorded_at: day(1),
         },
@@ -178,7 +178,7 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
     // fixed by the statement rather than chosen here. An inflow is the customer's to execute; an
     // outflow is the merchant's.
     let flowing =
-        |statement, executor, beneficiary, magnitude: f64, day_of: u8| Admission::Commitment {
+        |statement, executor, beneficiary, magnitude: u128, day_of: u8| Admission::Commitment {
             accountable: executor,
             executors: [executor].into(),
             beneficiaries: [beneficiary].into(),
@@ -192,10 +192,10 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         };
 
     journal.extend([
-        flowing(inflow, customer, merchant, 40.0, 2),
-        flowing(outflow, merchant, customer, 15.0, 3),
-        flowing(outflow, merchant, customer, 30.0, 3),
-        flowing(inflow, customer, merchant, 25.0, 3),
+        flowing(inflow, customer, merchant, 40, 2),
+        flowing(outflow, merchant, customer, 15, 3),
+        flowing(outflow, merchant, customer, 30, 3),
+        flowing(inflow, customer, merchant, 25, 3),
     ]);
     journal::replay_remaining(canon, &journal, &mut admitted)?;
 

@@ -47,9 +47,33 @@ use super::movement::{Movement, bounded_movement_of};
 /// by, its subsets. Beyond this many the group is refused rather than approximated.
 const SIMULTANEOUS_LIMIT: usize = 16;
 
+/// Movements summed onto a level, refusing a total a count cannot hold.
+///
+/// Wrapping is the one arithmetic outcome that is *silently* wrong: a level that wrapped would be
+/// compared against a bound as though it were a level, and saturating is the same fault with a
+/// friendlier number. So the sum refuses, and it names the instance, because a level is per resource.
+///
+/// It is the only place in this module that adds, which is what keeps the check from being three
+/// separate things to remember.
+fn summed(
+    instance: ResourceInstanceId,
+    level: i128,
+    movements: impl IntoIterator<Item = i128>,
+) -> Result<i128, HermeneiaError> {
+    movements.into_iter().try_fold(level, |reached, magnitude| {
+        reached
+            .checked_add(magnitude)
+            .ok_or(HermeneiaError::LevelOutOfRange { instance })
+    })
+}
+
 /// Every level the movements of one instant can produce from `level`, in any order their own
 /// dependencies allow.
-fn reachable_levels(level: f64, simultaneous: &[Simultaneous]) -> Vec<f64> {
+fn reachable_levels(
+    instance: ResourceInstanceId,
+    level: i128,
+    simultaneous: &[Simultaneous],
+) -> Result<Vec<i128>, HermeneiaError> {
     (1..(1u32 << simultaneous.len()))
         .filter(|landed| {
             simultaneous.iter().enumerate().all(|(slot, movement)| {
@@ -57,13 +81,15 @@ fn reachable_levels(level: f64, simultaneous: &[Simultaneous]) -> Vec<f64> {
             })
         })
         .map(|landed| {
-            level
-                + simultaneous
+            summed(
+                instance,
+                level,
+                simultaneous
                     .iter()
                     .enumerate()
                     .filter(|(slot, _)| landed & (1 << slot) != 0)
-                    .map(|(_, movement)| movement.magnitude)
-                    .sum::<f64>()
+                    .map(|(_, movement)| movement.magnitude),
+            )
         })
         .collect()
 }
@@ -78,7 +104,7 @@ enum Within {
 
 /// A movement, and which of the movements sharing its instant must land before it.
 struct Simultaneous {
-    magnitude: f64,
+    magnitude: i128,
     requires: u32,
 }
 
@@ -312,7 +338,7 @@ impl Accumulation {
 
         let within = match hypothesis {
             Hypothesis::FinalState => {
-                return Ok(self.out_of_bounds(self.levels_once_every_movement_lands()));
+                return Ok(self.out_of_bounds(self.levels_once_every_movement_lands()?));
             }
             Hypothesis::OnDueDateNet => Within::Net,
             Hypothesis::OnDueDateInAnyOrder => Within::AnyOrder,
@@ -385,14 +411,14 @@ impl Accumulation {
                 continue;
             };
 
-            let mut level = 0.0;
+            let mut level = 0;
 
             for (position, simultaneous) in sequence {
-                let net = level
-                    + simultaneous
-                        .iter()
-                        .map(|movement| movement.magnitude)
-                        .sum::<f64>();
+                let net = summed(
+                    instance,
+                    level,
+                    simultaneous.iter().map(|movement| movement.magnitude),
+                )?;
 
                 let judged = match within {
                     Within::Net => vec![net],
@@ -405,7 +431,7 @@ impl Accumulation {
                             });
                         }
 
-                        reachable_levels(level, &simultaneous)
+                        reachable_levels(instance, level, &simultaneous)?
                     }
                 };
 
@@ -479,28 +505,33 @@ impl Accumulation {
                     .fold(0, |mask, (slot, _)| mask | (1 << slot));
 
                 Simultaneous {
-                    magnitude: self.movements.get(id).map_or(0.0, |m| m.magnitude()),
+                    magnitude: self.movements.get(id).map_or(0, |m| m.magnitude()),
                     requires,
                 }
             })
             .collect()
     }
 
-    fn levels_once_every_movement_lands(&self) -> BTreeMap<ResourceInstanceId, f64> {
-        let mut levels = BTreeMap::new();
+    fn levels_once_every_movement_lands(
+        &self,
+    ) -> Result<BTreeMap<ResourceInstanceId, i128>, HermeneiaError> {
+        let mut levels: BTreeMap<ResourceInstanceId, i128> = BTreeMap::new();
 
         for (id, movement) in &self.movements {
             if self.outcome_of(id) == Outcome::Cancelled {
                 continue;
             }
 
-            *levels.entry(movement.instance()).or_insert(0.0) += movement.magnitude();
+            let instance = movement.instance();
+            let reached = levels.get(&instance).copied().unwrap_or(0);
+
+            levels.insert(instance, summed(instance, reached, [movement.magnitude()])?);
         }
 
-        levels
+        Ok(levels)
     }
 
-    fn out_of_bounds(&self, levels: BTreeMap<ResourceInstanceId, f64>) -> Vec<Conflict> {
+    fn out_of_bounds(&self, levels: BTreeMap<ResourceInstanceId, i128>) -> Vec<Conflict> {
         levels
             .into_iter()
             .filter(|(instance, level)| {

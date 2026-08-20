@@ -15,6 +15,21 @@
 //!
 //! A repository refers to knowledge **by identity**, so a change to any of the three does not make an
 //! older repository disagree: it makes it stop replaying, because a reference resolves to nothing.
+//!
+//! # The one time this happened, and what it cost
+//!
+//! A bound stopped being `f64` and became `i128`, and a magnitude became `u128` — unsigned, because
+//! the direction is the effect's. So the second of the three changed for the two families that hold
+//! one: `Resource`, through its `Constraint`, and `Commitment`, through its `ActionValue`. Seven of
+//! the nine pins below did not move, and the two that did moved for different reasons, which is why
+//! the signedness of a magnitude is visible here at all.
+//!
+//! **That is not the blast radius on a repository, and reading it as one would be wrong.** These pins
+//! are derived from synthetic references — `[1; 32]` is not a plausible identity — so a family moves
+//! here only when a quantity is among its *own* fields. In a real history the references are real: an
+//! instance names a resource, a commitment names an instance, an event names a commitment. One moved
+//! `Resource` moves everything downstream of it, which is every identity in a history that has a
+//! quantifiable resource in it.
 
 define_error! {
     pub enum IdentityError {
@@ -96,7 +111,7 @@ mod tests {
         let resource = Resource::create(ResourceInput {
             label: ident("resource"),
             kind: ResourceKind::Quantifiable(
-                Constraint::between(0.0, 100.0).expect("a pinned constraint is well formed"),
+                Constraint::between(0, 100).expect("a pinned constraint is well formed"),
             ),
         })
         .expect("derivable");
@@ -133,7 +148,7 @@ mod tests {
             statement: StatementId::from([12; 32]),
             resource: ResourceInstanceId::from([13; 32]),
             term: Term::new(day(1), day(20)).expect("a pinned term is well formed"),
-            action_value: ActionValue::value(10.0).expect("a pinned value is well formed"),
+            action_value: ActionValue::value(10).expect("a pinned value is well formed"),
             dependencies: BTreeSet::from([CommitmentId::from([14; 32])]),
         })
         .expect("derivable");
@@ -180,7 +195,7 @@ mod tests {
             ),
             (
                 "Resource",
-                "a56089c3037f46f9d831a301097ef66f991c2698f3d30580fd29b823087d1a90",
+                "258c8675534a0590531bba61c80c9d87f008a0b694b7ed8f0595c35f8ba64acd",
             ),
             (
                 "ResourceInstance",
@@ -196,7 +211,7 @@ mod tests {
             ),
             (
                 "Commitment",
-                "1480ab30e10122a5955343520b0e544f2346596b6d71780090cf8e221833242c",
+                "7b81eda5291a70fa8b3368c7c51a4a41b622a238c41417a0f3aae2597a900832",
             ),
             (
                 "Event",

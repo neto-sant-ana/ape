@@ -138,7 +138,7 @@ fn phase_1_construct() {
     // it — not because the engine stores it anywhere.
     assert_eq!(
         level::settled(canon.history(), &within, subject.instance).expect("the world reads whole"),
-        0.0,
+        0,
         "an unsettled commitment has moved nothing"
     );
 
@@ -252,7 +252,7 @@ fn phase_2_observe() {
     assert_eq!(
         level::settled(canon.history(), &projected, subject.instance)
             .expect("the world reads whole"),
-        10.0,
+        10,
         "the fulfilled increase of 10 has landed"
     );
 
@@ -523,7 +523,7 @@ fn phase_7_compare() {
         condition.timeliness, None,
         "a settled commitment is under no deadline"
     );
-    assert_eq!(after.level, 10.0, "the increase of 10 landed");
+    assert_eq!(after.level, 10, "the increase of 10 landed");
     assert!(
         after.conflicts.is_empty(),
         "the world stays within the resource bounds"

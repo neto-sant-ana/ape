@@ -28,13 +28,13 @@ impl Ordered {
 
 fn ordered(first_due: Date, second_due: Date) -> Ordered {
     let mut knowledge = Fixture::default();
-    let ledger = knowledge.ledger(Constraint::between(0.0, 100.0).unwrap());
+    let ledger = knowledge.ledger(Constraint::between(0, 100).unwrap());
 
     let first = commit(
         &mut knowledge,
         ledger.credit,
         ledger.instance,
-        ActionValue::value(10.0).unwrap(),
+        ActionValue::value(10).unwrap(),
         first_due,
         BTreeSet::new(),
     );
@@ -42,7 +42,7 @@ fn ordered(first_due: Date, second_due: Date) -> Ordered {
         &mut knowledge,
         ledger.credit,
         ledger.instance,
-        ActionValue::value(10.0).unwrap(),
+        ActionValue::value(10).unwrap(),
         second_due,
         BTreeSet::from([first]),
     );

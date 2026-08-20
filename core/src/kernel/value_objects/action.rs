@@ -7,6 +7,20 @@
 //!
 //! - `ActionValue` — the magnitude a quantifiable action moves the level by
 //!   (`Value`), or `None` for a discrete action.
+//!
+//! # The magnitude is a count, and the engine does not know of what
+//!
+//! A level is a **sum** of movements and nothing here ever multiplies or divides one, so an integer
+//! count is exact and associative where a binary float is neither — and the two hypotheses a caller
+//! may ask under fold in different orders, which is a way for two answers over identical knowledge to
+//! disagree by arithmetic alone.
+//!
+//! What the count counts is **not here**. Cents, whole items, thirds of an hour, pallets of forty
+//! eight: the engine adds and compares, and which unit an application means is that application's,
+//! because a resource is the axis its own movements move along and there is no second one to
+//! reconcile. Naming the unit here — as a decimal scale, or as anything else — would make every
+//! application share one approach to units, and the whole point of a minimal ontology is that they
+//! need not.
 
 use serde::Serialize;
 
@@ -27,7 +41,7 @@ define_value_object! {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 enum ActionValueKind {
     None,
-    Value(f64),
+    Value(u128),
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -37,19 +51,21 @@ impl ActionValue {
         Self(ActionValueKind::None)
     }
 
-    pub fn value(magnitude: f64) -> Result<Self, ActionValueError> {
-        if !magnitude.is_finite() {
-            return Err(ActionValueError::NonFinite);
-        }
-
-        if magnitude <= 0.0 {
-            return Err(ActionValueError::NonPositive);
+    /// A magnitude, which is unsigned: the direction is the [`Effect`]'s and cannot be given here.
+    ///
+    /// Two refusals went away and neither by being checked more carefully. `NonFinite` left with the
+    /// float — a count has no infinity and no NaN — and a *negative* magnitude stopped being
+    /// something a caller can write down at all. What is left is zero, which is the one value the
+    /// type still admits and the ontology does not.
+    pub fn value(magnitude: u128) -> Result<Self, ActionValueError> {
+        if magnitude == 0 {
+            return Err(ActionValueError::Zero);
         }
 
         Ok(Self(ActionValueKind::Value(magnitude)))
     }
 
-    pub fn as_value(&self) -> Option<f64> {
+    pub fn as_value(&self) -> Option<u128> {
         match &self.0 {
             ActionValueKind::None => None,
             ActionValueKind::Value(magnitude) => Some(*magnitude),
@@ -59,8 +75,7 @@ impl ActionValue {
 
 define_error! {
     pub enum ActionValueError {
-        NonFinite => "action value must be a finite number",
-        NonPositive => "action value must be a positive magnitude (direction is given by the effect)",
+        Zero => "action value must be a magnitude, and zero is not one",
     }
 }
 
@@ -74,33 +89,17 @@ mod tests {
     }
 
     #[test]
-    fn value_accepts_positive_finite() {
-        assert_eq!(ActionValue::value(2.5).unwrap().as_value(), Some(2.5));
+    fn value_accepts_a_positive_count() {
+        assert_eq!(ActionValue::value(25).unwrap().as_value(), Some(25));
     }
 
+    /// Zero is the whole of what is left to refuse.
+    ///
+    /// This test used to have a second half, for a negative magnitude. It is gone because the case is
+    /// gone: `ActionValue::value(-1)` no longer compiles, so there is nothing left here to assert
+    /// about it. A shrinking test is what moving an invariant into a type looks like.
     #[test]
-    fn value_rejects_non_positive() {
-        assert!(matches!(
-            ActionValue::value(0.0),
-            Err(ActionValueError::NonPositive)
-        ));
-
-        assert!(matches!(
-            ActionValue::value(-1.0),
-            Err(ActionValueError::NonPositive)
-        ));
-    }
-
-    #[test]
-    fn value_rejects_non_finite() {
-        assert!(matches!(
-            ActionValue::value(f64::NAN),
-            Err(ActionValueError::NonFinite)
-        ));
-
-        assert!(matches!(
-            ActionValue::value(f64::INFINITY),
-            Err(ActionValueError::NonFinite)
-        ));
+    fn value_rejects_zero() {
+        assert!(matches!(ActionValue::value(0), Err(ActionValueError::Zero)));
     }
 }

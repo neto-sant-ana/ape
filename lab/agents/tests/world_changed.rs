@@ -41,9 +41,9 @@ use ape_agents::policy::{self, Verdict};
 use ape_agents::world::{self, Intention};
 
 /// What each party's objective asked for, unchanged between the arrangements.
-const PURCHASE: f64 = 60.0;
+const PURCHASE: u128 = 60;
 const PURCHASE_DUE: u8 = 20;
-const STORAGE: f64 = 30.0;
+const STORAGE: u128 = 30;
 const STORAGE_DUE: u8 = 14;
 
 /// The instants the parties chose, and each stated why.
@@ -146,7 +146,7 @@ fn report(
 fn the_same_choice_in_a_changed_world_is_a_different_commitment() {
     let plain = enact(world::cash(), false);
     let contingent = enact(world::cash(), true);
-    let reserved = enact(reserve(30.0), false);
+    let reserved = enact(reserve(30), false);
 
     assert_ne!(
         plain.storage, contingent.storage,
@@ -221,7 +221,7 @@ fn carrying_the_fee_where_the_slot_was_dropped_is_missing_rather_than_broken() {
 /// worth asking.
 #[test]
 fn the_reserve_makes_the_merged_world_unrealizable_and_the_report_applicable() {
-    let mut enacted = enact(reserve(30.0), false);
+    let mut enacted = enact(reserve(30), false);
 
     for line in [enacted.operations, enacted.finance] {
         assert_eq!(
@@ -247,17 +247,17 @@ fn the_reserve_makes_the_merged_world_unrealizable_and_the_report_applicable() {
         ruling(&enacted, adopted, Hypothesis::FinalState),
         Verdict::Refused(vec![Conflict::OutOfBounds {
             instance: enacted.shared.world.account,
-            level: 10.0,
+            level: 10,
         }]),
         "100 received, 60 and 30 intended out, and a reserve of 30 the remainder does not reach"
     );
 }
 
 /// The reserve arrangement: the same cash, with a floor nothing else in the world moves.
-fn reserve(floor: f64) -> ResourceKindRecord {
+fn reserve(floor: i128) -> ResourceKindRecord {
     ResourceKindRecord::Between {
         lower: floor,
-        upper: 1000.0,
+        upper: 1000,
     }
 }
 

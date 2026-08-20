@@ -32,9 +32,11 @@
 //! record can hold about who decided: a name that resolves against knowledge, and nothing about
 //! who operated it.
 //!
-//! Every quantity is an integer. Levels accumulate in `f64`, where addition is not associative,
+//! Every quantity is an integer. Levels accumulated in `f64`, where addition is not associative,
 //! and an experiment about what an agent can express should not be measuring the last bit of a
-//! float.
+//! float. The engine counts in `i128` now, so the hazard is gone from underneath this; the values
+//! stay whole because that is what this arrangement means, and the sentence stays because the
+//! workaround it describes was carried by every arrangement in both rows before anything fixed it.
 
 use std::collections::BTreeSet;
 
@@ -83,8 +85,8 @@ pub fn today() -> Date {
 /// Cash as the first three experiments constrained it: a floor at zero, and no reachable ceiling.
 pub fn cash() -> ResourceKindRecord {
     ResourceKindRecord::Between {
-        lower: 0.0,
-        upper: 1000.0,
+        lower: 0,
+        upper: 1000,
     }
 }
 
@@ -196,7 +198,7 @@ pub fn with_cash(
         resource: account,
         committed_at: day(1),
         due_date: day(2),
-        magnitude: Some(100.0),
+        magnitude: Some(100),
         dependencies: [].into(),
         recorded_at: day(1),
     });
@@ -232,7 +234,7 @@ pub fn with_cash(
 /// three arguments in a row that the compiler cannot tell apart, in a call whose meaning depends
 /// entirely on their order.
 pub struct Intention {
-    pub magnitude: f64,
+    pub magnitude: u128,
     pub incoming: bool,
     pub due: u8,
     pub recorded_at: u8,

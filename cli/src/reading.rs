@@ -73,7 +73,8 @@ pub enum ConflictRecord {
     },
     OutOfBounds {
         instance: String,
-        level: f64,
+        #[serde(with = "crate::journal::count")]
+        level: i128,
     },
 }
 
@@ -162,7 +163,13 @@ pub struct Reading {
     pub frozen: BTreeSet<String>,
     pub open: BTreeSet<String>,
     pub conditions: BTreeMap<String, ConditionRecord>,
-    pub level: f64,
+    /// What has settled on the instance asked about.
+    ///
+    /// Written as a decimal string, for the reason [`crate::journal::count`] gives: a reading crosses
+    /// a process boundary, and that is where a JSON number stops being exact for anyone who is not
+    /// this program.
+    #[serde(with = "crate::journal::count")]
+    pub level: i128,
     pub conflicts: Vec<ConflictRecord>,
 }
 
@@ -411,8 +418,8 @@ mod tests {
             Admission::Resource {
                 label: "cash".into(),
                 kind: ResourceKindRecord::Between {
-                    lower: 0.0,
-                    upper: 100.0,
+                    lower: 0,
+                    upper: 100,
                 },
                 recorded_at: day(1),
             },
@@ -465,7 +472,7 @@ mod tests {
         // Two commitments, and an Event settling one of them. Both halves of the partition are
         // therefore non-empty, which is what makes the assertions below bite: a world with nothing
         // frozen and nothing open would have this guard comparing empty sets and reporting agreement.
-        let flowing = |magnitude: f64| Admission::Commitment {
+        let flowing = |magnitude: u128| Admission::Commitment {
             accountable: one,
             executors: [one].into(),
             beneficiaries: [other].into(),
@@ -478,7 +485,7 @@ mod tests {
             recorded_at: day(2),
         };
 
-        journal.extend([flowing(10.0), flowing(20.0)]);
+        journal.extend([flowing(10), flowing(20)]);
         crate::journal::replay_remaining(&mut canon, &journal, &mut admitted).expect("admissible");
 
         let (settled, open) = (admitted.commitments[0], admitted.commitments[1]);

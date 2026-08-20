@@ -52,6 +52,77 @@ use ape::kernel::value_objects::{
 use crate::error::JournalError;
 use crate::history::ResidentHistory;
 
+/// How this application writes a count: as a decimal string.
+///
+/// A string and not a JSON number, for two reasons, and the second is the one that outlives Rust.
+///
+/// Serde cannot read a 128-bit integer out of an **internally tagged** enum — it routes one through a
+/// buffer that has no case for it — and every record here is tagged, so the file says what each entry
+/// is. And a JSON *number* is a double to most things that read JSON, so a count written as one comes
+/// back rounded to whoever is not this program: the hazard the engine stopped having, arriving again
+/// at the file.
+///
+/// It is attached to the fields rather than to a newtype so that nothing which merely *builds* a
+/// record has to know how the record is written. And it is the application's decision, not the
+/// engine's — another application may hold the same count in a column, a varint or a fixed-point
+/// field. What it may not do is let the exactness stop at its boundary.
+/// It is written for a count of either signedness, because the two are not interchangeable and both
+/// are recorded: a magnitude is unsigned, and a bound is a level and a level can be negative.
+pub(crate) mod count {
+    use std::fmt::Display;
+    use std::str::FromStr;
+
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+
+    pub fn serialize<T: Display, S: Serializer>(
+        count: &T,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&count.to_string())
+    }
+
+    pub fn deserialize<'de, T: FromStr, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<T, D::Error> {
+        let written = String::deserialize(deserializer)?;
+
+        written
+            .parse()
+            .map_err(|_| D::Error::custom(format!("{written:?} is not a count")))
+    }
+
+    /// The same, where a discrete action carries no magnitude at all.
+    pub mod maybe {
+        use std::fmt::Display;
+        use std::str::FromStr;
+
+        use serde::{Deserialize, Deserializer, Serializer, de::Error};
+
+        pub fn serialize<T: Display, S: Serializer>(
+            count: &Option<T>,
+            serializer: S,
+        ) -> Result<S::Ok, S::Error> {
+            match count {
+                Some(count) => super::serialize(count, serializer),
+                None => serializer.serialize_none(),
+            }
+        }
+
+        pub fn deserialize<'de, T: FromStr, D: Deserializer<'de>>(
+            deserializer: D,
+        ) -> Result<Option<T>, D::Error> {
+            let Some(written) = Option::<String>::deserialize(deserializer)? else {
+                return Ok(None);
+            };
+
+            written
+                .parse()
+                .map(Some)
+                .map_err(|_| D::Error::custom(format!("{written:?} is not a count")))
+        }
+    }
+}
+
 /// One admission, carrying its fields and the instant it was recorded at.
 ///
 /// `recorded_at` is the one value here that is neither content nor reference: it is
@@ -106,7 +177,8 @@ pub enum Admission {
         resource: ResourceInstanceId,
         committed_at: String,
         due_date: String,
-        magnitude: Option<f64>,
+        #[serde(with = "count::maybe")]
+        magnitude: Option<u128>,
         dependencies: BTreeSet<CommitmentId>,
         recorded_at: String,
     },
@@ -136,7 +208,12 @@ pub enum ActionKindRecord {
 #[serde(rename_all = "kebab-case")]
 pub enum ResourceKindRecord {
     Discrete,
-    Between { lower: f64, upper: f64 },
+    Between {
+        #[serde(with = "count")]
+        lower: i128,
+        #[serde(with = "count")]
+        upper: i128,
+    },
 }
 
 /// The address of one journal entry: the identity admitting it produced.

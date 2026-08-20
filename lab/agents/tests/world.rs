@@ -23,7 +23,7 @@ fn ruling(built: &Built) -> Verdict {
     policy::rule(&interpretation, Hypothesis::FinalState).expect("feasibility is derivable")
 }
 
-fn spending(magnitude: f64) -> Built {
+fn spending(magnitude: u128) -> Built {
     hindsight::replay(&[
         Step::Intend {
             magnitude,
@@ -41,15 +41,15 @@ fn spending(magnitude: f64) -> Built {
 /// Spending 30 leaves 70 and spending 120 leaves −20, and only the second breaks the floor.
 #[test]
 fn the_engine_tells_the_two_options_apart() {
-    assert_eq!(ruling(&spending(30.0)), Verdict::MayProceed);
+    assert_eq!(ruling(&spending(30)), Verdict::MayProceed);
 
-    let reckless = spending(120.0);
+    let reckless = spending(120);
 
     assert_eq!(
         ruling(&reckless),
         Verdict::Refused(vec![Conflict::OutOfBounds {
             instance: reckless.world.account,
-            level: -20.0,
+            level: -20,
         }]),
         "spending 120 against a balance of 100 leaves the account below its floor"
     );
@@ -58,7 +58,7 @@ fn the_engine_tells_the_two_options_apart() {
 /// The settled past is imposed by the cut, not chosen by the caller.
 #[test]
 fn the_settled_past_arrives_without_being_selected() {
-    let built = spending(30.0);
+    let built = spending(30);
     let world = built.world_at(built.current());
 
     assert_eq!(

@@ -39,7 +39,7 @@ fn conflicts(built: &Built, thesis: &Thesis, hypothesis: Hypothesis) -> Vec<Conf
 fn out_of_bounds(built: &Built) -> Vec<Conflict> {
     vec![Conflict::OutOfBounds {
         instance: built.world.account,
-        level: -20.0,
+        level: -20,
     }]
 }
 
@@ -130,7 +130,7 @@ fn the_refused_intention_can_no_longer_be_dropped() {
 
     let droppable = hindsight::replay(&[
         Step::Intend {
-            magnitude: 120.0,
+            magnitude: 120,
             incoming: false,
             due: 8,
             recorded_at: 6,

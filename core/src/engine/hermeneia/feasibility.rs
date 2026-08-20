@@ -76,8 +76,10 @@ pub enum Conflict {
         dependency: CommitmentId,
         dependent: CommitmentId,
     },
+    /// The count that breached, in whatever unit the resource's movements are counted in — which the
+    /// engine does not know and does not need to.
     OutOfBounds {
         instance: ResourceInstanceId,
-        level: f64,
+        level: i128,
     },
 }

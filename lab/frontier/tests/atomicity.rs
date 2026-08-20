@@ -82,7 +82,10 @@ fn bytes(repository: &Repository) -> Vec<Vec<u8>> {
 ///
 /// The pair is what a phase compares: the reading says which world it is, and the level says what it
 /// was for. A phase comparing only readings would report a lost intention as a shorter list.
-fn answers(repository: &Repository, arrangement: &Arranged) -> Result<Vec<(Reading, f64)>, String> {
+fn answers(
+    repository: &Repository,
+    arrangement: &Arranged,
+) -> Result<Vec<(Reading, i128)>, String> {
     let rebuilt = reading::corroborated(repository).map_err(|refusal| refusal.to_string())?;
 
     rebuilt

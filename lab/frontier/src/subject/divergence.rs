@@ -85,8 +85,8 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         Admission::Resource {
             label: "cash".into(),
             kind: ResourceKindRecord::Between {
-                lower: 0.0,
-                upper: 100.0,
+                lower: 0,
+                upper: 100,
             },
             recorded_at: day(1),
         },
@@ -167,7 +167,7 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
             resource: instance,
             committed_at: day(5),
             due_date: day(20),
-            magnitude: Some(50.0),
+            magnitude: Some(50),
             dependencies: [].into(),
             recorded_at: day(5),
         },
@@ -179,7 +179,7 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
             resource: instance,
             committed_at: day(5),
             due_date: day(20),
-            magnitude: Some(120.0),
+            magnitude: Some(120),
             dependencies: [].into(),
             recorded_at: day(5),
         },
@@ -253,7 +253,7 @@ pub fn alternative(subject: &Constructed) -> Admission {
         resource: subject.instance,
         committed_at: day(11),
         due_date: day(25),
-        magnitude: Some(30.0),
+        magnitude: Some(30),
         dependencies: [].into(),
         recorded_at: day(11),
     }

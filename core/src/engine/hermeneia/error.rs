@@ -60,6 +60,23 @@ pub enum HermeneiaError {
     #[error("commitment {0} moves a level on a resource that declares no bounds")]
     ActionResourceKindMismatch(CommitmentId),
 
+    /// A magnitude too large to become a signed movement.
+    ///
+    /// The price of an unsigned magnitude, and the whole of it: a negative one stopped being
+    /// writable, and in exchange the very largest ones stop being movable. Unreachable with any
+    /// plausible magnitude, and refused rather than wrapped — a wrapped movement would be a level of
+    /// the wrong sign, which is worse than no answer.
+    #[error("commitment {commitment} carries a magnitude too large to move a level")]
+    MagnitudeUnmovable { commitment: CommitmentId },
+
+    /// Movements that sum past what a count can hold.
+    ///
+    /// Unreachable with any plausible magnitude, and refused rather than hoped: wrapping is the one
+    /// arithmetic outcome that is silently wrong, because a wrapped total would be compared against a
+    /// bound as though it were a level.
+    #[error("the movements on resource instance {instance} sum beyond what a count can hold")]
+    LevelOutOfRange { instance: ResourceInstanceId },
+
     #[error(
         "{count} movements share {position:?} on resource instance {instance}, too many to decide every arrangement of"
     )]

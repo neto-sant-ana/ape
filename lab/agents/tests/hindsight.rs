@@ -86,7 +86,7 @@ fn the_world_that_knows_the_obligation_is_short() {
         conflicts(&built, &current),
         vec![Conflict::OutOfBounds {
             instance: built.world.account,
-            level: -20.0,
+            level: -20,
         }],
         "100 in, 30 spent and 90 owed leaves the account 20 below its floor"
     );

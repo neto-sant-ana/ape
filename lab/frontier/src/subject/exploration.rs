@@ -59,19 +59,17 @@ pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";
 
 /// The bounds the account answers to. The lower one is the floor the objective must not break.
-pub const FLOOR: f64 = 0.0;
-pub const CEILING: f64 = 1000.0;
+pub const FLOOR: i128 = 0;
+pub const CEILING: i128 = 1000;
 
 /// What the opening puts in the account, and settles.
-pub const OPENING: f64 = 100.0;
+pub const OPENING: u128 = 100;
 
 /// The candidates, enumerated in advance and in this order.
 ///
 /// Twelve, spanning the floor: ten of them fit inside the opening and two do not, so an arrangement
 /// that weighed only admissible candidates would be measuring a subject that cannot refuse anything.
-pub const CANDIDATES: [f64; BUDGET] = [
-    10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 110.0, 120.0,
-];
+pub const CANDIDATES: [u128; BUDGET] = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120];
 
 /// How many candidates every arrangement explores.
 ///
@@ -86,7 +84,7 @@ pub const BUDGET: usize = 12;
 /// floor, two leave it below, and the best a candidate can do is spend the opening exactly.
 pub const ADMISSIBLE: usize = 10;
 pub const REFUSED: usize = 2;
-pub const BEST: f64 = 0.0;
+pub const BEST: i128 = 0;
 
 /// The literals above, weighed against each other at compile time.
 ///
@@ -95,9 +93,9 @@ pub const BEST: f64 = 0.0;
 /// numbers written on one afternoon. Asserted inside a test they would have looked like results.
 ///
 /// What the engine makes of these candidates is Phase 1's to report, and nothing here anticipates it.
-const _: () = assert!(FLOOR < OPENING && OPENING < CEILING);
+const _: () = assert!(FLOOR < OPENING as i128 && (OPENING as i128) < CEILING);
 const _: () = assert!(ADMISSIBLE + REFUSED == BUDGET);
-const _: () = assert!(BEST == OPENING - CANDIDATES[ADMISSIBLE - 1]);
+const _: () = assert!(BEST == OPENING as i128 - CANDIDATES[ADMISSIBLE - 1] as i128);
 
 /// The assumption every candidate is weighed under.
 ///
@@ -129,7 +127,7 @@ impl Constructed {
     ///
     /// Every field but the magnitude is fixed, so two candidates of equal magnitude are one
     /// commitment by identity — which is what makes repetition measurable rather than arranged.
-    pub fn candidate(&self, magnitude: f64) -> Admission {
+    pub fn candidate(&self, magnitude: u128) -> Admission {
         self.outflowing(magnitude, 4)
     }
 
@@ -142,11 +140,11 @@ impl Constructed {
     ///
     /// Nothing else distinguishes the two, which is Observation 2's measurement rather than an
     /// oversight here: an intention and a candidate are one shape, and only their values differ.
-    pub fn intention(&self, magnitude: f64) -> Admission {
+    pub fn intention(&self, magnitude: u128) -> Admission {
         self.outflowing(magnitude, 3)
     }
 
-    fn outflowing(&self, magnitude: f64, recorded_on: u8) -> Admission {
+    fn outflowing(&self, magnitude: u128, recorded_on: u8) -> Admission {
         Admission::Commitment {
             accountable: self.merchant,
             executors: [self.merchant].into(),
@@ -440,12 +438,12 @@ pub enum Judged {
     Refused(Vec<Conflict>),
     /// Nothing was found under [`HYPOTHESIS`], and this is where the account would be left.
     Admissible {
-        level: f64,
+        level: i128,
     },
 }
 
 impl Judged {
-    pub fn level(&self) -> Option<f64> {
+    pub fn level(&self) -> Option<i128> {
         match self {
             Self::Refused(_) => None,
             Self::Admissible { level } => Some(*level),
@@ -481,7 +479,7 @@ pub fn judge(
 ///
 /// A tie keeps the earlier one, which is the enumeration's order and not a preference — nothing in
 /// the objective distinguishes two worlds that spend the same.
-pub fn best<T: Copy>(weighed: &[(T, Judged)]) -> Option<(T, f64)> {
+pub fn best<T: Copy>(weighed: &[(T, Judged)]) -> Option<(T, i128)> {
     weighed
         .iter()
         .filter_map(|(what, judged)| judged.level().map(|level| (*what, level)))

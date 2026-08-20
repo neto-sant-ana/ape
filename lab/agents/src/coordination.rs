@@ -66,7 +66,7 @@ pub const OPENED: u8 = 6;
 pub const NAMED: u8 = 3;
 
 /// What the standing arrangement costs and when it comes due.
-pub const STANDING: f64 = 20.0;
+pub const STANDING: u128 = 20;
 pub const STANDING_DUE: u8 = 10;
 
 /// The world, the parties, and the one world already decided about it.

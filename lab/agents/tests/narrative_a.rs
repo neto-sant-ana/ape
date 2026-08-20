@@ -39,7 +39,7 @@ fn conflicts(built: &Built, thesis: &Thesis, hypothesis: Hypothesis) -> Vec<Conf
         .to_vec()
 }
 
-fn out_of_bounds(built: &Built, level: f64) -> Vec<Conflict> {
+fn out_of_bounds(built: &Built, level: i128) -> Vec<Conflict> {
     vec![Conflict::OutOfBounds {
         instance: built.world.account,
         level,
@@ -55,7 +55,7 @@ fn claim_the_wanted_arrangement_is_refused_under_every_hypothesis() {
     for hypothesis in EVERY_HYPOTHESIS {
         assert_eq!(
             conflicts(&built, &wanted, hypothesis),
-            out_of_bounds(&built, -20.0),
+            out_of_bounds(&built, -20),
             "under {hypothesis:?}"
         );
     }
@@ -77,7 +77,7 @@ fn claim_the_undertaken_arrangement_leaves_seventy_and_conflicts_with_nothing() 
         .conditions_at(&world::on(6))
         .expect("conditions project");
 
-    let level: f64 = projected
+    let level: i128 = projected
         .conditions()
         .iter()
         .filter(|(_, condition)| condition.outcome() != &Outcome::Cancelled)
@@ -89,7 +89,7 @@ fn claim_the_undertaken_arrangement_leaves_seventy_and_conflicts_with_nothing() 
         .sum();
 
     assert_eq!(
-        level, 70.0,
+        level, 70,
         "100 received, 30 intended, the refused one cancelled"
     );
 }
@@ -137,12 +137,12 @@ fn claim_the_money_is_a_movement_of_something_selected_not_a_stored_balance() {
         .expect("derivable")
         .expect("a quantifiable action moves a level");
 
-    assert_eq!(movement.magnitude(), 100.0);
+    assert_eq!(movement.magnitude(), 100);
 
     let unsettled = upto(WANTED);
     assert_eq!(
         conflicts(&unsettled, &current(&unsettled), Hypothesis::FinalState),
-        out_of_bounds(&unsettled, -20.0),
+        out_of_bounds(&unsettled, -20),
         "an unsettled intention moves the level exactly as a settled one does"
     );
 }
@@ -160,7 +160,7 @@ fn claim_cancelling_is_what_removes_the_movement() {
 
     assert_eq!(
         conflicts(&built, &current(&built), Hypothesis::FinalState),
-        out_of_bounds(&built, -50.0),
+        out_of_bounds(&built, -50),
         "100 in, 120 and 30 out, if neither is cancelled"
     );
 }
@@ -194,7 +194,7 @@ fn claim_omitting_was_available_until_the_cancellation_was_admitted() {
 fn claim_a_penalty_above_seventy_would_have_sunk_the_other_path_too() {
     let mut steps: Vec<Step> = hindsight::scenario()[..UNDERTAKEN].to_vec();
     steps.push(Step::Intend {
-        magnitude: 71.0,
+        magnitude: 71,
         incoming: false,
         due: 20,
         recorded_at: 6,
@@ -208,7 +208,7 @@ fn claim_a_penalty_above_seventy_would_have_sunk_the_other_path_too() {
 
     assert_eq!(
         conflicts(&built, &current(&built), Hypothesis::FinalState),
-        out_of_bounds(&built, -1.0),
+        out_of_bounds(&built, -1),
         "70 left, 71 owed"
     );
 }

@@ -29,7 +29,7 @@ use crate::world::{self, CANCELLING, Constructed};
 pub enum Step {
     /// The house intends to move `magnitude` on the account by `due`.
     Intend {
-        magnitude: f64,
+        magnitude: u128,
         incoming: bool,
         due: u8,
         recorded_at: u8,
@@ -92,7 +92,7 @@ pub fn nothing_decided() -> Built {
 pub fn scenario() -> Vec<Step> {
     vec![
         Step::Intend {
-            magnitude: 120.0,
+            magnitude: 120,
             incoming: false,
             due: 8,
             recorded_at: 6,
@@ -102,7 +102,7 @@ pub fn scenario() -> Vec<Step> {
             select: vec![0],
         },
         Step::Intend {
-            magnitude: 30.0,
+            magnitude: 30,
             incoming: false,
             due: 14,
             recorded_at: 6,
@@ -114,7 +114,7 @@ pub fn scenario() -> Vec<Step> {
             introduce: vec![1],
         },
         Step::Intend {
-            magnitude: 90.0,
+            magnitude: 90,
             incoming: false,
             due: 20,
             recorded_at: 9,

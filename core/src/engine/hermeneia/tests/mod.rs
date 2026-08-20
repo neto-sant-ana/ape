@@ -311,7 +311,7 @@ fn basket(effect: Effect, constraint: Constraint) -> Basket {
             &mut knowledge,
             statement,
             instance,
-            ActionValue::value(40.0).unwrap(),
+            ActionValue::value(40).unwrap(),
             date(2026, month, 28),
             BTreeSet::new(),
         );
@@ -322,7 +322,7 @@ fn basket(effect: Effect, constraint: Constraint) -> Basket {
         &mut knowledge,
         statement,
         instance,
-        ActionValue::value(40.0).unwrap(),
+        ActionValue::value(40).unwrap(),
         date(2026, 6, 28),
         BTreeSet::from([ids[0]]),
     );

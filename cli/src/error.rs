@@ -256,4 +256,11 @@ pub enum LevelError {
     /// means the two were not read from the same world.
     #[error("commitment {0} is projected but absent from knowledge")]
     UnknownCommitment(CommitmentId),
+
+    /// Movements that sum past what a count can hold, folding a level.
+    ///
+    /// The application's own arithmetic, so the refusal is the application's. Under `f64` the sum
+    /// would have gone to infinity and been compared as a level; a count refuses instead.
+    #[error("the movements on resource instance {0} sum beyond what a count can hold")]
+    OutOfRange(ape::kernel::entities::ResourceInstanceId),
 }

@@ -44,7 +44,7 @@ fn written(name: &str) -> (Repository, Shared) {
 }
 
 /// A magnitude no objective in the experiment names, so that a probe cannot be mistaken for one.
-const PROBE: f64 = 7.0;
+const PROBE: u128 = 7;
 
 /// One world, claimed by nobody, and nothing else decided.
 #[test]

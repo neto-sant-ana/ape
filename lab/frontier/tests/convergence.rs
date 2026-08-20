@@ -137,7 +137,7 @@ fn phase_1_branch() {
         assert_eq!(reading.known_at, "2026-01-10", "{label}");
         assert_eq!(reading.event_head, None, "{label}");
         assert!(reading.frozen.is_empty(), "{label}");
-        assert_eq!(reading.level, 0.0, "{label}: nothing has settled");
+        assert_eq!(reading.level, 0, "{label}: nothing has settled");
         assert!(
             reading.conflicts.is_empty(),
             "{label}: the account carries it"
@@ -352,10 +352,7 @@ fn phase_2_diverge() {
             "{label} is feasible on its own, found {:?}",
             readings[position].conflicts
         );
-        assert_eq!(
-            readings[position].level, 0.0,
-            "{label}: nothing has settled"
-        );
+        assert_eq!(readings[position].level, 0, "{label}: nothing has settled");
     }
 
     assert_eq!(
@@ -1201,7 +1198,7 @@ fn phase_7_apply() {
         rebuilt[6].conflicts,
         vec![ape_cli::reading::ConflictRecord::OutOfBounds {
             instance: subject.instance.to_string(),
-            level: -50.0,
+            level: -50,
         }],
         "60 − 30 − 25 − 40 − 15 is outside 0..100"
     );

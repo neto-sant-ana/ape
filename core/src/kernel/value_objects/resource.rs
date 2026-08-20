@@ -6,9 +6,18 @@
 //!   that bounds its valid values; a discrete one is constrained instead by its
 //!   commitment dependency chain.
 //!
-//! - `Constraint` — an opaque numeric predicate (`equal`, `between`, ...) built only
-//!   through the validating constructors below, so every constraint has finite
-//!   bounds and ordered ranges by construction.
+//! - `Constraint` — an opaque predicate (`equal`, `between`, ...) over counts of whatever unit the
+//!   resource's movements are counted in. What that unit is belongs to the application, for the
+//!   reason [`super::ActionValue`] gives.
+//!
+//! The bounds are counts and so is every level weighed against them, which leaves one thing to
+//! validate — a range must not be inverted — and takes two away. `NonFinite` is gone from bounds and
+//! from levels alike, so six of the seven constructors cannot fail and no longer pretend to, and
+//! `check` is a comparison again rather than something that can refuse.
+//!
+//! The predicates are a closed vocabulary, and that is structural rather than a preference: the
+//! engine has to *evaluate* a bound in order to report a conflict, and an identity derived from
+//! content cannot be derived from a closure.
 
 use serde::Serialize;
 
@@ -21,90 +30,59 @@ define_value_object! {
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 enum ConstraintKind {
-    Equal(f64),
-    NotEqual(f64),
-    GreaterThan(f64),
-    GreaterThanOrEqual(f64),
-    LessThan(f64),
-    LessThanOrEqual(f64),
-    Between { lower_bound: f64, upper_bound: f64 },
+    Equal(i128),
+    NotEqual(i128),
+    GreaterThan(i128),
+    GreaterThanOrEqual(i128),
+    LessThan(i128),
+    LessThanOrEqual(i128),
+    Between {
+        lower_bound: i128,
+        upper_bound: i128,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Constraint(ConstraintKind);
 impl Constraint {
-    pub fn equal(bound: f64) -> Result<Self, ConstraintError> {
-        Self::new(ConstraintKind::Equal(bound))
+    pub fn equal(bound: i128) -> Self {
+        Self(ConstraintKind::Equal(bound))
     }
 
-    pub fn not_equal(bound: f64) -> Result<Self, ConstraintError> {
-        Self::new(ConstraintKind::NotEqual(bound))
+    pub fn not_equal(bound: i128) -> Self {
+        Self(ConstraintKind::NotEqual(bound))
     }
 
-    pub fn greater_than(bound: f64) -> Result<Self, ConstraintError> {
-        Self::new(ConstraintKind::GreaterThan(bound))
+    pub fn greater_than(bound: i128) -> Self {
+        Self(ConstraintKind::GreaterThan(bound))
     }
 
-    pub fn greater_than_or_equal(bound: f64) -> Result<Self, ConstraintError> {
-        Self::new(ConstraintKind::GreaterThanOrEqual(bound))
+    pub fn greater_than_or_equal(bound: i128) -> Self {
+        Self(ConstraintKind::GreaterThanOrEqual(bound))
     }
 
-    pub fn less_than(bound: f64) -> Result<Self, ConstraintError> {
-        Self::new(ConstraintKind::LessThan(bound))
+    pub fn less_than(bound: i128) -> Self {
+        Self(ConstraintKind::LessThan(bound))
     }
 
-    pub fn less_than_or_equal(bound: f64) -> Result<Self, ConstraintError> {
-        Self::new(ConstraintKind::LessThanOrEqual(bound))
+    pub fn less_than_or_equal(bound: i128) -> Self {
+        Self(ConstraintKind::LessThanOrEqual(bound))
     }
 
-    pub fn between(lower_bound: f64, upper_bound: f64) -> Result<Self, ConstraintError> {
-        Self::new(ConstraintKind::Between {
+    /// The only constructor that can still fail, because it is the only one with two bounds to
+    /// contradict each other.
+    pub fn between(lower_bound: i128, upper_bound: i128) -> Result<Self, ConstraintError> {
+        if lower_bound > upper_bound {
+            return Err(ConstraintError::InvertedRange);
+        }
+
+        Ok(Self(ConstraintKind::Between {
             lower_bound,
             upper_bound,
-        })
+        }))
     }
 
-    fn new(constraint_kind: ConstraintKind) -> Result<Self, ConstraintError> {
-        let constraint = Self(constraint_kind);
-
-        constraint.validate()?;
-
-        Ok(constraint)
-    }
-
-    fn validate(&self) -> Result<(), ConstraintError> {
-        let finite = |bound: f64| {
-            if bound.is_finite() {
-                Ok(())
-            } else {
-                Err(ConstraintError::NonFinite)
-            }
-        };
-
-        match &self.0 {
-            ConstraintKind::Equal(bound)
-            | ConstraintKind::NotEqual(bound)
-            | ConstraintKind::GreaterThan(bound)
-            | ConstraintKind::GreaterThanOrEqual(bound)
-            | ConstraintKind::LessThan(bound)
-            | ConstraintKind::LessThanOrEqual(bound) => finite(*bound),
-            ConstraintKind::Between {
-                lower_bound,
-                upper_bound,
-            } => {
-                finite(*lower_bound)?;
-                finite(*upper_bound)?;
-
-                if lower_bound > upper_bound {
-                    return Err(ConstraintError::InvertedRange);
-                }
-
-                Ok(())
-            }
-        }
-    }
-
-    pub fn check(&self, value: f64) -> bool {
+    pub fn check(&self, value: i128) -> bool {
         match &self.0 {
             ConstraintKind::Equal(bound) => value == *bound,
             ConstraintKind::NotEqual(bound) => value != *bound,
@@ -122,7 +100,6 @@ impl Constraint {
 
 define_error! {
     pub enum ConstraintError {
-        NonFinite => "constraint bounds must be finite numbers",
         InvertedRange => "range lower bound must not exceed the upper bound",
     }
 }
@@ -132,43 +109,37 @@ mod tests {
     use super::{Constraint, ConstraintError};
 
     #[test]
-    fn accepts_valid() {
-        assert!(Constraint::equal(1.0).is_ok());
-        assert!(Constraint::between(1.0, 5.0).is_ok());
-        assert!(Constraint::between(5.0, 5.0).is_ok());
+    fn accepts_a_range_and_a_degenerate_one() {
+        assert!(Constraint::between(1, 5).is_ok());
+        assert!(Constraint::between(5, 5).is_ok());
     }
 
     #[test]
     fn rejects_inverted_range() {
         assert!(matches!(
-            Constraint::between(5.0, 1.0),
+            Constraint::between(5, 1),
             Err(ConstraintError::InvertedRange)
         ));
     }
 
     #[test]
-    fn rejects_non_finite() {
-        assert!(matches!(
-            Constraint::equal(f64::NAN),
-            Err(ConstraintError::NonFinite)
-        ));
+    fn check_evaluates_bounds() {
+        let c = Constraint::between(0, 10).unwrap();
 
-        assert!(matches!(
-            Constraint::greater_than(f64::INFINITY),
-            Err(ConstraintError::NonFinite)
-        ));
-
-        assert!(matches!(
-            Constraint::between(0.0, f64::NAN),
-            Err(ConstraintError::NonFinite)
-        ));
+        assert!(c.check(0) && c.check(5) && c.check(10));
+        assert!(!c.check(-1) && !c.check(11));
     }
 
+    /// Every predicate, on its own bound, so a strict one is not mistaken for a closed one.
+    ///
+    /// Six of the seven constructors changed shape here, and only `between` had a test before.
     #[test]
-    fn check_evaluates_bounds() {
-        let c = Constraint::between(0.0, 10.0).unwrap();
-
-        assert!(c.check(0.0) && c.check(5.0) && c.check(10.0));
-        assert!(!c.check(-1.0) && !c.check(11.0));
+    fn each_predicate_answers_at_its_bound() {
+        assert!(!Constraint::greater_than(10).check(10));
+        assert!(Constraint::greater_than_or_equal(10).check(10));
+        assert!(!Constraint::less_than(10).check(10));
+        assert!(Constraint::less_than_or_equal(10).check(10));
+        assert!(Constraint::equal(10).check(10));
+        assert!(!Constraint::not_equal(10).check(10));
     }
 }

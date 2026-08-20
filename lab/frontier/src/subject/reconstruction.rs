@@ -22,10 +22,15 @@
 //! exists only once the thing it names has been admitted. Reading it back takes one: the
 //! journal that comes out is flat and complete, and that is the shape a fresh process gets.
 //!
-//! Every quantity is an integer. Feasibility accumulates levels in `f64`, where addition
+//! Every quantity is an integer. Feasibility accumulated levels in `f64`, where addition
 //! is not associative, and a reconstruction that read records back in a different order
 //! could differ in the last bit and flip a comparison against a constraint. Integers keep
 //! the experiment measuring reconstruction rather than float determinism.
+//!
+//! The engine counts in `i128` now, so the hazard this arrangement was written around is gone from
+//! underneath it. The sentence above stays because it is why these values are whole, and because it
+//! was right: the workaround lived here, in every arrangement after this one, for seven experiments
+//! before anything went and closed it at the source.
 
 use ape::canon::Canon;
 use ape::engine::thesis::ThesisId;
@@ -79,8 +84,8 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         Admission::Resource {
             label: "inventory".into(),
             kind: ResourceKindRecord::Between {
-                lower: 0.0,
-                upper: 100.0,
+                lower: 0,
+                upper: 100,
             },
             recorded_at: day(1),
         },
@@ -141,7 +146,7 @@ pub fn construct(canon: &mut Canon<ResidentHistory>) -> Result<Constructed, Jour
         resource: instance,
         committed_at: day(5),
         due_date: day(20),
-        magnitude: Some(10.0),
+        magnitude: Some(10),
         dependencies: [].into(),
         recorded_at: day(5),
     }];

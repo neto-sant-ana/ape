@@ -63,24 +63,24 @@ pub const FULFILLING: &str = "Settled";
 pub const CANCELLING: &str = "Void";
 
 /// The bounds the account answers to.
-pub const FLOOR: f64 = 0.0;
-pub const CEILING: f64 = 1000.0;
+pub const FLOOR: i128 = 0;
+pub const CEILING: i128 = 1000;
 
 /// What the pledge puts in the account, and settles.
-pub const PLEDGED: f64 = 100.0;
+pub const PLEDGED: u128 = 100;
 
 /// The three outflows, in the order they are admitted.
 ///
 /// `S₁` is proposed by `before`'s second decision; `S₂` is admitted there and proposed by nobody;
 /// `S₃` is admitted by the commit that is interrupted. Distinct magnitudes, so two of them are never
 /// one commitment by identity.
-pub const SPENDS: [f64; 3] = [30.0, 40.0, 20.0];
+pub const SPENDS: [u128; 3] = [30, 40, 20];
 
 /// What each world intends the account to hold, oldest first, written before the run.
 ///
 /// The third is what an interruption can cost, and it is a number rather than a count. Every one of
 /// them is inside the bounds, so no world here is refused for a reason this experiment is not about.
-pub const INTENDED: [f64; 3] = [100.0, 70.0, 10.0];
+pub const INTENDED: [i128; 3] = [100, 70, 10];
 
 /// The entries each whole repository's journal holds.
 pub const BEFORE_ENTRIES: usize = 16;
@@ -101,10 +101,14 @@ pub const HYPOTHESIS: Hypothesis = Hypothesis::FinalState;
 /// None of it is a measurement: that the pledge fits strictly inside the bounds, and that the three
 /// intended levels are what the three spends leave, is arithmetic written on one afternoon. Asserted
 /// inside a phase it would have read as a result.
-const _: () = assert!(FLOOR < PLEDGED && PLEDGED < CEILING);
-const _: () = assert!(INTENDED[0] == PLEDGED);
-const _: () = assert!(INTENDED[1] == INTENDED[0] - SPENDS[0]);
-const _: () = assert!(INTENDED[2] == INTENDED[1] - SPENDS[1] - SPENDS[2]);
+///
+/// The casts are where the sign enters, and they are not noise: a magnitude is unsigned because the
+/// direction is the statement's, and a level is signed because it is a sum of both directions. Every
+/// line below that casts is a line where a magnitude is being spent *into* a level.
+const _: () = assert!(FLOOR < PLEDGED as i128 && (PLEDGED as i128) < CEILING);
+const _: () = assert!(INTENDED[0] == PLEDGED as i128);
+const _: () = assert!(INTENDED[1] == INTENDED[0] - SPENDS[0] as i128);
+const _: () = assert!(INTENDED[2] == INTENDED[1] - SPENDS[1] as i128 - SPENDS[2] as i128);
 const _: () = assert!(FLOOR < INTENDED[2]);
 const _: () = assert!(AFTER_ENTRIES == BEFORE_ENTRIES + 1);
 const _: () = assert!(AFTER_WORLDS == BEFORE_WORLDS + 1);
@@ -388,7 +392,7 @@ pub fn intended(
     history: &ResidentHistory,
     thesis: &Thesis,
     instance: ResourceInstanceId,
-) -> Result<f64, ReadingError> {
+) -> Result<i128, ReadingError> {
     let interpretation = Interpretation::of(thesis, history)?;
     let projected = interpretation.conditions_at(&asked_at())?;
 
@@ -419,7 +423,7 @@ impl Constructed {
     pub fn admit(
         &mut self,
         canon: &mut Canon<ResidentHistory>,
-        magnitude: f64,
+        magnitude: u128,
     ) -> Result<(), JournalError> {
         let recorded_on = 3 + self.admitted.commitments.len() as u8;
 

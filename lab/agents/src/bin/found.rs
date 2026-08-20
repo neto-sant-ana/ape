@@ -25,7 +25,7 @@ fn main() {
         None => world::cash(),
         Some(floor) => ResourceKindRecord::Between {
             lower: floor.parse().expect("a floor as a number"),
-            upper: 1000.0,
+            upper: 1000,
         },
     };
 

@@ -26,7 +26,7 @@ pub fn settled<K: Knowledge>(
     knowledge: &K,
     conditions: &ProjectedConditions,
     instance: ResourceInstanceId,
-) -> Result<f64, LevelError> {
+) -> Result<i128, LevelError> {
     folded(knowledge, conditions, instance, |outcome| {
         outcome == &Outcome::Fulfilled
     })
@@ -45,7 +45,7 @@ pub fn intended<K: Knowledge>(
     knowledge: &K,
     conditions: &ProjectedConditions,
     instance: ResourceInstanceId,
-) -> Result<f64, LevelError> {
+) -> Result<i128, LevelError> {
     folded(knowledge, conditions, instance, |outcome| {
         outcome != &Outcome::Cancelled
     })
@@ -64,8 +64,8 @@ fn folded<K: Knowledge>(
     conditions: &ProjectedConditions,
     instance: ResourceInstanceId,
     counts: impl Fn(&Outcome) -> bool,
-) -> Result<f64, LevelError> {
-    let mut level = 0.0;
+) -> Result<i128, LevelError> {
+    let mut level: i128 = 0;
 
     for (id, condition) in conditions.conditions() {
         if !counts(condition.outcome()) {
@@ -79,7 +79,9 @@ fn folded<K: Knowledge>(
         if let Some(movement) = movement_of(knowledge, &commitment)?
             && movement.instance() == instance
         {
-            level += movement.magnitude();
+            level = level
+                .checked_add(movement.magnitude())
+                .ok_or(LevelError::OutOfRange(instance))?;
         }
     }
 

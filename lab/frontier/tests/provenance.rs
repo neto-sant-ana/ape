@@ -184,7 +184,7 @@ fn phase_1_ambiguity() {
         readings[2].conflicts,
         vec![ConflictRecord::OutOfBounds {
             instance: subject.instance.to_string(),
-            level: -5.0,
+            level: -5,
         }],
         "40 − 15 − 30 is outside the account's bounds"
     );

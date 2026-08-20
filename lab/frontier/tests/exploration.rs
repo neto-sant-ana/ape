@@ -118,7 +118,7 @@ fn phase_0_the_world_the_objective_and_the_budget() {
     )
     .expect("the world reads");
 
-    assert_eq!(opened.level, OPENING, "the opening landed");
+    assert_eq!(opened.level, OPENING as i128, "the opening landed");
     assert!(opened.conflicts.is_empty(), "and nothing is wrong with it");
 
     // The budget. These read the enumeration against itself and prove nothing about the engine:
@@ -143,7 +143,9 @@ fn phase_0_the_world_the_objective_and_the_budget() {
     assert_eq!(
         exploration::judge(rebuilt.canon.history(), world, subject.instance)
             .expect("the objective reads the world"),
-        Judged::Admissible { level: OPENING },
+        Judged::Admissible {
+            level: OPENING as i128
+        },
         "spending nothing is admissible, and it is the worst admissible score"
     );
 }
@@ -262,11 +264,11 @@ fn phase_1_explore_ephemerally() {
         vec![
             vec![Conflict::OutOfBounds {
                 instance: subject.instance,
-                level: -10.0
+                level: -10
             }],
             vec![Conflict::OutOfBounds {
                 instance: subject.instance,
-                level: -20.0
+                level: -20
             }],
         ],
         "the floor refused them, one by ten and one by twenty"
@@ -381,8 +383,8 @@ fn phase_2_what_the_record_still_answers() {
         exploration::decide(working, exploration::spending(opening, commitment)).expect("decidable")
     };
 
-    let source = intending(&mut working, 5.0);
-    let target = intending(&mut working, 15.0);
+    let source = intending(&mut working, 5);
+    let target = intending(&mut working, 15);
 
     exploration::write(&repository, &working).expect("writable");
 
@@ -950,7 +952,7 @@ fn bytes(repository: &Repository) -> (String, String, String) {
 }
 
 /// A magnitude no candidate has, for the intention that follows the exploration.
-const INTENDED: f64 = 5.0;
+const INTENDED: u128 = 5;
 
 /// What survives in the disposition where a decision follows the exploration: the genesis witnessing
 /// 14, and the intention witnessing all 27. Written before the run.
@@ -1157,7 +1159,7 @@ fn selected(repository: &Repository) -> BTreeSet<CommitmentId> {
 }
 
 /// A magnitude no candidate and no intention has, for a commitment nobody ever weighs.
-const INCIDENTAL: f64 = 7.0;
+const INCIDENTAL: u128 = 7;
 
 /// Phase 5 — ask the repository what it can say.
 ///

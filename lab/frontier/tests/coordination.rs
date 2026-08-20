@@ -688,7 +688,7 @@ fn phase_3_reach_each_other() {
         "both plans in one world, and the account admits it: {:?}",
         world.conflicts
     );
-    assert_eq!(world.level, 0.0, "and nothing in this subject has settled");
+    assert_eq!(world.level, 0, "and nothing in this subject has settled");
 
     // The donor's line is untouched, which is the whole of what a party gave up by donating.
     assert!(
