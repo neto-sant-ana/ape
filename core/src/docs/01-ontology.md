@@ -16,6 +16,26 @@ Every assertion, projection and operational model is ultimately expressed in ter
 
 ---
 
+## Extension
+
+A concept enters the ontology only if operational coordination cannot be represented without it.
+
+The question is whether the vocabulary is incapable of the representation, and not whether a participant wished the concept were named.
+
+A caller that wants to state a relation the ontology does not define has expressed a want. A coordination that cannot be expressed at all has demonstrated a need.
+
+The two are not told apart by how often the want is expressed, nor by how many independent callers express it.
+
+Where a concept is not strictly necessary to represent coordination, it belongs to the application, which may compose it from the primitives that exist or wrap them in types of its own.
+
+A scale and a delegation are both of this kind. Each is expressible above the engine, as a type that holds a primitive and adds the meaning the engine does not give it.
+
+Such a type is the application's vocabulary and does not itself enter the record. What reaches the record reaches it through a primitive — a label, a magnitude, an identity — so a meaning that reaches no primitive is a meaning the next reader of that record does not have.
+
+This is what allows two applications to work over one repository under different approaches, which is the purpose of keeping the ontology small.
+
+---
+
 # Agent
 
 An **Agent** is an operational entity capable of assuming responsibilities and being held accountable for commitments.

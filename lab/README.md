@@ -67,6 +67,24 @@ The change is recorded rather than quietly made, and what the rule was protectin
   beneath it. A CLI change that moves an experiment's result must read as a consumer breaking,
   never as the result having always been different.
 
+**A friction is evidence of a want, not of a need.**
+
+The rule above says an experiment may not change the engine to make itself succeed, and the agents
+row's constraint says to let the friction show what is missing. Neither of them says a friction is a
+mandate, and the difference decides whether a finding may touch the ontology at all.
+
+The test is the ontology's own, in [`../core/src/docs/01-ontology.md`](../core/src/docs/01-ontology.md):
+*a concept enters only if operational coordination cannot be represented without it.* Not whether a
+caller wanted it named, and not how many callers wanted it — which is exactly the shape the evidence
+here arrives in, because a friction is by construction somebody reaching for something.
+
+It has already been applied once, retroactively. Three agents reached for a way to say *acting for* —
+that one Agent decides on another's behalf — and all three said the nearest primitive was not the same
+claim. Read as a friction, that is three independent witnesses to a gap. Read against the test, it is
+three agents who **were** agents and wanted to say whose behalf they acted on: coordination between
+commitments and events is representable without it, so it belongs to an application. The record keeps
+the friction, and the ontology does not grow.
+
 **A need is handed over, and the experiment waits for it.**
 
 An experiment that finds the application missing something does not build it. The need goes to the
@@ -163,15 +181,33 @@ started has no directory — its absence is the honest signal that nothing has b
 yet.
 
 A **candidate** is different from a planned experiment, and has a file rather than a directory. It is
-what one row's findings have accumulated for a question **neither row owns** — gathered so that it is
+what the findings have accumulated for a question **nothing else is holding** — gathered so that it is
 not five times inherited and never held. A candidate names no shape and predicts nothing; the protocol
 is written when its experiment begins, with these in hand.
 
+*Nothing else is holding it* is the test, and it was **ownership by neither row** until the queue was
+first swept. Four of the five candidates turned out to be owned by a row and dropped by it anyway —
+inherited by result after result, or decided in conversation and written down nowhere. Ownership was
+never what made a question get lost; being nobody's to hold was.
+
 They live in [`candidates/`](candidates), numbered as experiments are.
 
-**[`candidates/00-authenticity.md`](candidates/00-authenticity.md)** — every result since corroboration
-names it, and each says *unchanged*. What several of them cannot tell apart is not a reporting defect:
-the fact that would refute the record was never in it.
+* **[`00-authenticity`](candidates/00-authenticity.md)** — what signs a record, and who holds the key.
+  Every result since corroboration names it and each says *unchanged*.
+* **[`01-veracity`](candidates/01-veracity.md)** — whether a record that agrees with itself thereby
+  says something true. Asked identically by two protocols, answered by neither, and measured once
+  before either asked.
+* **[`02-scale`](candidates/02-scale.md)** — where a unit lives, in an engine that deliberately will
+  not name one.
+* **[`03-bounds`](candidates/03-bounds.md)** — a floor with no ceiling cannot be stated, so the
+  workaround admits a bound that is false.
+* **[`04-training`](candidates/04-training.md)** — whether this structure is a harness for training
+  decision reasoning. The only one that asks what a record is *for* rather than what it must hold.
+
+And [`QUEUE.md`](QUEUE.md) is the whole of what can be worked on: every open item, where it was named,
+how many results named it, and which kind it is. It holds no question of its own and restates no
+result — what it holds is the count and the classification, because a candidate inherited and never held
+is the failure a candidate file fixes one item at a time, and the queue is that failure one level up.
 
 ---
 
