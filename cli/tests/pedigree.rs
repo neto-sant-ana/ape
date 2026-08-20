@@ -39,7 +39,7 @@ const NOTHING: &str = "nothing —";
 const MODULES: usize = 12;
 
 /// Citations across all of them, for the same reason.
-const CITATIONS: usize = 22;
+const CITATIONS: usize = 24;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

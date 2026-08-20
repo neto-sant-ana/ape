@@ -5,6 +5,14 @@
 //! landed before both moved both. So the repair belongs here, at the moment of writing, where a
 //! party can still find out that what it read is not what is there.
 //!
+//! *At the moment of writing* is load-bearing and was never measured until the contention experiment
+//! did: what the comparison weighs is the repository **as it now stands** against what the party
+//! holds, and never against what the party read, which this does not keep. A call cannot interleave
+//! with another one without a thread, so the re-read below is always after any earlier writer's write
+//! — and all six orderings of two parties reading and putting back through here end with both parties'
+//! lines present, the single refusal landing where both read before either wrote. A stale reading
+//! costs a party an attempt and nobody a decision.
+//!
 //! # The two files get different repairs, and the difference is not a preference
 //!
 //! **Knowledge appends.** A party may add to the journal it read and may not have added to a
@@ -13,6 +21,14 @@
 //! that every decision carries the set of entries that stood when it was taken, so a journal
 //! whose earlier entries moved makes standing decisions disagree with it. Append-only is what the
 //! sequence witness already requires; this only refuses it earlier, and by name.
+//!
+//! **Earlier and by name is the whole of what it buys**, which is less than this note used to imply
+//! and was measured by mutating it. With the comparison never firing, a divergent party's write does
+//! not go through: the merge fails further down, at *the journal holds no entry …*, because the merged
+//! journal is one party's and the other's decision addresses an entry that is not in it. What keeps
+//! the repository intact is rebuilding before writing, below. What this supplies is a refusal at the
+//! write, naming the position where the two journals disagree and both entries that disagree there,
+//! instead of an address a reader would have to go and look for.
 //!
 //! **Intention merges.** Two decisions cannot contradict one another. A lineage is a tree, so a
 //! second party's line is a branch rather than a competing version, and the union of two parties'
@@ -43,7 +59,7 @@
 //! states it could leave reconstructs, so nothing on the reader's side would have said so. The write
 //! is now whole, and the repository this one replaces is still on disk.
 //!
-//! Earned by: 05-coordination (Confirmed), 07-atomicity (Confirmed)
+//! Earned by: 05-coordination (Confirmed), 07-atomicity (Confirmed), 08-contention (Confirmed)
 
 use std::collections::BTreeSet;
 

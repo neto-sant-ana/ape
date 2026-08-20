@@ -37,9 +37,9 @@
 //! ```
 //!
 //! A whole write puts three files in the generation that is *not* live, where nothing reads them,
-//! and then turns the pointer. Turning is one `rename`, so a write is all-or-nothing against a
-//! process that stops: interrupted before the turn, the repository is what it was, byte for byte.
-//! Interrupted *by the operating system* mid-`rename` is a different question, and this makes no
+//! and then turns the pointer. Turning replaces one file by a `rename`, so a write is all-or-nothing
+//! against a process that stops: interrupted before the turn, the repository is what it was, byte for
+//! byte. Interrupted *by the operating system* mid-`rename` is a different question, and this makes no
 //! promise about it.
 //!
 //! Turning a reference is the verb the convergence experiment already used for moving one, and the
@@ -51,6 +51,24 @@
 //! before generations existed looks like, and they are read unchanged — including two that were
 //! written by parties nobody can re-run.
 //!
+//! # And atomic against a process that stops is not atomic against another writer
+//!
+//! The atomicity experiment said so in its own result, and the contention experiment asked it. Two
+//! writers that prepare before either turns choose the **same** generation, because `prepare` picks
+//! its target by reading the pointer — a question about where a *reader* is looking, not about who
+//! else is writing. Measured over all six interleavings the two operations admit: what a reader ends
+//! up reading is the state of whoever prepared **last**, the turn does not appear in the rule, and
+//! nothing refused any of it.
+//!
+//! So a turn compares before it swaps. [`Prepared`] keeps what it wrote and [`Prepared::turn`] reads
+//! it back, refusing to publish a generation this write did not write. The whole reasoning, and the
+//! three states it puts out of reach, are there.
+//!
+//! What that does *not* touch is a writer holding a stale reading: it overwrites nobody, prepares a
+//! legitimate whole state of its own, and loses the other line in silence. Comparing knowledge is the
+//! journal's business and lives in [`crate::converge`] — which, measured, refuses every ordering of
+//! two parties that both put back through it. Two comparisons, and neither substitutes for the other.
+//!
 //! # Writing one file is still possible, and that is not an oversight
 //!
 //! [`Repository::write_journal`] and its two neighbours write into the live generation, one file,
@@ -59,7 +77,14 @@
 //! one, or interrupt one. The record's defence against them is corroboration, which is measured
 //! rather than promised.
 //!
-//! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed), 07-atomicity (Confirmed)
+//! They are also how a second writer reaches a **mixture**: aimed at a generation somebody else
+//! prepared, they put one writer's file over another's, and the contention experiment measured that
+//! the mixtures which reconstruct silently are exactly the ones whose two journals stand in extension.
+//! A turn that would publish one is now refused, which is the same shape as before — the states are
+//! out of reach through the write, and not impossible.
+//!
+//! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed), 07-atomicity (Confirmed),
+//! 08-contention (Confirmed)
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -101,16 +126,55 @@ pub struct RepositoryInput<'a> {
 /// It carries no reference to the [`Repository`] on purpose: a prepared generation is a fact on
 /// disk, and dropping this value abandons it rather than undoing it. The next write overwrites it,
 /// and nothing ever read it.
+///
+/// It also carries what it wrote, which is what makes [`Prepared::turn`] a comparison. See there.
 pub struct Prepared {
     root: PathBuf,
     generation: &'static str,
+    written: [(&'static str, String); 3],
 }
 
 impl Prepared {
-    /// Make the prepared generation the one a reader reads.
+    /// Make the prepared generation the one a reader reads, if it is still the one this write made.
     ///
-    /// One `rename`, over a pointer written beside itself. Everything expensive already happened.
+    /// The comparison is the whole of what the contention experiment earned. [`Repository::prepare`]
+    /// chooses its target by reading the pointer, so two writers that both prepare before either
+    /// turns choose the **same** generation — and before this, both turns published it. Whoever
+    /// prepared last decided what a reader would read, both writers were told they had succeeded,
+    /// and the pointer's turn was not the commit it looked like.
+    ///
+    /// So a turn reads back the three files it prepared and refuses to publish a generation it did
+    /// not write. That makes a whole write a compare-and-swap in the one sense this application can
+    /// support: it compares against what *it* put there, so it refuses a generation another writer
+    /// overwrote, one another writer partially overwrote, and one that has since been superseded and
+    /// would be published backwards.
+    ///
+    /// **What it costs, and it is this sequence's first observable price.** A turn used to be one
+    /// `rename` over a pointer, with everything expensive already done; it now reads three files
+    /// first, and a [`Prepared`] holds an encoded copy of them until it is turned. That is paid by
+    /// every write, in exchange for a refusal that only two writers can provoke.
+    ///
+    /// **What it does not do**, and neither half is a detail. It does not serialize anybody: nothing
+    /// waits, nothing is held, and a refused writer's recovery is the one the coordination
+    /// experiment already established — read again, decide again, converge. And it says nothing
+    /// about a writer holding a **stale reading**: a party that never re-read and never converged
+    /// prepares a legitimate whole state of its own, overwrites nothing, and loses the other line in
+    /// silence. That comparison is the journal's, and it lives in [`crate::converge`].
+    ///
+    /// The honest limit: between the last comparison and the `rename` there is a window, and closing
+    /// it would take an atomic filesystem primitive rather than two calls. What this refuses is an
+    /// interleaving of *calls*, which is what the experiment measured and all it claims.
     pub fn turn(self) -> Result<(), RepositoryError> {
+        let into = self.root.join(self.generation);
+
+        for (name, encoded) in &self.written {
+            if fs::read_to_string(into.join(name))? != *encoded {
+                return Err(RepositoryError::Contended {
+                    generation: self.generation.to_owned(),
+                });
+            }
+        }
+
         let turning = self.root.join(TURNING);
 
         fs::write(&turning, self.generation)?;
@@ -177,23 +241,30 @@ impl Repository {
     }
 
     /// The first half of a whole write, kept separate so an interruption can be a value.
+    ///
+    /// What it encoded is kept rather than dropped, because the turn compares against it. Encoding
+    /// again there would compare a repository against a second rendering of itself, which answers a
+    /// question about `serde_json` instead of one about who wrote the files.
     pub fn prepare(&self, input: RepositoryInput<'_>) -> Result<Prepared, RepositoryError> {
         let generation = self.next();
         let into = self.root.join(generation);
 
         fs::create_dir_all(&into)?;
 
-        for (name, encoded) in [
+        let written = [
             (JOURNAL, serde_json::to_string_pretty(input.journal)?),
             (LINEAGE, serde_json::to_string_pretty(input.lineage)?),
             (WORLDS, serde_json::to_string_pretty(input.worlds)?),
-        ] {
+        ];
+
+        for (name, encoded) in &written {
             fs::write(into.join(name), encoded)?;
         }
 
         Ok(Prepared {
             root: self.root.clone(),
             generation,
+            written,
         })
     }
 

@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use ape::kernel::entities::AgentId;
 
 use ape_cli::converge;
-use ape_cli::error::{ConvergeError, JournalError, LineageError, ReadingError};
+use ape_cli::error::{ConvergeError, JournalError, LineageError, ReadingError, RepositoryError};
 use ape_cli::reading;
 use ape_cli::repository::Repository;
 use ape_frontier::subject::contention::{
@@ -393,10 +393,15 @@ fn phase_2_a_whole_write_loses_the_other_line_and_says_nothing() {
 
 /// The interleaving one step finer, where both prepares collide.
 ///
-/// C1: `prepare` chooses its target by reading the pointer, so two writers that both prepare before
-/// either turns choose the **same** generation. The second one to prepare overwrites the first's
-/// three files there, and then both turns name it — so the pointer stops being what decides, and the
-/// last *prepare* wins rather than the last turn.
+/// C1, and it is unchanged by Part B: `prepare` chooses its target by reading the pointer, so two
+/// writers that both prepare before either turns choose the **same** generation, and nothing refuses
+/// it. The second one to prepare overwrites the first's three files there — which is measured here by
+/// reading that generation, because it is a fact on disk before any pointer names it.
+///
+/// What Part B changed is the sentence that used to follow. Both turns named that generation and both
+/// returned `Ok`, so the first writer published the second writer's repository; now the first
+/// writer's turn is refused and the second writer's commits. The measurement of the old behaviour is
+/// in Observation 2, against the commit that took it.
 ///
 /// This is also where the losing party stops being recoverable: in the ordering above its state was
 /// the previous generation, and here both writers were in one generation.
@@ -417,22 +422,40 @@ fn phase_2_two_prepares_choose_one_generation() {
         other.generation(),
         "both writers prepared into the same generation, and nothing refused it"
     );
-
-    // The first writer's turn, and what it publishes is the second writer's bytes.
-    one.turn().expect("the pointer turns");
-
+    assert_eq!(
+        state(&Repository::open(one.generation()), &arrangement).expect("reconstructs"),
+        alone(&arrangement, 1),
+        "and what is in it is the second writer's whole state, over the first writer's"
+    );
     assert_eq!(
         state(&repository, &arrangement).expect("reconstructs"),
-        alone(&arrangement, 1),
-        "the first party turned a pointer at a generation the second party had written"
+        base(),
+        "while a reader is still reading the base, because nothing has turned"
     );
 
-    other.turn().expect("and so does the second");
+    match one.turn() {
+        Err(RepositoryError::Contended { generation }) => {
+            assert!(
+                other.generation().ends_with(&generation),
+                "the refusal names the generation the two writers met in"
+            );
+        }
+        Err(other) => panic!("refused, and for another reason: {other}"),
+        Ok(()) => panic!("expected a writer refused for publishing bytes it did not write"),
+    }
+
+    assert_eq!(
+        state(&repository, &arrangement).expect("reconstructs"),
+        base(),
+        "and a refused turn leaves the repository as it was"
+    );
+
+    other.turn().expect("the writer that wrote it commits");
 
     assert_eq!(
         state(&repository, &arrangement).expect("reconstructs"),
         alone(&arrangement, 1),
-        "and the second turn changes nothing, because it names the same generation"
+        "which is the same state a reader would have read, reached by the writer who meant it"
     );
 
     let elsewhere: Vec<State> = generations(&repository)
@@ -627,12 +650,16 @@ fn whose(repository: &Repository, arrangement: &Arranged) -> Whose {
     }
 }
 
-/// What one ordering left: what a reader reads, and what is on disk beside it.
+/// What one ordering left: what a reader reads, what is on disk beside it, and who was refused.
+///
+/// `refused` is a set of writers rather than a count, because Part B made the identity of the refused
+/// writer the point: the one that is told no is the one whose prepared generation somebody else wrote
+/// over, and a count could not say that.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Left {
     live: Whose,
     elsewhere: Vec<Whose>,
-    refusals: usize,
+    refused: BTreeSet<usize>,
 }
 
 /// Run one ordering over a fresh repository, and read off what it left.
@@ -644,13 +671,15 @@ fn ordered(name: &str, ordering: [Op; 4]) -> (Left, Arranged) {
         party(&repository, &arrangement, 1).files(),
     ];
     let mut prepared: [Option<_>; 2] = [None, None];
-    let mut refusals = 0;
+    let mut refused = BTreeSet::new();
 
     for op in ordering {
         match op {
             Op::Prepare(writer) => match contention::prepare(&repository, &held[writer]) {
                 Ok(staged) => prepared[writer] = Some(staged),
-                Err(_) => refusals += 1,
+                Err(_) => {
+                    refused.insert(writer);
+                }
             },
             Op::Turn(writer) => match prepared[writer]
                 .take()
@@ -658,7 +687,9 @@ fn ordered(name: &str, ordering: [Op; 4]) -> (Left, Arranged) {
                 .turn()
             {
                 Ok(()) => {}
-                Err(_) => refusals += 1,
+                Err(_) => {
+                    refused.insert(writer);
+                }
             },
         }
     }
@@ -674,7 +705,7 @@ fn ordered(name: &str, ordering: [Op; 4]) -> (Left, Arranged) {
         Left {
             live: whose(&repository, &arrangement),
             elsewhere,
-            refusals,
+            refused,
         },
         arrangement,
     )
@@ -690,6 +721,11 @@ fn ordered(name: &str, ordering: [Op; 4]) -> (Left, Arranged) {
 /// were separated by a turn, the loser's whole state is the previous generation; where they collided,
 /// the previous generation is the base and the loser is nowhere. Nothing in the repository says which
 /// of the two happened.
+///
+/// The third column is Part B's. Before it, nothing refused any of the twenty-four calls and both
+/// writers were told they had committed; now the writer whose prepared generation was written over is
+/// refused, which is every writer except the last to prepare. The rule about *who* a reader reads did
+/// not change — what changed is that the other writer now knows.
 #[test]
 fn phase_3_every_interleaving_the_two_operations_admit() {
     let orderings = interleavings();
@@ -713,26 +749,33 @@ fn phase_3_every_interleaving_the_two_operations_admit() {
         orderings.len(),
         "and no two of them are the same sequence"
     );
-    assert!(
-        table.values().all(|left| left.refusals == 0),
-        "nothing refuses any of it: two writers over one repository is not a case the record has"
-    );
 
-    // The rule, read off the table rather than argued: the live state is the last writer to prepare.
+    // The rule, read off the table rather than argued: the live state is the last writer to prepare,
+    // and the other one is refused wherever there was a collision to be refused about.
     for (ordering, left) in &table {
-        let last = ordering
+        let prepares: Vec<usize> = ordering
             .iter()
             .filter_map(|op| match op {
                 Op::Prepare(writer) => Some(*writer),
                 Op::Turn(_) => None,
             })
-            .next_back()
-            .expect("every ordering prepares");
+            .collect();
+        let last = *prepares.last().expect("every ordering prepares");
+        let collided = ordering[..2].iter().all(|op| matches!(op, Op::Prepare(_)));
 
         assert_eq!(
             left.live,
             [Whose::First, Whose::Second][last],
             "{ordering:?}: what a reader reads is what the last prepare wrote"
+        );
+        assert_eq!(
+            left.refused,
+            if collided {
+                BTreeSet::from([1 - last])
+            } else {
+                BTreeSet::new()
+            },
+            "{ordering:?}: refused exactly where a writer's prepared generation was written over"
         );
     }
 
@@ -775,18 +818,19 @@ fn phase_3_every_interleaving_the_two_operations_admit() {
     );
 }
 
-/// A prepared write held across another writer's commits turns the pointer backwards.
+/// A prepared write held across another writer's commits cannot turn the pointer backwards.
 ///
 /// Outside Phase 3's closed set, which is closed over *two* operations each — this takes five, and
 /// finding it is what says the set is closed as stated rather than closed absolutely. The first
 /// writer prepares and does not turn; the other commits twice, the second time holding both lines;
-/// and then the first writer's turn names a generation whose contents were replaced two commits ago.
+/// and then the first writer turns.
 ///
-/// This is the one outcome so far that misleads a **reader** rather than a writer. It reconstructs,
-/// it corroborates, and it answers for a state that had already been superseded — and the writer
-/// that published it had written none of it.
+/// It was the one outcome that misled a **reader** rather than a writer: the turn put back the state
+/// the first of those two commits had left, reconstructing and corroborating and carrying no fact
+/// that said it was a rollback. Observation 5 measured it, and it is what earned Part B — which is
+/// what this now asserts instead, at the same five calls.
 #[test]
-fn a_turn_can_publish_a_state_that_was_already_replaced() {
+fn a_turn_cannot_publish_a_state_that_was_already_replaced() {
     let (repository, arrangement) = founded("resurrection");
 
     let one = party(&repository, &arrangement, 0);
@@ -802,18 +846,22 @@ fn a_turn_can_publish_a_state_that_was_already_replaced() {
 
     converge::converge(&repository, &both.working).expect("the second commit converges");
 
+    let was_there = bytes(&repository);
+
     assert_eq!(
         state(&repository, &arrangement).expect("reconstructs"),
         merged(&arrangement, [1, 0]),
         "two commits in, and nothing has been lost"
     );
 
-    staged.turn().expect("the pointer turns");
-
+    assert!(
+        matches!(staged.turn(), Err(RepositoryError::Contended { .. })),
+        "a handle from before those two commits does not get to name what a reader reads"
+    );
     assert_eq!(
-        state(&repository, &arrangement).expect("the superseded state reconstructs"),
-        alone(&arrangement, 1),
-        "and one turn puts back the state the first of those two commits left"
+        bytes(&repository),
+        was_there,
+        "and the repository is the one the second commit left, byte for byte"
     );
 }
 
@@ -916,10 +964,17 @@ fn mixtures(related: Related) -> BTreeMap<BTreeSet<File>, Mixed> {
                 contention::put(&into, &other, *file).expect("writable");
             }
 
-            staged.turn().expect("the pointer turns");
-
             let state = order[..reached].iter().copied().collect::<BTreeSet<_>>();
-            let outcome = mixed(&repository);
+            // Read where it is rather than where a pointer would send a reader. The mixture is a fact
+            // on disk as soon as the second writer's file lands, and Part B refuses the turn that
+            // would publish it — so classifying it through the pointer would now be measuring the
+            // repair instead of the state. That the turn is refused is asserted below, once.
+            let outcome = mixed(&into);
+
+            assert!(
+                matches!(staged.turn(), Err(RepositoryError::Contended { .. })),
+                "and the writer that prepared it does not get to publish it"
+            );
 
             if let Some(seen) = states.get(&state) {
                 assert_eq!(
@@ -1105,11 +1160,15 @@ fn phase_5_what_is_left_of_the_losing_party() {
                     prepared[*writer] =
                         Some(contention::prepare(&repository, &held[*writer]).expect("preparable"));
                 }
-                Op::Turn(writer) => prepared[*writer]
-                    .take()
-                    .expect("a writer turns what it prepared")
-                    .turn()
-                    .expect("the pointer turns"),
+                // A refused turn is an outcome and not a failure of the arrangement: since Part B,
+                // the writer whose generation was written over is told so, and what this phase asks
+                // about is what is left afterwards either way.
+                Op::Turn(writer) => {
+                    let _ = prepared[*writer]
+                        .take()
+                        .expect("a writer turns what it prepared")
+                        .turn();
+                }
             }
         }
 
@@ -1144,5 +1203,145 @@ fn phase_5_what_is_left_of_the_losing_party() {
                 .contains(&planned(&held[loser])),
             "and says nothing about what it knew"
         );
+    }
+}
+
+/// Phase 7 — the repair, and the states it puts out of reach.
+///
+/// Part B. Its shape was decided by Phases 1 to 5 and by the two criteria: it must remove a state a
+/// reader can be misled by while what it replaces survives, and — this experiment's own addition — if
+/// it serializes writers it must say what a writer that waits is owed.
+///
+/// Both are measured here rather than argued.
+///
+/// **A state a reader can be misled by.** Three of them, and each has its own test above: a turn that
+/// published another writer's whole state, a turn that published a mixture of two writers' files, and
+/// a turn that put back a state two commits old. All three came from one cause — a turn was a claim
+/// about a name and the name's contents were nobody's business — so all three are answered by one
+/// comparison. What is asserted below is the second half: that the six mixtures Phase 4 enumerated
+/// cannot reach a reader through the write, and that a repository answers what it answered before
+/// through every one of them.
+///
+/// **What it replaces survives**, which was already the atomicity repair's promise and is measured
+/// again here because this changes the operation that keeps it.
+///
+/// **Nothing waits.** The second criterion is satisfied by construction rather than by design effort,
+/// and saying so is the honest form: no writer is held, nothing is claimed, nothing can time out, and
+/// a refused writer's recovery is the one the coordination experiment established. That is asserted
+/// too — the refused party reads again, decides again, converges, and both lines are there.
+#[test]
+fn phase_7_a_write_that_compares_before_it_swaps() {
+    let (repository, arrangement) = founded("phase-7");
+
+    let was_there = bytes(&repository);
+    let replaced = live(&repository);
+
+    // Every mixture Phase 4 enumerated, produced the way Phase 4 produces them — in a generation one
+    // writer prepared and another wrote into — and none of them reaches a reader.
+    for order in File::orders() {
+        for reached in 1..=File::ALL.len() {
+            let one = party(&repository, &arrangement, 0);
+            let other = party(&repository, &arrangement, 1);
+            let staged = contention::prepare(&repository, &one.files()).expect("preparable");
+            let into = Repository::open(staged.generation());
+
+            for file in &order[..reached] {
+                contention::put(&into, &other.files(), *file).expect("writable");
+            }
+
+            assert!(
+                matches!(staged.turn(), Err(RepositoryError::Contended { .. })),
+                "no prefix of another writer's state can be published as a commit"
+            );
+            assert_eq!(
+                bytes(&repository),
+                was_there,
+                "and the repository is untouched by the attempt"
+            );
+            assert_eq!(
+                state(&repository, &arrangement).expect("reconstructs"),
+                base(),
+                "answering what it answered before, by value"
+            );
+        }
+    }
+
+    // The collision itself: two writers, one generation, and the one whose bytes are still there is
+    // the one that commits. What it replaces survives, which is the criterion's second half.
+    let one = party(&repository, &arrangement, 0);
+    let other = party(&repository, &arrangement, 1);
+
+    let mine = contention::prepare(&repository, &one.files()).expect("preparable");
+    let theirs = contention::prepare(&repository, &other.files()).expect("preparable too");
+
+    assert!(
+        matches!(mine.turn(), Err(RepositoryError::Contended { .. })),
+        "the writer that was written over is the one told so"
+    );
+
+    theirs.turn().expect("and the other one commits");
+
+    assert_eq!(
+        state(&repository, &arrangement).expect("reconstructs"),
+        alone(&arrangement, 1),
+        "the commit landed, and it landed whole"
+    );
+    assert_eq!(
+        bytes(&Repository::open(&replaced)),
+        was_there,
+        "and the repository it replaced survives it, byte for byte"
+    );
+
+    // The refused writer's way back, and there is nothing to release first. It reads what is there,
+    // decides again, and puts both lines back through the merge — which is what a refusal has meant
+    // since the coordination experiment, and is why no writer here waits for anything.
+    let again = party(&repository, &arrangement, 0);
+
+    converge::converge(&repository, &again.working).expect("the refused party converges");
+
+    assert_eq!(
+        state(&repository, &arrangement).expect("reconstructs"),
+        merged(&arrangement, [1, 0]),
+        "and both lines are there, at the cost of an attempt"
+    );
+}
+
+/// What the repair does not reach, kept as a green test rather than as a sentence.
+///
+/// A whole write compares against the generation it prepared, so it cannot see a writer holding an old
+/// *reading*: that writer overwrites nobody, prepares a legitimate state of its own, and loses the
+/// other line in silence. Phase 2 measured it, and it measures the same thing after Part B — which is
+/// the point, and is why the two comparisons are two.
+#[test]
+fn a_stale_writer_is_still_not_something_a_write_can_see() {
+    let (repository, arrangement) = founded("residue");
+
+    let first = party(&repository, &arrangement, 0);
+    let second = party(&repository, &arrangement, 1);
+
+    // The second party's reading is now old, and the write it makes is whole, legitimate, and alone.
+    contention::write(&repository, &first.files()).expect("writable");
+    contention::write(&repository, &second.files()).expect("writable");
+
+    assert_eq!(
+        state(&repository, &arrangement).expect("reconstructs"),
+        alone(&arrangement, 1),
+        "the first party's line is gone, and nothing refused anything"
+    );
+
+    // And through the merge, the same two parties in the same order lose nothing. The difference is
+    // not the ordering; it is which comparison the writer went through.
+    let (merging, arrangement) = founded("residue-merged");
+    let one = party(&merging, &arrangement, 0);
+    let other = party(&merging, &arrangement, 1);
+
+    converge::converge(&merging, &one.working).expect("converges");
+
+    match converge::converge(&merging, &other.working) {
+        Err(ConvergeError::Diverged { position, .. }) => {
+            assert_eq!(position, BASE_ENTRIES, "at the entry each party added")
+        }
+        Err(other) => panic!("refused, and for another reason: {other}"),
+        Ok(_) => panic!("expected the stale party to be told"),
     }
 }

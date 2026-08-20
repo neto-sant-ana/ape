@@ -245,6 +245,20 @@ pub enum RepositoryError {
     /// other is the repository present and no longer meaning what it did.
     #[error("the journal is not readable as one: {0}")]
     Encoding(#[from] serde_json::Error),
+
+    /// Somebody else wrote into the generation this write had prepared, before it was turned.
+    ///
+    /// The whole of what makes a whole write a compare-and-swap rather than a compare followed by
+    /// a swap. Turning would publish a repository this writer did not write — the other writer's
+    /// state, or a mixture of the two — and both of those are states a *reader* cannot tell from a
+    /// finished commit.
+    ///
+    /// It names the generation because that is where the two writers met, and because a writer
+    /// that reads this has to decide whether to prepare again, which is a decision about where.
+    /// What it does not name is the other writer: nothing on disk says who that was, and the
+    /// contention experiment left the question of whether a repository should be able to say.
+    #[error("the generation prepared at {generation} was written over before it could be turned")]
+    Contended { generation: String },
 }
 
 #[derive(Debug, thiserror::Error)]
