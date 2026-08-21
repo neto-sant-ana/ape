@@ -68,6 +68,18 @@ not a **different record**: the dependence set is derived from the coordinate an
 already written, so nothing has to be stored and nothing has to be given up. The mistake in the four
 arrivals was not wanting dependence. It was assuming dependence had to arrive in the witness's place.
 
+**And that sentence is true only as far as the merge is willing to dissolve something.** Observation 11
+was measured after the rest of this was written, and it corrects the claim above rather than decorating
+it: a merged record holds a witness that is still **true** and no longer **checkable**, because the only
+thing it can be weighed against is a prefix of a journal that is not the one it was taken against. Six
+entries appear before the arriving decision's coordinate that its decider could not have seen, and no
+world notices. Worse, a comparison weak enough to admit that is *exactly* weak enough to admit a record
+whose journal grew underneath a local decision — the same shape, measured, indistinguishable. So:
+
+> To merge **without** dissolving what a decider could have known, the record has to say something it
+> does not say: which line of knowing each claim is about. A second comparison alone buys the
+> capability and pays for it with the guarantee, one repository further out.
+
 **And the pressure the protocol named did run the way it said.** Phase 3 is quick, visible and
 satisfying: three refusals become three admissions, the duplicate vanishes, the lineage shrinks by 32%.
 Phase 4 is a silence and had to be looked for. An experiment that had stopped after Phase 3 would have
