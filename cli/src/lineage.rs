@@ -36,7 +36,7 @@
 //! step with the lineage rather than wholly before it.
 //!
 //! Earned by: 01-divergence (Confirmed), 03-convergence (Confirmed), 05-coordination (Confirmed),
-//! 06-exploration (Confirmed)
+//! 06-exploration (Confirmed), 10-witness (Confirmed)
 
 use std::collections::BTreeSet;
 
@@ -122,9 +122,22 @@ pub struct Taken {
     ///
     /// This is [`Taken::after`] written a second time, in a form that says the same thing
     /// about the whole prefix rather than about its end — and a second representation of one
-    /// fact is the only thing a reader can compare. A repository holding only what produces
-    /// its worlds cannot contradict itself, which is another way of saying it cannot notice
-    /// anything.
+    /// fact is the only thing a reader can compare.
+    ///
+    /// # It is broader than what the decision is about, and that is its job
+    ///
+    /// A world is a function of its cut and its selection, and the entries those reach are a
+    /// strict subset of the prefix — fourteen of the twenty-three that stood in the witness
+    /// experiment's arrangement, seventeen of twenty-nine. That subset is derivable from
+    /// [`Taken::after`] and the journal, so a record of only what produces its worlds *does*
+    /// contradict itself wherever a claim disagrees with a derivation. What it cannot notice is
+    /// a change **no world is a function of**, and that is the class this exists for.
+    ///
+    /// Nothing else in a repository covers it. The coordinate says which knowledge a world was
+    /// produced against; [`crate::reading`] refuses any change that moves a world. Between them,
+    /// knowledge that arrived, was never depended on, and left is invisible — so this is the only
+    /// claim a repository holds whose subject is its **history** rather than its intentions, and
+    /// what it forbids is forbidden by that rather than by an accident of shape.
     ///
     /// It is a set rather than a sequence on purpose. An entry's identity is its content, so
     /// two admissions that refer to nothing of each other's carry nothing in their order; a
