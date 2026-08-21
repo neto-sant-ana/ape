@@ -330,7 +330,7 @@ fn phase_2_the_base_nobody_copied() {
             common,
             match relation {
                 Relation::Disjoint => 0,
-                Relation::Shared => BASE_ENTRIES,
+                Relation::Shared | Relation::Twinned => BASE_ENTRIES,
                 Relation::Extending => SIDE_ENTRIES,
             },
             "{relation:?}: and what they share as a set is what they share as a prefix"
@@ -479,23 +479,129 @@ fn phase_4_what_a_worlds_identity_does_not_pin() {
         "and the lineage does not"
     );
 
-    // C1 with C3, which is the experiment. The two sides agree about the base world by identity, and
-    // the meeting is refused anyway — because the journals are what is compared, and knowledge that
-    // no world names is enough to refuse one.
-    let left = found("phase-4-left", &carrying.left);
-    let right = found("phase-4-right", &carrying.right);
+    // C1 with C3, which is the experiment — and it needs the one relation where the two sides have
+    // nothing of their own. Under `Shared` a refusal proves nothing about unnamed knowledge, because
+    // each side admitted a plan of its own and the journals would diverge at 13 without any help.
+    // `Twinned` removes that: the same base, the same plan, so the two lineages are the same lineage.
+    let twinned = collision::arranged(Founding {
+        relation: Relation::Twinned,
+        settling: collision::Settling::Neither,
+        unselected: collision::Unselected::LeftOnly,
+    })
+    .expect("the arrangement holds");
 
     assert_eq!(
-        carrying.left.worlds[0], carrying.right.worlds[0],
-        "the two repositories hold one world between them"
+        twinned.left.worlds, twinned.right.worlds,
+        "the two repositories agree about every world either of them holds"
+    );
+
+    let left = found("phase-4-left", &twinned.left);
+    let right = found("phase-4-right", &twinned.right);
+
+    assert_eq!(
+        agreed(&right, &twinned.left.worlds),
+        SIDE_WORLDS,
+        "and each holds all of the other's, asked by identity"
     );
     assert_eq!(
         met(&left, &right),
         Met::RefusedAt {
             position: BASE_ENTRIES
         },
-        "and are refused a meeting, at the entry after the base they share"
+        "and they are refused a meeting anyway"
     );
+    assert_eq!(
+        met(&right, &left),
+        Met::RefusedAt {
+            position: BASE_ENTRIES
+        },
+        "in both directions"
+    );
+
+    // What is at the position that refuses them: on one side the inflow no world names, and on the
+    // other the plan both sides made. So the refusal is not about a *kind* of entry — it is that the
+    // journals say different things in the same place, and one of the two things is invisible to
+    // every world both repositories hold.
+    let (holding, plain) = (
+        collision::entries(&twinned.left.files).expect("admits"),
+        collision::entries(&twinned.right.files).expect("admits"),
+    );
+
+    assert_eq!(
+        holding.len(),
+        plain.len() + 1,
+        "one side knows one thing more"
+    );
+    assert_ne!(
+        holding[BASE_ENTRIES], plain[BASE_ENTRIES],
+        "and at the entry after the base the two journals say different things"
+    );
+    assert_eq!(
+        holding[BASE_ENTRIES + 1],
+        plain[BASE_ENTRIES],
+        "because the extra knowledge shifted the plan they agree about by one place"
+    );
+}
+
+/// Phase 4's neighbour — why the merge does not simply admit both and keep going.
+///
+/// The refusal Phase 4 measures is `ConvergeError::Diverged`, raised in the application before any
+/// admission is attempted. So the obvious question is what the engine would say if it were asked: the
+/// union of two twinned repositories' knowledge **is** one admissible journal — base, then the inflow
+/// no world names, then the plan both sides made — and one of them already holds exactly it.
+///
+/// This does the natural thing by hand, and the refusal moves one layer down rather than going away.
+#[test]
+fn the_natural_merge_is_refused_one_layer_down() {
+    let twinned = collision::arranged(Founding {
+        relation: Relation::Twinned,
+        settling: collision::Settling::Neither,
+        unselected: collision::Unselected::LeftOnly,
+    })
+    .expect("the arrangement holds");
+
+    // The union of their knowledge, which needs no interleaving: the left already holds every entry
+    // the right holds, and one more in the middle.
+    let journal = &twinned.left.files.journal;
+    let entries = collision::entries(&twinned.left.files).expect("admits");
+    let mut decisions: Vec<_> = twinned
+        .left
+        .files
+        .lineage
+        .iter()
+        .chain(twinned.right.files.lineage.iter())
+        .cloned()
+        .collect();
+
+    // Ordered the way the merge orders, because a rebuild admits the journal in step with the lineage
+    // and a decision cannot be applied after the replay has passed the entry it was taken at. This is
+    // `converge`'s own linearization: by where in the journal each decision was taken, then by what the
+    // decision itself says.
+    decisions.sort_by_key(|taken| {
+        (
+            entries.iter().position(|entry| *entry == taken.after),
+            taken.clone(),
+        )
+    });
+
+    assert_eq!(
+        journal.len(),
+        SIDE_ENTRIES + 1,
+        "one journal holds both sides' knowledge, and it is admissible — the left admits it"
+    );
+
+    let mut canon = ape::canon::Canon::new(ape_cli::history::ResidentHistory::new());
+
+    match ape_cli::lineage::rebuild(&mut canon, journal, &decisions) {
+        Err(ape_cli::error::LineageError::UnwitnessedKnowledge { entry }) => {
+            assert_eq!(
+                entry, entries[BASE_ENTRIES],
+                "the entry named is the one admitted between the base and the plan"
+            );
+        }
+        Err(other) => panic!("refused, and for another reason: {other}"),
+        Ok(_) => panic!("expected the union to be refused, and it rebuilt"),
+    }
 }
 
 /// What two repositories agree about, asked of each by the other's identities.

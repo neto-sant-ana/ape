@@ -125,6 +125,13 @@ pub enum Relation {
     Shared,
     /// The right journal is the left journal, extended by the right's own plan.
     Extending,
+    /// One base and the **same plan** on both sides, so the two lineages are identical by identity.
+    ///
+    /// The only relation in which the two repositories agree about *every* world they hold — which is
+    /// what isolates C4's consequence. Under [`Relation::Shared`] the two are refused for the
+    /// ordinary reason that each admitted something of its own; here there is nothing of their own
+    /// left, so a refusal can only come from knowledge no world names.
+    Twinned,
 }
 
 /// Where the Event that settles the fund is admitted.
@@ -202,7 +209,7 @@ pub fn arranged(founding: Founding) -> Result<Arranged, SubjectError> {
     let (left_mark, right_mark) = match founding.relation {
         // Different vocabularies, beginning at the first admission, so the journals differ at 0.
         Relation::Disjoint => ("north", "south"),
-        Relation::Shared | Relation::Extending => ("north", "north"),
+        Relation::Shared | Relation::Extending | Relation::Twinned => ("north", "north"),
     };
 
     let left = side(
@@ -217,13 +224,20 @@ pub fn arranged(founding: Founding) -> Result<Arranged, SubjectError> {
     // left's plan first, so that the left journal is a prefix of the right's.
     let carried: Vec<u128> = match founding.relation {
         Relation::Extending => vec![PLANS[0]],
-        Relation::Disjoint | Relation::Shared => vec![],
+        Relation::Disjoint | Relation::Shared | Relation::Twinned => vec![],
+    };
+
+    // Twinned is the one relation where the right side plans what the left planned, so that the two
+    // lineages are the same lineage and a refusal has nothing of their own to blame.
+    let plan = match founding.relation {
+        Relation::Twinned => PLANS[0],
+        Relation::Disjoint | Relation::Shared | Relation::Extending => PLANS[1],
     };
 
     let right = side(
         right_mark,
         &carried,
-        PLANS[1],
+        plan,
         Settling::Neither,
         Unselected::Neither,
     )?;
