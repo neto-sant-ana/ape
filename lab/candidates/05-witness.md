@@ -1,5 +1,16 @@
 # Candidate — Witness
 
+> **Answered.** Run as [experiment 10](../frontier/docs/10-witness/00-protocol.md); the result is
+> [`99-result.md`](../frontier/docs/10-witness/99-result.md). The answer is the one this page listed last
+> among its possibilities and did not expect: **no** — the two facts cannot be told apart, and the reason
+> is that the witness is the only claim in a repository whose subject is its history rather than its
+> intentions. What survives is that all four arrivals need a **second comparison** and nothing added to
+> the record, which is now its own queue item.
+>
+> This page is kept as it stood when the protocol was written. It is the material that was in front of
+> whoever wrote it, and editing it afterwards to match what happened would remove the only evidence that
+> the question was not decided in advance.
+
 **This is not a protocol.** A protocol is written when its experiment begins, with the previous findings
 in hand, and is not edited afterwards to match what happened. This is the material that would be in front
 of whoever writes it.

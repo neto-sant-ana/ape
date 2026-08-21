@@ -45,11 +45,16 @@ Four questions with their material gathered, because each was being inherited an
 | | question | where it began |
 |---|---|---|
 | [`00-authenticity`](candidates/00-authenticity.md) | what signs a record, and who holds the key | 02, and every result since says *unchanged* |
-| [`01-veracity`](candidates/01-veracity.md) | does a record that agrees with itself thereby say something true | 07 and 08 asked it identically; 01 had already measured an instance |
+| [`01-veracity`](candidates/01-veracity.md) | does a record that agrees with itself thereby say something true | 07 and 08 asked it identically; 01 had already measured an instance; and 10 handed it its **first reachable case from the writing side** — knowledge present at a decision, not depended on, and later removed |
 | [`02-scale`](candidates/02-scale.md) | an application must say what it counts somewhere — is that somewhere the record | the `i128` change, decided in conversation and written nowhere |
 | [`03-bounds`](candidates/03-bounds.md) | a floor with no ceiling cannot be stated, and the workaround writes down a bound that is false | handed over twice by the agents row, verbatim |
 | [`04-training`](candidates/04-training.md) | is this structure a harness for training decision reasoning | 06 was written to begin the question |
-| [`05-witness`](candidates/05-witness.md) | can a record say what a decision *depends on*, rather than what happened to have been admitted | 06 asked it as cost; 09 asked it three times as capability |
+
+**And one was held and answered.** [`05-witness`](candidates/05-witness.md) was run as experiment 10, and
+the answer is **no** — a record cannot say what a decision depends on *instead of* what stood, because the
+witness is the only guard whose subject is the repository's history. What survives is smaller and better
+placed: the three capabilities need a **second comparison** and nothing added to the record. It is below,
+under the frontier row, as its own item.
 
 ---
 
@@ -59,15 +64,17 @@ Ordered by how many concluded results named the item, which is the only ripeness
 
 | named in | item |
 |---|---|
-| 05 06 07 08 09 | **Saying two lines agree** — measured three times, expressible nowhere; and one of its faces is now held by [`05-witness`](candidates/05-witness.md) |
+| 05 06 07 08 09 | **Saying two lines agree** — measured three times, expressible nowhere; and the face 09 handed over is now the item below |
+| 09 10 | **A comparison whose subject is what two decisions are about** — the whole of what experiment 10 leaves standing. It needs an **operation** and not a record: the dependence set is derived from the coordinate and the journal, and all three of 09's blocked cases admit under it with nothing written down. What it must not do is replace the witness, which is measured |
 | 03 04 05 | **What a discarded or discredited lineage owes** the ones that took intention from it |
 | 07 08 | **A series of generations, and what would prune one** — where exploration's pruning question meets atomicity's rollback |
-| 07 | **A witness of the journal's extent** — recording how long a journal was, rejected in 07 as a substitute for atomicity, and still the only shape that would roll back a torn journal. Not the same item as [`05-witness`](candidates/05-witness.md), and pointing the opposite way: that one asks the witness to say **less**, this one asks the record to say **more** |
+| 07 | **A witness of the journal's extent** — recording how long a journal was, rejected in 07 as a substitute for atomicity, and still the only shape that would roll back a torn journal. It pointed the opposite way from [`05-witness`](candidates/05-witness.md), and experiment 10's answer makes it the surviving direction: the record's one history-shaped claim is the witness, and this asks for a second |
 | 05 08 | **Telling *never decided* from *decided and overwritten*** — the same unanswerable query reached from two directions |
 | 07 08 | **Durability against power loss** — `fsync`, and whether the pointer's rename is the only place it is needed |
 | 00 06 | **Snapshots or indexes**, and when repeated reconstruction justifies one |
 | 00 01 | **What a world is called** when an application holds several, and human-readable names for persisted identities |
 | 03 04 | **Does a transfer have an identity**, and would provenance be it |
+| 10 | **The readmission diagnosis is reachable only through a refusal** — `diagnosed` runs on the error path of `corroborate`, so a journal admitting one address twice past the last coordinate rebuilds in silence. Small, real, and unrelated to the witness |
 | 08 | **Whether a repository may say how many writers it admits** — the first need that asks the record to describe its own use |
 | 08 | **Threads, and a turn that is atomic against one** — excluded throughout, and what a real application meets |
 | 06 | **A decision that says it weighed rather than meant** — the request nearest the ontology, and load-bearing for [`04-training`](candidates/04-training.md) |
@@ -206,6 +213,11 @@ two repositories meeting    09 — they share the history they said the same way
                             a world where they agreed about the knowledge under it, and are
                             refused by the journal compared entire. No authority needed, and
                             the merge-base derived rather than found
+recording dependence in
+the witness's place         10 — no. Dependence is narrower, derivable and admits all three
+                            blocked cases; and the witness is the only guard whose subject
+                            is history, so what it stops refusing nothing else refuses.
+                            The capability survives as an operation, not as a record
 ```
 
 **And nothing is unrecorded any more.** The first sweep of this file found four items that existed in
