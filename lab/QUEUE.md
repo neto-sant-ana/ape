@@ -53,8 +53,8 @@ Four questions with their material gathered, because each was being inherited an
 **And one was held and answered.** [`05-witness`](candidates/05-witness.md) was run as experiment 10, and
 the answer is **no** — a record cannot say what a decision depends on *instead of* what stood, because the
 witness is the only guard whose subject is the repository's history. What survives is smaller and better
-placed: the three capabilities need a **second comparison** and nothing added to the record. It is below,
-under the frontier row, as its own item.
+placed: the three capabilities need a **second comparison** — and, if the merge is not to dissolve what a
+decider could have known, one thing the record does not say. Both are below, under the frontier row.
 
 ---
 
@@ -65,7 +65,8 @@ Ordered by how many concluded results named the item, which is the only ripeness
 | named in | item |
 |---|---|
 | 05 06 07 08 09 | **Saying two lines agree** — measured three times, expressible nowhere; and the face 09 handed over is now the item below |
-| 09 10 | **A comparison whose subject is what two decisions are about** — the whole of what experiment 10 leaves standing. It needs an **operation** and not a record: the dependence set is derived from the coordinate and the journal, and all three of 09's blocked cases admit under it with nothing written down. What it must not do is replace the witness, which is measured |
+| 09 10 | **A comparison whose subject is what two decisions are about** — what experiment 10 leaves standing. The dependence set is derived from the coordinate and the journal, and all three of 09's blocked cases admit under it with nothing written down. Two boundaries, both measured: it must not replace the witness; and on its own it dissolves *what a decider could have known*, because a comparison weak enough to admit an imported witness is the same shape as one that admits a journal grown underneath a local decision. And one hazard it must rule out and this experiment did not reach: an **Event** arriving before a non-Event coordinate moves a cut and produces a world nobody decided |
+| 07 10 | **Which line of knowing a claim is about** — the thing that would let a merge keep the context instead of dissolving it. Reached from three directions now: 07 wanted a witness of the journal's extent, 10 measured why a merge needs one, and the authenticity candidate asks the same question as *whose record is this* |
 | 03 04 05 | **What a discarded or discredited lineage owes** the ones that took intention from it |
 | 07 08 | **A series of generations, and what would prune one** — where exploration's pruning question meets atomicity's rollback |
 | 07 | **A witness of the journal's extent** — recording how long a journal was, rejected in 07 as a substitute for atomicity, and still the only shape that would roll back a torn journal. It pointed the opposite way from [`05-witness`](candidates/05-witness.md), and experiment 10's answer makes it the surviving direction: the record's one history-shaped claim is the witness, and this asks for a second |
