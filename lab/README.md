@@ -203,6 +203,9 @@ They live in [`candidates/`](candidates), numbered as experiments are.
   workaround admits a bound that is false.
 * **[`04-training`](candidates/04-training.md)** — whether this structure is a harness for training
   decision reasoning. The only one that asks what a record is *for* rather than what it must hold.
+* **[`05-witness`](candidates/05-witness.md)** — whether a record can say what a decision *depends on*
+  rather than what happened to have been admitted. Four arrivals, one of them asking it as cost and three
+  of them, in one experiment, looking like three separate candidates.
 
 And [`QUEUE.md`](QUEUE.md) is the whole of what can be worked on: every open item, where it was named,
 how many results named it, and which kind it is. It holds no question of its own and restates no

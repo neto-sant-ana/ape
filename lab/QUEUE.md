@@ -49,6 +49,7 @@ Four questions with their material gathered, because each was being inherited an
 | [`02-scale`](candidates/02-scale.md) | an application must say what it counts somewhere — is that somewhere the record | the `i128` change, decided in conversation and written nowhere |
 | [`03-bounds`](candidates/03-bounds.md) | a floor with no ceiling cannot be stated, and the workaround writes down a bound that is false | handed over twice by the agents row, verbatim |
 | [`04-training`](candidates/04-training.md) | is this structure a harness for training decision reasoning | 06 was written to begin the question |
+| [`05-witness`](candidates/05-witness.md) | can a record say what a decision *depends on*, rather than what happened to have been admitted | 06 asked it as cost; 09 asked it three times as capability |
 
 ---
 
@@ -58,11 +59,10 @@ Ordered by how many concluded results named the item, which is the only ripeness
 
 | named in | item |
 |---|---|
-| 03 04 05 07 08 | **Two repositories meeting** — what relates two repositories, as opposed to two lineages or two writers of one |
-| 05 06 07 08 | **Saying two lines agree** — measured twice, expressible nowhere |
+| 05 06 07 08 09 | **Saying two lines agree** — measured three times, expressible nowhere; and one of its faces is now held by [`05-witness`](candidates/05-witness.md) |
 | 03 04 05 | **What a discarded or discredited lineage owes** the ones that took intention from it |
 | 07 08 | **A series of generations, and what would prune one** — where exploration's pruning question meets atomicity's rollback |
-| 06 07 | **A witness that does not grow with the journal** — rejected in 07 as a substitute for atomicity, and still the only shape that would roll back a torn journal |
+| 07 | **A witness of the journal's extent** — recording how long a journal was, rejected in 07 as a substitute for atomicity, and still the only shape that would roll back a torn journal. Not the same item as [`05-witness`](candidates/05-witness.md), and pointing the opposite way: that one asks the witness to say **less**, this one asks the record to say **more** |
 | 05 08 | **Telling *never decided* from *decided and overwritten*** — the same unanswerable query reached from two directions |
 | 07 08 | **Durability against power loss** — `fsync`, and whether the pointer's rename is the only place it is needed |
 | 00 06 | **Snapshots or indexes**, and when repeated reconstruction justifies one |
@@ -202,7 +202,22 @@ fractional magnitudes       superseded by the i128 representation; what is left 
                             unit, in candidates/02-scale.md
 a separated readmission     the one authenticity face that WAS in the record, and was
                             relocated to where the fact lived
+two repositories meeting    09 — they share the history they said the same way, agree about
+                            a world where they agreed about the knowledge under it, and are
+                            refused by the journal compared entire. No authority needed, and
+                            the merge-base derived rather than found
 ```
 
 **And nothing is unrecorded any more.** The first sweep of this file found four items that existed in
-conversation and in no document. They are the four candidate files, which is what a queue is for.
+conversation and in no document. They are the first four candidate files, which is what a queue is for.
+
+**The fifth was found the other way**, and it is the more useful kind of finding: three items this queue
+would have listed as three turned out to be **one**, and one that was already in it. Experiment 09 ended
+with three requests — a partial meeting, knowledge without intention, agreement said once — and every one
+of them is blocked by the same line of `corroborate`; experiment 06 had asked the same question as a cost.
+Four arrivals, one candidate, [`05-witness`](candidates/05-witness.md).
+
+Which is worth stating as a habit rather than an anecdote: **a queue's failure mode is not only losing an
+item, it is holding one question as several.** Before a result's candidate list is copied here, the
+question to ask of any two of its entries is *what would have to change for both of these to be
+answered* — and if the answer is one line, they are one item.
