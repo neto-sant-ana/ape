@@ -11,6 +11,7 @@
 //! need a role and an agent are not two copies of one fact.
 
 pub mod atomicity;
+pub mod collision;
 pub mod contention;
 pub mod convergence;
 pub mod coordination;
