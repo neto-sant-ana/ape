@@ -827,6 +827,124 @@ fn phase_3_the_union_of_two_twinned_repositories() {
     assert_eq!(intended, INTENDED.to_vec(), "and they mean what they meant");
 }
 
+/// Whether the witness a decision brought with it is still **true** in the record it arrived in.
+///
+/// Three conditions, and they are the most a merged record could check without being told that more
+/// than one line of knowing exists: the claim names entries the journal holds, it names the coordinate
+/// the decision was taken at, and the entries it names replay as a history in their own right.
+///
+/// A witness that passes all three is a **true statement about a journal that is not this one.**
+fn coherent(journal: &[Admission], taken: &Taken) -> bool {
+    let record = dependence::Record::of(journal);
+    let positions = record.positions(&taken.witness);
+
+    if positions.len() != taken.witness.len() || !taken.witness.contains(&taken.after) {
+        return false;
+    }
+
+    let mut canon = Canon::new(ResidentHistory::new());
+
+    journal::replay(&mut canon, &pruned(journal, &positions)).is_ok()
+}
+
+/// What a merge dissolves, and what it does not.
+///
+/// The question the collision and witness experiments circled and neither asked outright: a decision
+/// arriving from another repository was taken over knowledge that repository held, and the record it
+/// arrives in holds more. So what happens to *what its decider could have known*?
+///
+/// Measured rather than reasoned, because two answers are natural and only one is right. The claim is
+/// not destroyed — it stays a true statement, and the entries it names still replay. What it stops
+/// being is **checkable**, because the only thing the record can weigh it against is a prefix of a
+/// journal that is not the one it was taken against.
+///
+/// And the sting is the last assertion. A comparison weak enough to accept an imported decision is
+/// exactly weak enough to accept a journal that grew underneath a local one — the two are the same
+/// shape, and nothing in the record distinguishes them.
+#[test]
+fn phase_3_a_merge_dissolves_what_a_decider_could_have_known() {
+    let arranged = witness::arranged().expect("the subject is arranged");
+    let union = &arranged.left.files.journal;
+
+    let arriving = arranged
+        .right
+        .files
+        .lineage
+        .last()
+        .expect("the right repository decided");
+
+    // What stood where it was taken, against what stands at the same coordinate here.
+    let mut canon = Canon::new(ResidentHistory::new());
+    let mut admitted = ape_cli::journal::Replayed::default();
+
+    journal::replay_through(&mut canon, union, &mut admitted, &arriving.after)
+        .expect("the coordinate resolves in the union");
+
+    assert_eq!(
+        (arriving.witness.len(), admitted.entries.len()),
+        (ENTRIES_WITHOUT_FILINGS, ENTRIES),
+        "the same coordinate, and six entries the decider could not have seen"
+    );
+
+    // The world is untouched, so nothing derived from a world can notice.
+    let (_, there) = rebuilt(&arranged.right.files);
+    let (_, produced) = rebuild_by_dependence(
+        union,
+        &by_dependence(union, &arranged.right.files.lineage, &there),
+    )
+    .expect("dependence admits the arriving lineage");
+
+    assert_eq!(
+        produced.iter().map(Thesis::id).collect::<Vec<_>>(),
+        arranged.right.worlds,
+        "same worlds, so the worlds file agrees either way"
+    );
+
+    // The claim is still true: the entries it names are a history, and they produce its world.
+    assert!(
+        coherent(union, arriving),
+        "the witness is a true statement about a journal that is not this one"
+    );
+
+    // And the check that accepts it accepts the other thing too. Left's own late decision, over a
+    // journal that gained an entry after it was taken, is coherent by the same three conditions.
+    let mut grown = union.clone();
+    let a_filing = witness::entries(union)
+        .expect("the union replays")
+        .iter()
+        .position(|entry| *entry == EntryId::of(arranged.left.filings[0]))
+        .expect("the left repository filed");
+
+    // Inserted before the late plan and after the filings, so the recording watermark holds: an
+    // admission dated earlier than what precedes it is refused, and would be measuring that instead.
+    grown.insert(grown.len() - 1, filing(&arranged.left, a_filing, 19));
+
+    let local = arranged
+        .left
+        .files
+        .lineage
+        .last()
+        .expect("the left repository decided");
+
+    assert!(
+        coherent(&grown, local),
+        "a decision whose journal grew underneath it passes the same three conditions — so a record \
+         that admits an imported witness cannot tell the two apart without being told that there is \
+         more than one line of knowing"
+    );
+
+    // And the three conditions are conditions: a claim naming knowledge the record does not hold at
+    // all is refused, which is what keeps the two assertions above from being satisfied by anything.
+    let mut shrunk = union.clone();
+
+    shrunk.remove(a_filing);
+
+    assert!(
+        !coherent(&shrunk, local),
+        "a witness naming an entry no journal here holds is not a true statement about any journal"
+    );
+}
+
 /// Knowledge taken without the lineage that witnessed it.
 ///
 /// The right repository takes the left's journal and keeps its own three decisions. Nothing about its
