@@ -59,7 +59,8 @@
 //! states it could leave reconstructs, so nothing on the reader's side would have said so. The write
 //! is now whole, and the repository this one replaces is still on disk.
 //!
-//! Earned by: 05-coordination (Confirmed), 07-atomicity (Confirmed), 08-contention (Confirmed)
+//! Earned by: 05-coordination (Confirmed), 07-atomicity (Confirmed), 08-contention (Confirmed),
+//! 09-collision (Confirmed)
 
 use std::collections::BTreeSet;
 
@@ -207,6 +208,19 @@ fn ordered(
 ///
 /// A party asks this to find out whether what it decided survived, which is the question Phase 1
 /// had no way to answer.
+///
+/// # It answers a second question it was not built for
+///
+/// Handed the identity of a world **another repository** decided, this is the whole of what two
+/// repositories agree about — symmetric, read-only, and needing neither of them to be told. The
+/// collision experiment measured it: two records founded independently, sharing no operation and no
+/// copy, agree about a world exactly where they agreed about the knowledge under it, and this is how a
+/// caller finds out. It costs a read and changes nothing.
+///
+/// Which is worth knowing here because [`converge`] **refuses** those same two repositories, at the
+/// first entry their journals do not share. The record can say what two of them have in common and has
+/// no operation that takes the agreement as its subject — so this function is currently the only thing
+/// in the application that a second repository is answerable to.
 pub fn holds(repository: &Repository, world: ThesisId) -> Result<bool, ConvergeError> {
     Ok(crate::reading::corroborated(repository)?
         .lineage
