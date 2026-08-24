@@ -114,8 +114,10 @@ replay it, apply the decisions, and the same `ThesisId` comes back.
 
 **Failure conditions.** The severe one was not met. Its neighbour **was** met, and was handled as the
 protocol required: a narrower witness admits a state a reader cannot tell from a legitimate one, so the
-remedy is refused and the state is reported — it belongs to the veracity candidate, and it is that
-candidate's first reachable case from the writing side. Of the ordinary ones: no dependence set was
+remedy is refused and the state is reported — it belongs to the veracity candidate, as a **conditional**
+case rather than a reachable one, because the narrowing that reaches it is the thing being refused. What
+that candidate is hunting is a state reachable **by accident**, and this is not one. Of the ordinary
+ones: no dependence set was
 supplied by the arrangement; every outcome is reported from what the record holds rather than from the
 absence of an error; no repair was chosen at all, before or after Phase 4; the broad witness is reported
 as buying a guarantee rather than as wasteful; and the four arrivals were weighed as one question asked
@@ -233,12 +235,18 @@ basis owes a reader is not answered.
 
 ## Candidates for later experiments
 
-* **Authenticity**, named by nine results and next in line.
+* **Veracity**, and what this experiment hands it is a **method** rather than a case. Its two writing-side
+  states — knowledge present, not depended on, and later removed; and a witness that is true and
+  unverifiable after a merge — are both conditional on a narrowing that was refused, so neither is
+  reachable by accident and neither is evidence of what that candidate hunts. What *is* new is Phase 4's
+  apparatus: enumerate the states, put each one to **every** guard the record has, and report the closed
+  table. Experiments 07 and 08 both asked veracity's question and neither answered it, and neither had
+  that.
+* **Authenticity**, named by ten results — and its own material now argues its outcome. Every face but one
+  answers *no* to *is the distinguishing fact in the record?*, so the remedy is a key or an anchor
+  outside, and the likely result is a boundary.
 * **A comparison whose subject is what two decisions are about** — Request 1, promoted out of the witness
   candidate, which this experiment closes. It needs an operation and not a record.
-* **Veracity**, with its first reachable case from the writing side: knowledge present at a decision, not
-  depended on, and later removed, is indistinguishable from a legitimate record under any comparison
-  narrower than presence.
 * **The readmission diagnosis is reachable only through a refusal** — small, real, and unrelated to the
   witness.
 * **Pruning**, whose line this experiment moved without measuring.
