@@ -238,37 +238,23 @@ pub enum ResourceKindRecord {
     },
 }
 
-/// The address of one journal entry: the identity admitting it produced, and when.
+/// The address of one journal entry: the identity admitting it produced.
 ///
-/// **This is experiment 14's Part B and the commit after it reverts it.** It is here so that the
-/// measurement in `lab/frontier/docs/14-individuation` is reproducible from a commit rather than from
-/// a diff quoted in prose. Five concluded experiments' suites do not compile against it, and every one
-/// of the seven tests in `lab/agents/tests/merge.rs` refuses — both are the finding, not an oversight.
-///
-/// It is content-addressed **and dated**, which are two things and only the first of them is the
-/// engine's. Every identity the engine derives is content-addressed, so an address names an entry
-/// rather than a place: a journal reordered, split across files or re-encoded still holds the entry
-/// this addresses, and an offset would hold none of them. Storing one is not caching a derivation for
-/// the reason the module already gives — replay re-derives every identity from content, and comparing
-/// the two is what makes a stored address checkable at all.
-///
-/// The instant is the application's addition and it is not derivable from content. It is here because
-/// nothing else in the record individuates by it: two parties learning one fact on different days
-/// admit entries the engine calls the same entry, and every guard downstream compares addresses.
+/// It is content-addressed, because every identity in the engine is, so it names an entry
+/// rather than a place. A journal reordered, split across files or re-encoded still holds the
+/// entry this addresses; an offset would hold none of them. Storing one is not caching a
+/// derivation for the reason the module already gives — replay re-derives every identity from
+/// content, and comparing the two is what makes a stored address checkable at all.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct EntryId(String);
 
 impl EntryId {
-    /// Address an entry by what admitting it produced, and by when it was recorded.
+    /// Address an entry by what admitting it produced.
     ///
-    /// The `AsRef` bound is what keeps the first half to identities. Everything else an admission
+    /// The `AsRef` bound is what keeps this to identities. Everything else an admission
     /// carries is content, and content is not unique to the entry that carries it.
-    ///
-    /// The instant is a second argument rather than something a caller may attach afterwards, so that
-    /// an address which does not say when cannot be constructed at all — and so that every place the
-    /// workspace derives an address from an identity alone stops compiling and says where it is.
-    pub fn of(id: impl AsRef<[u8; 32]> + std::fmt::Display, recorded_at: &str) -> Self {
-        Self(format!("{id}@{recorded_at}"))
+    pub fn of(id: impl AsRef<[u8; 32]> + std::fmt::Display) -> Self {
+        Self(id.to_string())
     }
 }
 
@@ -389,7 +375,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.roles.push(id);
-            EntryId::of(id, recorded_at)
+            EntryId::of(id)
         }
 
         Admission::Agent { label, recorded_at } => {
@@ -400,7 +386,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.agents.push(id);
-            EntryId::of(id, recorded_at)
+            EntryId::of(id)
         }
 
         Admission::Eligibility {
@@ -417,7 +403,7 @@ fn admit(
                 },
                 date(recorded_at)?,
             )?;
-            EntryId::of(id, recorded_at)
+            EntryId::of(id)
         }
 
         Admission::Resource {
@@ -439,7 +425,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.resources.push(id);
-            EntryId::of(id, recorded_at)
+            EntryId::of(id)
         }
 
         Admission::ResourceInstance {
@@ -455,7 +441,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.instances.push(id);
-            EntryId::of(id, recorded_at)
+            EntryId::of(id)
         }
 
         Admission::Action {
@@ -481,7 +467,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.actions.push(id);
-            EntryId::of(id, recorded_at)
+            EntryId::of(id)
         }
 
         Admission::Statement {
@@ -506,7 +492,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.statements.push(id);
-            EntryId::of(id, recorded_at)
+            EntryId::of(id)
         }
 
         Admission::Commitment {
@@ -543,7 +529,7 @@ fn admit(
                 date(recorded_at)?,
             )?;
             replayed.commitments.push(id);
-            EntryId::of(id, recorded_at)
+            EntryId::of(id)
         }
 
         Admission::Event {
@@ -563,7 +549,7 @@ fn admit(
                 },
                 date(recorded_at)?,
             )?;
-            EntryId::of(id, recorded_at)
+            EntryId::of(id)
         }
     };
 
