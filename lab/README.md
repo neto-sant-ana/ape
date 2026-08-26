@@ -255,13 +255,46 @@ added to `cli/src`:
 
 ## What resumes it
 
-> **Two consecutive frontier experiments that add no behaviour to `cli/src`.**
+> **When the coordinate question is answered** — the shape changes and settles, or it is refused with
+> a published reason.
 
-**Corrected once, by experiment 12.** The condition first read *…the second of them after the
-operation that comparison needs*, written when the next queued experiment was expected to build one.
-It did not: a partial meeting computes and its result is not a repository, so there is no operation
-to wait for and the clause was waiting on something that will not arrive. What replaced it is the
-plain form, and 12 is the first of the two.
+*What a decision records about where it was taken* is one question with four faces on the board, each
+named by a concluded result: a coordinate that is not a position (01, 05, 11, 12), a witness of the
+journal's extent (07), recording that a decision was carried (12), and whether an address should say
+when the entry was recorded (11). They are the four items that would change what a `Taken` or an
+`EntryId` **is**.
+
+**Corrected twice in six days, and both times for the same reason** — the condition kept measuring
+something adjacent to what it is for.
+
+It first read *two consecutive frontier experiments that add no behaviour to `cli/src`, the second of
+them after the operation that comparison needs*. The clause went first: experiment 12 found that a
+partial meeting computes and its result is not a repository, so there is no operation to wait for.
+
+Then the rest went, and this is the part worth keeping. Counting quiet experiments measures the wrong
+thing, and front-loading the large ones makes it worse rather than better:
+
+```text
+07 08   the generation machinery and the turn's comparison    the substrate as it now stands
+09      declined its remedy                                  no behaviour
+10      declined its Part B — and the refusal was the finding no behaviour
+11      one comparison in `converge`                          ~37 lines
+12      declined its Part B                                   no behaviour
+```
+
+**The largest experiments produced the least code.** The bigger the change an experiment weighs, the
+likelier its measurement declines to justify it — so a counter of quiet experiments fires *earliest*
+exactly while the shape is least settled. Experiment 12 was the largest of the row and moved that
+counter to one of two by building nothing.
+
+What invalidates an agents-row measurement is not the application having changed recently. It is the
+**shape** changing, because an agents subject compiles against `cli` and is measured through it. So
+the condition is about the shape, which is stricter today and cheaper to reach: one experiment rather
+than two silences.
+
+**The honest limit:** no shape condition is proof against a fifth face arriving. This one is about the
+faces already named by concluded results, which is the recorded cut — without it the condition reads
+*never*, which is the defect the first version had.
 
 Not *the queue is empty*, which never happens: experiment 11 alone added three rows to it. The
 condition is about the application's surface, because that is what an agents-row subject compiles

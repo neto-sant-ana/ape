@@ -73,12 +73,25 @@ the worlds it already reads and discards.
 
 ## Frontier row — experiment candidates
 
-Ordered by how many concluded results named the item, which is the only ripeness signal available.
+Ordered by how many concluded results named the item, which is the only **ripeness** signal available:
+it measures how often the record could not answer something, and whether the later arrivals sharpened
+the item or repeated it.
+
+**Ripeness is not the only axis, and the second one is not about importance.** How much an item would
+change the record says nothing about whether it is warranted — the ontology test below refuses that
+reading in as many words, and three of this row's sharpest results came from experiments that changed
+nothing. What blast radius does say is what an item costs **if done later**, because everything built
+on the old shape becomes rework. So it orders the items you are going to do; it does not choose them.
+
+The two axes disagree often and it is useful when they do. Where they agree — as they do today on
+*a coordinate that is not a position*, which has four sharpening arrivals **and** is the item most
+expensive to defer — the reading is not that one axis confirmed the other. It is that two different
+questions happened to have one answer.
 
 | named in | item |
 |---|---|
 | 05 06 07 08 09 | **Saying two lines agree** — measured three times, expressible nowhere. The face 09 handed over was run as experiment 12: a partial meeting **computes** and its result is not a repository, because a carried decision's witness stops being true. So the item is not closed and its shape moved — what it needs is below, under `12`, and none of it is a comparison |
-| 12 | **A coordinate that is not a position** — the fourth arrival of one face, and the first with a reason rather than a wish. 01 named it and was refused it; 05 gave it a second representation; 11 found what the representation omits; and 12 measured why it matters: a coordinate means *the prefix ending here*, and a prefix is not stable under a meeting. Every difficulty experiment 12 met reduces to this |
+| 01 05 11 12 | **A coordinate that is not a position** — the fourth arrival of one face, and the first with a reason rather than a wish. 01 named it and was refused it; 05 gave it a second representation; 11 found what the representation omits; and 12 measured why it matters: a coordinate means *the prefix ending here*, and a prefix is not stable under a meeting. Every difficulty experiment 12 met reduces to this |
 | 12 | **An operation whose result is not a repository** — a partial meeting is a **question**, and every operation the application has returns a record. What it would return instead — the carried set, the left-over set, and nothing written — is a shape nothing here has. The shape everything else 12 asked for needs |
 | 12 | **Recording that a decision was carried rather than taken** — three of four decisions survive a meeting and the record cannot say one of them arrived. Distinct from 09's Request 3, which asks how to say *both of us decided this* |
 | 07 10 11 | **Which line of knowing a claim is about** — the thing that would let a merge keep the context instead of dissolving it. 07 wanted a witness of the journal's extent; 10 measured why a merge needs one; 11 measured that the line is not only *which* journal but *when each entry was learned*, and that the record has no representation for having been told the same thing twice on two days. It is **not** authenticity, by that candidate's own discriminator: a journal's identity is derivable from what admitting produced, so the distinguishing fact *is* in the record — which puts it with the readmission, the one face of that family that could be answered from inside |
