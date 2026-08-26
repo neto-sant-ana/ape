@@ -250,17 +250,18 @@ added to `cli/src`:
 09      declined its remedy                                  no behaviour
 10      corrected one sentence                               no behaviour
 11      one comparison in `converge`                         ~37 lines
+12      built no Part B                                      no behaviour
 ```
-
-Two consecutive experiments changing nothing is what stabilizing looks like, and it nearly happened.
-But the next queued experiment is [the one that needs an
-operation](QUEUE.md) — the second comparison that three results have now named — so the trend is
-expected to break once more before it holds.
 
 ## What resumes it
 
-> **Two consecutive frontier experiments that add no behaviour to `cli/src`**, the second of them
-> after the operation that comparison needs.
+> **Two consecutive frontier experiments that add no behaviour to `cli/src`.**
+
+**Corrected once, by experiment 12.** The condition first read *…the second of them after the
+operation that comparison needs*, written when the next queued experiment was expected to build one.
+It did not: a partial meeting computes and its result is not a repository, so there is no operation
+to wait for and the clause was waiting on something that will not arrive. What replaced it is the
+plain form, and 12 is the first of the two.
 
 Not *the queue is empty*, which never happens: experiment 11 alone added three rows to it. The
 condition is about the application's surface, because that is what an agents-row subject compiles
