@@ -251,6 +251,7 @@ added to `cli/src`:
 10      corrected one sentence                               no behaviour
 11      one comparison in `converge`                         ~37 lines
 12      built no Part B                                      no behaviour
+13      refused its Part B, with the reason published        no behaviour
 ```
 
 ## What resumes it
@@ -263,6 +264,18 @@ named by a concluded result: a coordinate that is not a position (01, 05, 11, 12
 journal's extent (07), recording that a decision was carried (12), and whether an address should say
 when the entry was recorded (11). They are the four items that would change what a `Taken` or an
 `EntryId` **is**.
+
+**One of the four is answered, and the condition asks for the question.** Experiment 13 refused a
+repair to `Taken` with a published reason — a completed reference costs one recording instant per
+witnessed entry, and a recording instant is the one value in a repository that nothing derives, so
+what a completed pin buys is a claim no receiver can weigh. That is the ripest face and the most
+expensive to defer, and it is settled: `Taken` does not grow a pin.
+
+**It did not answer the other three, and it moved two of them.** A witness of the journal's extent
+(07) is untouched. Recording that a decision was carried (12) is untouched. *Whether an address should
+say when the entry was recorded* is the one 13 bears on directly, and it now has a sharper question
+than the one it was queued with — see [`QUEUE.md`](QUEUE.md), where the change is recorded. So the row
+stays parked, and what would unpark it is smaller than four experiments rather than three.
 
 **Corrected twice in six days, and both times for the same reason** — the condition kept measuring
 something adjacent to what it is for.
@@ -280,12 +293,14 @@ thing, and front-loading the large ones makes it worse rather than better:
 10      declined its Part B — and the refusal was the finding no behaviour
 11      one comparison in `converge`                          ~37 lines
 12      declined its Part B                                   no behaviour
+13      refused its Part B on the measurement                  no behaviour
 ```
 
 **The largest experiments produced the least code.** The bigger the change an experiment weighs, the
 likelier its measurement declines to justify it — so a counter of quiet experiments fires *earliest*
 exactly while the shape is least settled. Experiment 12 was the largest of the row and moved that
-counter to one of two by building nothing.
+counter to one of two by building nothing; 13 would have moved it to two of two, and 13 is the
+experiment that settled the ripest face of the question this condition is about.
 
 What invalidates an agents-row measurement is not the application having changed recently. It is the
 **shape** changing, because an agents subject compiles against `cli` and is measured through it. So

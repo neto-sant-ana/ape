@@ -47,7 +47,7 @@ experiment 11 and is below with `05-witness`.
 
 | | question | where it began |
 |---|---|---|
-| [`00-authenticity`](candidates/00-authenticity.md) | what signs a record, and who holds the key | 02, and every result since says *unchanged* |
+| [`00-authenticity`](candidates/00-authenticity.md) | what signs a record, and who holds the key | 02, and every result since says *unchanged* — until 13, which reached its boundary from **inside** and narrowed it: the only claim in a travelling decision that holding the content cannot settle is *when each entry was learned* |
 | [`02-scale`](candidates/02-scale.md) | an application must say what it counts somewhere — is that somewhere the record | the `i128` change, decided in conversation and written nowhere |
 | [`03-bounds`](candidates/03-bounds.md) | a floor with no ceiling cannot be stated, and the workaround writes down a bound that is false | handed over twice by the agents row, verbatim |
 | [`04-training`](candidates/04-training.md) | is this structure a harness for training decision reasoning | 06 was written to begin the question |
@@ -83,21 +83,27 @@ reading in as many words, and three of this row's sharpest results came from exp
 nothing. What blast radius does say is what an item costs **if done later**, because everything built
 on the old shape becomes rework. So it orders the items you are going to do; it does not choose them.
 
-The two axes disagree often and it is useful when they do. Where they agree — as they do today on
-*a coordinate that is not a position*, which has four sharpening arrivals **and** is the item most
-expensive to defer — the reading is not that one axis confirmed the other. It is that two different
-questions happened to have one answer.
+The two axes disagree often and it is useful when they do. Where they agree, the reading is not that
+one axis confirmed the other — it is that two different questions happened to have one answer. That
+was the case for *a coordinate that is not a position*, which had four sharpening arrivals **and** was
+the item most expensive to defer; it was run as experiment 13 and is below, under Closed.
+
+Today they agree again, on **whether an address should say when the entry was recorded** — which is
+now the item that would change what an `EntryId` is, and the one 13's measurement bears on directly.
 
 | named in | item |
 |---|---|
 | 05 06 07 08 09 | **Saying two lines agree** — measured three times, expressible nowhere. The face 09 handed over was run as experiment 12: a partial meeting **computes** and its result is not a repository, because a carried decision's witness stops being true. So the item is not closed and its shape moved — what it needs is below, under `12`, and none of it is a comparison |
-| 01 05 11 12 | **A coordinate that is not a position** — the fourth arrival of one face, and the first with a reason rather than a wish. 01 named it and was refused it; 05 gave it a second representation; 11 found what the representation omits; and 12 measured why it matters: a coordinate means *the prefix ending here*, and a prefix is not stable under a meeting. Every difficulty experiment 12 met reduces to this |
+| 13 | **A refusal that says which side is missing** — `UnknownEntry` names an address, and is returned both when a coordinate is wrong in the right journal and when a coordinate is right in the wrong journal. Two different faults with two different repairs, and the reader is handed the half of the pair that was never in doubt. The record holds the other half at the moment it refuses: it knows whether it holds any entry the witness names |
+| 13 | **An outcome for *I cannot answer for this decision*** — distinct from refusing, and currently the same value. A record holding nothing refuses a true decision exactly as it refuses a false one, so a reader cannot tell *not mine* from *corrupt*. What would say it is derivable — the witness and the record's own addresses are disjoint — which puts it with the refusal above rather than with the portability items |
+| 13 | **A way to hand one decision over at all** — there is none. `converge` merges two whole repositories and `holds` answers about an identity; nothing takes a single decision. Every question the row still has about two records exchanging deliberation is asking for this, and 13 measured the price: the receiver must already hold the content, and the instants it would be told are unverifiable by anyone, including the record they came from |
+| 12 13 | **A comparison over journals that is about membership rather than sequence** — `converge` refuses two journals holding the same knowledge in a different order, which the record's own reader accepts and answers correctly. Sound and not complete, the same shape 12 measured for the witness. The smallest item here: the incomplete side costs a party an attempt rather than a decision |
 | 12 | **An operation whose result is not a repository** — a partial meeting is a **question**, and every operation the application has returns a record. What it would return instead — the carried set, the left-over set, and nothing written — is a shape nothing here has. The shape everything else 12 asked for needs |
 | 12 | **Recording that a decision was carried rather than taken** — three of four decisions survive a meeting and the record cannot say one of them arrived. Distinct from 09's Request 3, which asks how to say *both of us decided this* |
 | 07 10 11 | **Which line of knowing a claim is about** — the thing that would let a merge keep the context instead of dissolving it. 07 wanted a witness of the journal's extent; 10 measured why a merge needs one; 11 measured that the line is not only *which* journal but *when each entry was learned*, and that the record has no representation for having been told the same thing twice on two days. It is **not** authenticity, by that candidate's own discriminator: a journal's identity is derivable from what admitting produced, so the distinguishing fact *is* in the record — which puts it with the readmission, the one face of that family that could be answered from inside |
 | 11 | **What a record owes two writers who disagree about an instant** — experiment 11's Part B refuses where an application would rather record. Two parties learning one fact on different days is ordinary, and the honest answer is not *your journals disagree* but *this entry was learned on day 3 by one of you and day 11 by the other*. Refusing invents nothing, which is why it was built; recording would need a shape nothing has measured |
 | 11 | **A merge that weighs the arriving worlds** — `converge` reads the arriving record's `worlds.json` and discards it, which makes a merge the one operation exempt from the guard that compares a decision against the world it produced. 11 closed the one route it found through that exemption and did not look for a second |
-| 11 | **Whether an address should say when the entry was recorded** — it was queued as a variable of the comparison experiment, and experiment 12 ran without needing it: a union is ordered by `recorded_at` whether or not the address carries it, and that ordering is what decides which of two records loses a decision. So the item survives its host and is the proposal to say it **once, at the address**, instead of at every comparison. An `EntryId` is the application's, and already a string; a composite one would let the three guards that exist catch what Part B needed a fourth comparison for, with the kernel keeping content-addressing, idempotent readmission and 09's agreement. It is **not** a second Part B for 11, by that protocol's own condition — a repair may close only the state that was found, and this changes what an address *is*, which reaches the witness, `replay_through` and the readmission diagnosis. Four predictions and three unmeasured: that it makes `RecordedDifferently` dead code; that it closes `ReadmittedEntryIsAmbiguous` by making two occurrences distinct; that it leaves 09's agreement standing at the world level and not at the journal level; and how many committed-repository suites need re-pinning. 11's subject already produces the case |
+| 11 13 | **Whether an address should say when the entry was recorded** — it was queued as a variable of the comparison experiment, and experiment 12 ran without needing it: a union is ordered by `recorded_at` whether or not the address carries it, and that ordering is what decides which of two records loses a decision. So the item survives its host and is the proposal to say it **once, at the address**, instead of at every comparison. An `EntryId` is the application's, and already a string; a composite one would let the three guards that exist catch what Part B needed a fourth comparison for, with the kernel keeping content-addressing, idempotent readmission and 09's agreement. It is **not** a second Part B for 11, by that protocol's own condition — a repair may close only the state that was found, and this changes what an address *is*, which reaches the witness, `replay_through` and the readmission diagnosis. Four predictions and three unmeasured: that it makes `RecordedDifferently` dead code; that it closes `ReadmittedEntryIsAmbiguous` by making two occurrences distinct; that it leaves 09's agreement standing at the world level and not at the journal level; and how many committed-repository suites need re-pinning. 11's subject already produces the case. **13 sharpened both ends and did not run it.** It measured the pin completing at the stage that carries recording instants and not before, so a composite address would make the *present* witness complete the reference with no field added — which is a fifth prediction, and the strongest argument the item has. And it measured the ceiling: a composite address does not make an instant checkable by anybody, so what it buys is where the pin lives and never what it is worth. The subject and the five candidates 13 built are the case, whole |
 | 03 04 05 | **What a discarded or discredited lineage owes** the ones that took intention from it |
 | 07 08 | **A series of generations, and what would prune one** — where exploration's pruning question meets atomicity's rollback |
 | 07 | **A witness of the journal's extent** — recording how long a journal was, rejected in 07 as a substitute for atomicity, and still the only shape that would roll back a torn journal. It pointed the opposite way from [`05-witness`](candidates/05-witness.md), and experiment 10's answer makes it the surviving direction: the record's one history-shaped claim is the witness, and this asks for a second |
@@ -118,7 +124,7 @@ questions happened to have one answer.
 | 02 | **Substitution** — one entry swapped for another, which no subject so far can produce |
 | 00 01 | **Dependencies, cancellation and unfulfillability** — untravelled paths through the same interpretation |
 
-**Deferred by all thirteen: cost.** No experiment has measured it and every one of them says so. It now
+**Deferred by all fourteen: cost.** No experiment has measured it and every one of them says so. It now
 has terms somebody could measure: reconstruction admits the journal in step with the lineage; every
 read derives and compares; a whole write copies three files rather than replacing three; and a turn
 reads three files before renaming. What is missing is not a method — it is a reason to want the number.
@@ -258,6 +264,14 @@ the witness's place         10 — no. Dependence is narrower, derivable and adm
                             blocked cases; and the witness is the only guard whose subject
                             is history, so what it stops refusing nothing else refuses.
                             The capability survives as an operation, not as a record
+a coordinate that is not
+a position                  13 — the reference IS fixable, and what fixes it is one recording
+                            instant per witnessed entry. That value is the one thing in a
+                            repository nothing derives, so a completed pin is a claim no
+                            receiver can weigh — not even the record it came from. `Taken`
+                            does not grow a pin, and the misleading state a pin would exclude
+                            is reachable through no operation the application offers: the one
+                            that would reach it refuses first, by a guard 11 built for a merge
 ```
 
 **And nothing is unrecorded any more.** The first sweep of this file found four items that existed in

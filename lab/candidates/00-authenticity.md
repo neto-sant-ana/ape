@@ -101,6 +101,34 @@ forgeable in silence.
 
 ---
 
+## Experiment 13 reached this boundary from inside, and narrowed it
+
+Every arrival before this one reached the family from the outside — a forgeable file, an unfalsifiable
+audit, a `by` derived from nothing. Experiment 13 asked what a decision must carry in order to name the
+knowledge it was taken against, and came out at the same edge from the other direction.
+
+> A reference is fixed by adding, for every witnessed entry, the instant it was recorded at. That value
+> is derived from nothing, so **no record weighs it — not the receiver, and not the record it came
+> from.** Everything else a decision carries is content-addressed and therefore self-verifying to
+> anybody holding the content.
+
+Which turns the question this candidate asks from a general one into a specific one:
+
+```text
+was                what signs a record, and who holds the key
+is now             the only claim in a travelling decision that holding the content cannot
+                   settle is WHEN EACH ENTRY WAS LEARNED — so what would a signature be
+                   answering, and is one instant per entry the thing it signs
+```
+
+That is not an answer and it is not a shape. It is a narrowing, and it makes the scope question below
+sharper rather than softer: an attested recording instant is a claim about a **clock**, which is even
+less obviously an engine's business than a claim about a file.
+
+It also puts `Taken.by` in the same class rather than beside it. Two values in a repository are derived
+from nothing — the decider and the recording instant — and 05 found the first while 11 found the second.
+13 measured that they are one kind: what a record checks, it derives, and neither of these is derived.
+
 ## What is not decided here
 
 Whether the answer is signing, an external anchor, an append-only log nobody in the repository can
