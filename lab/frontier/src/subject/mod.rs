@@ -18,6 +18,7 @@ pub mod convergence;
 pub mod coordination;
 pub mod divergence;
 pub mod exploration;
+pub mod indexicality;
 pub mod provenance;
 pub mod reconstruction;
 pub mod veracity;
