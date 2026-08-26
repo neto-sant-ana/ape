@@ -19,4 +19,5 @@ pub mod divergence;
 pub mod exploration;
 pub mod provenance;
 pub mod reconstruction;
+pub mod veracity;
 pub mod witness;
