@@ -42,19 +42,32 @@ result that removes the reason **not** to build something has not thereby asked 
 
 Four questions with their material gathered, because each was being inherited and dropped.
 
+Three now, and the count is worth keeping honest: [`01-veracity`](candidates/01-veracity.md) was run as
+experiment 11 and is below with `05-witness`.
+
 | | question | where it began |
 |---|---|---|
 | [`00-authenticity`](candidates/00-authenticity.md) | what signs a record, and who holds the key | 02, and every result since says *unchanged* |
-| [`01-veracity`](candidates/01-veracity.md) | does a record that agrees with itself thereby say something true | 07 and 08 **asked it and neither answered**; 01 had already measured an instance; and 10 handed it the **method** those two lacked — put every state to every guard and report the closed table |
 | [`02-scale`](candidates/02-scale.md) | an application must say what it counts somewhere — is that somewhere the record | the `i128` change, decided in conversation and written nowhere |
 | [`03-bounds`](candidates/03-bounds.md) | a floor with no ceiling cannot be stated, and the workaround writes down a bound that is false | handed over twice by the agents row, verbatim |
 | [`04-training`](candidates/04-training.md) | is this structure a harness for training decision reasoning | 06 was written to begin the question |
 
-**And one was held and answered.** [`05-witness`](candidates/05-witness.md) was run as experiment 10, and
-the answer is **no** — a record cannot say what a decision depends on *instead of* what stood, because the
-witness is the only guard whose subject is the repository's history. What survives is smaller and better
-placed: the three capabilities need a **second comparison** — and, if the merge is not to dissolve what a
-decider could have known, one thing the record does not say. Both are below, under the frontier row.
+**And two were held and answered.**
+
+[`05-witness`](candidates/05-witness.md) was run as experiment 10, and the answer is **no** — a record
+cannot say what a decision depends on *instead of* what stood, because the witness is the only guard whose
+subject is the repository's history. What survives is smaller and better placed: the three capabilities
+need a **second comparison** — and, if the merge is not to dissolve what a decider could have known, one
+thing the record does not say. Both are below, under the frontier row.
+
+[`01-veracity`](candidates/01-veracity.md) was run as experiment 11, and the answer is **yes** — there is a
+state this record reaches by accident that passes every check it has and answers falsely. Two parties learn
+one fact on different days, record it truthfully, and merge; the merged record answers a settled level of 0
+for a world its decider settled at 120. No identity in the engine contains a recording instant, so two
+journals can be equal entry for entry and not be the same journal — which the witness cannot see, because
+membership is over addresses. Part B closes that one state with one comparison in `converge`. What it hands
+the queue is below: what a record owes two writers who disagree about an instant, and a merge that weighs
+the worlds it already reads and discards.
 
 ---
 
@@ -65,8 +78,11 @@ Ordered by how many concluded results named the item, which is the only ripeness
 | named in | item |
 |---|---|
 | 05 06 07 08 09 | **Saying two lines agree** — measured three times, expressible nowhere; and the face 09 handed over is now the item below |
-| 09 10 | **A comparison whose subject is what two decisions are about** — what experiment 10 leaves standing. The dependence set is derived from the coordinate and the journal, and all three of 09's blocked cases admit under it with nothing written down. Two boundaries, both measured: it must not replace the witness; and on its own it dissolves *what a decider could have known*, because a comparison weak enough to admit an imported witness is the same shape as one that admits a journal grown underneath a local decision. And one hazard it must rule out and this experiment did not reach: an **Event** arriving before a non-Event coordinate moves a cut and produces a world nobody decided |
-| 07 10 | **Which line of knowing a claim is about** — the thing that would let a merge keep the context instead of dissolving it. 07 wanted a witness of the journal's extent; 10 measured why a merge needs one. It is **not** authenticity, by that candidate's own discriminator: a journal's identity is derivable from what admitting produced, so the distinguishing fact *is* in the record — which puts it with the readmission, the one face of that family that could be answered from inside |
+| 09 10 | **A comparison whose subject is what two decisions are about** — what experiment 10 leaves standing. The dependence set is derived from the coordinate and the journal, and all three of 09's blocked cases admit under it with nothing written down. Two boundaries, both measured: it must not replace the witness; and on its own it dissolves *what a decider could have known*, because a comparison weak enough to admit an imported witness is the same shape as one that admits a journal grown underneath a local decision. And one hazard it must rule out and this experiment did not reach: an **Event** arriving before a non-Event coordinate moves a cut and produces a world nobody decided. Experiment 11 adds a second, measured rather than predicted: any such comparison is over addresses unless it says otherwise, and an address omits the recording instant — so a comparison built to admit two records' knowledge would reopen exactly what 11's Part B closed |
+| 07 10 11 | **Which line of knowing a claim is about** — the thing that would let a merge keep the context instead of dissolving it. 07 wanted a witness of the journal's extent; 10 measured why a merge needs one; 11 measured that the line is not only *which* journal but *when each entry was learned*, and that the record has no representation for having been told the same thing twice on two days. It is **not** authenticity, by that candidate's own discriminator: a journal's identity is derivable from what admitting produced, so the distinguishing fact *is* in the record — which puts it with the readmission, the one face of that family that could be answered from inside |
+| 11 | **What a record owes two writers who disagree about an instant** — experiment 11's Part B refuses where an application would rather record. Two parties learning one fact on different days is ordinary, and the honest answer is not *your journals disagree* but *this entry was learned on day 3 by one of you and day 11 by the other*. Refusing invents nothing, which is why it was built; recording would need a shape nothing has measured |
+| 11 | **A merge that weighs the arriving worlds** — `converge` reads the arriving record's `worlds.json` and discards it, which makes a merge the one operation exempt from the guard that compares a decision against the world it produced. 11 closed the one route it found through that exemption and did not look for a second |
+| 11 | **Whether an address should say when the entry was recorded** — the row above says any comparison over two records is over addresses *unless it says otherwise*, and this is the proposal to say otherwise **once, at the address**, instead of at every comparison. An `EntryId` is the application's, and already a string; a composite one would let the three guards that exist catch what Part B needed a fourth comparison for, with the kernel keeping content-addressing, idempotent readmission and 09's agreement. It is **not** a second Part B for 11, by that protocol's own condition — a repair may close only the state that was found, and this changes what an address *is*, which reaches the witness, `replay_through` and the readmission diagnosis. Four predictions and three unmeasured: that it makes `RecordedDifferently` dead code; that it closes `ReadmittedEntryIsAmbiguous` by making two occurrences distinct; that it leaves 09's agreement standing at the world level and not at the journal level; and how many committed-repository suites need re-pinning. 11's subject already produces the case |
 | 03 04 05 | **What a discarded or discredited lineage owes** the ones that took intention from it |
 | 07 08 | **A series of generations, and what would prune one** — where exploration's pruning question meets atomicity's rollback |
 | 07 | **A witness of the journal's extent** — recording how long a journal was, rejected in 07 as a substitute for atomicity, and still the only shape that would roll back a torn journal. It pointed the opposite way from [`05-witness`](candidates/05-witness.md), and experiment 10's answer makes it the surviving direction: the record's one history-shaped claim is the witness, and this asks for a second |
@@ -75,7 +91,7 @@ Ordered by how many concluded results named the item, which is the only ripeness
 | 00 06 | **Snapshots or indexes**, and when repeated reconstruction justifies one |
 | 00 01 | **What a world is called** when an application holds several, and human-readable names for persisted identities |
 | 03 04 | **Does a transfer have an identity**, and would provenance be it |
-| 10 | **The readmission diagnosis is reachable only through a refusal** — `diagnosed` runs on the error path of `corroborate`, so a journal admitting one address twice past the last coordinate rebuilds in silence. Small, real, and unrelated to the witness |
+| 10 11 | **The readmission diagnosis is reachable only through a refusal** — `diagnosed` runs on the error path of `corroborate`, so a journal admitting one address twice past the last coordinate rebuilds in silence. 11 measured why the silence is harmless where 10 found it and where it is not: a witness is a **set**, so re-adding a member it already holds changes nothing, and the diagnosis is reached exactly when something new was learned between the two occurrences |
 | 08 | **Whether a repository may say how many writers it admits** — the first need that asks the record to describe its own use |
 | 08 | **Threads, and a turn that is atomic against one** — excluded throughout, and what a real application meets |
 | 06 | **A decision that says it weighed rather than meant** — the request nearest the ontology, and load-bearing for [`04-training`](candidates/04-training.md) |
@@ -87,7 +103,7 @@ Ordered by how many concluded results named the item, which is the only ripeness
 | 02 | **Substitution** — one entry swapped for another, which no subject so far can produce |
 | 00 01 | **Dependencies, cancellation and unfulfillability** — untravelled paths through the same interpretation |
 
-**Deferred by all nine: cost.** No experiment has measured it and every one of them says so. It now
+**Deferred by all twelve: cost.** No experiment has measured it and every one of them says so. It now
 has terms somebody could measure: reconstruction admits the journal in step with the lineage; every
 read derives and compares; a whole write copies three files rather than replacing three; and a turn
 reads three files before renaming. What is missing is not a method — it is a reason to want the number.

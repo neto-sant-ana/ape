@@ -196,7 +196,7 @@ They live in [`candidates/`](candidates), numbered as experiments are.
   Every result since corroboration names it and each says *unchanged*.
 * **[`01-veracity`](candidates/01-veracity.md)** — whether a record that agrees with itself thereby
   says something true. Asked identically by two protocols, answered by neither, and measured once
-  before either asked.
+  before either asked. **Answered by experiment 11: no.**
 * **[`02-scale`](candidates/02-scale.md)** — where a unit lives, in an engine that deliberately will
   not name one.
 * **[`03-bounds`](candidates/03-bounds.md)** — a floor with no ceiling cannot be stated, so the

@@ -1,5 +1,20 @@
 # Candidate — Veracity
 
+> **Answered.** Run as [experiment 11](../frontier/docs/11-veracity/00-protocol.md); the result is
+> [`99-result.md`](../frontier/docs/11-veracity/99-result.md). The answer is **yes**, and it is the
+> severe one: two parties learn the same fact on different days, record it truthfully, and merge — and
+> the merged record answers a settled level of 0 for a world its decider had settled at 120, with every
+> guard satisfied and nobody having lied. The mechanism is that no identity in the engine contains a
+> recording instant, so two journals can be equal entry for entry and not be the same journal.
+>
+> What this page could not have supplied, and the experiment needed first, was a **definition of
+> false**. It says so itself, below, and that turned out to be the whole reason 07 and 08 could not
+> answer.
+>
+> This page is kept as it stood when the protocol was written. It is the material that was in front of
+> whoever wrote it, and editing it afterwards to match what happened would remove the only evidence that
+> the question was not decided in advance.
+
 **This is not a protocol.** A protocol is written when its experiment begins, with the previous
 findings in hand, and is not edited afterwards to match what happened. This is the material that would
 be in front of whoever writes it.
