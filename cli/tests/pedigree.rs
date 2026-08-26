@@ -39,7 +39,10 @@ const NOTHING: &str = "nothing —";
 const MODULES: usize = 12;
 
 /// Citations across all of them, for the same reason.
-const CITATIONS: usize = 29;
+const CITATIONS: usize = 30;
+
+/// Concluded experiments across both rows, so a sweep that read none cannot report agreement.
+const RESULTS: usize = 16;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -147,27 +150,69 @@ fn declared(module: &Path) -> Result<Vec<Claim>, String> {
         .collect()
 }
 
+/// Where each row of the laboratory keeps one directory per concluded experiment.
+///
+/// Two, because the application may cite either, and the paths are asymmetric because the layout is:
+/// the frontier row keeps its documents under a `docs/` beside its crate, and the agents row keeps
+/// them at its top level.
+const ROWS: [&str; 2] = ["frontier/docs", "agents"];
+
+/// The result document one experiment name resolves to, searching every row.
+///
+/// It resolved against the frontier row alone until the agents row's stand-by was written down, and
+/// the guard's own claim is what made that a defect rather than a limitation: *nothing in the
+/// application is here without an experiment that earned it* cannot be checked by something that
+/// reads half the laboratory. Nothing cited the agents row, so nothing was wrong — which is the
+/// state a guard is least able to report.
+///
+/// **A name in two rows is refused rather than resolved.** Picking one silently is how a citation
+/// starts naming a document nobody meant; the rows are disjoint today and
+/// [`the_rows_hold_no_experiment_name_in_common`] is what says so.
+fn result_of(experiment: &str) -> Result<PathBuf, String> {
+    // The record is the laboratory's, and the application cites it. This is the application's one
+    // deliberate reach outside itself, and it is a test reading a file rather than the library
+    // depending on anything: nothing in `src/` knows the laboratory exists, and a `use` of it does
+    // not compile.
+    let found: Vec<PathBuf> = ROWS
+        .iter()
+        .map(|row| {
+            root()
+                .join("../lab")
+                .join(row)
+                .join(experiment)
+                .join("99-result.md")
+        })
+        .filter(|path| path.is_file())
+        .collect();
+
+    match found.as_slice() {
+        [only] => Ok(only.clone()),
+        [] => Err(format!(
+            "{experiment} names no result document in any row of the laboratory ({})",
+            ROWS.join(", ")
+        )),
+        several => Err(format!(
+            "{experiment} names a result in {} rows, so a citation of it names no document in \
+             particular",
+            several.len()
+        )),
+    }
+}
+
 /// The verdicts a result document leads with, read out of the document.
 ///
 /// The verdict line is the first non-blank line after `# Result`, and every verdict on it is bold.
 /// Only that line is read: a bold span anywhere else in the document says nothing about the answer,
 /// and matching against the whole file is how this kind of check starts passing for the wrong reason.
+///
+/// **One form, and both rows write it.** The agents row wrote three others — a fenced block for
+/// three experiments, the verdict inside the heading for the fourth — which is one truth in three
+/// representations, and this is the reader that would have caught the divergence had it been looking.
+/// The four documents were normalized rather than the reader taught the shapes: a reader that accepts
+/// four forms ratifies them, and [`every_result_document_states_a_verdict`] is what keeps the number
+/// at one.
 fn verdicts(experiment: &str) -> Result<Vec<String>, String> {
-    // The record is the laboratory's, and the application cites it. This is the application's one
-    // deliberate reach outside itself, and it is a test reading a file rather than the library
-    // depending on anything: nothing in `src/` knows the laboratory exists, and a `use` of it does
-    // not compile.
-    let result = root()
-        .join("../lab/frontier/docs")
-        .join(experiment)
-        .join("99-result.md");
-
-    let document = std::fs::read_to_string(&result).map_err(|_| {
-        format!(
-            "{experiment} names no result document at {}",
-            result.display()
-        )
-    })?;
+    let document = std::fs::read_to_string(result_of(experiment)?).expect("readable");
 
     let line = document
         .lines()
@@ -204,6 +249,91 @@ fn earned(claim: &Claim) -> Result<(), String> {
         "claims {:?} of {}, whose result says {:?}",
         claim.verdict, claim.experiment, stated
     ))
+}
+
+/// Every concluded experiment of one row: the directories holding a result document.
+fn experiments(row: &str) -> Vec<String> {
+    let mut found = Vec::new();
+
+    for entry in std::fs::read_dir(root().join("../lab").join(row))
+        .expect("a row of the laboratory is there")
+    {
+        let path = entry.expect("readable").path();
+
+        if path.join("99-result.md").is_file() {
+            found.push(
+                path.file_name()
+                    .expect("a directory has a name")
+                    .display()
+                    .to_string(),
+            );
+        }
+    }
+
+    found.sort();
+
+    found
+}
+
+/// Every result document in the laboratory states its verdict in the one form the guard reads.
+///
+/// The sweep that was missing, and the reason the blocker was invisible: the reader looked at one
+/// row, so the other row's three other shapes were nobody's error. A result whose verdict this
+/// cannot read is a result no citation can rest on, which is a defect in the document rather than in
+/// the reader — and it is caught here rather than when somebody first tries to cite it.
+#[test]
+fn every_result_document_states_a_verdict() {
+    let mut swept = 0;
+    let mut refused = Vec::new();
+
+    for row in ROWS {
+        for experiment in experiments(row) {
+            swept += 1;
+
+            if let Err(unstated) = verdicts(&experiment) {
+                refused.push(unstated);
+            }
+        }
+    }
+
+    assert!(
+        refused.is_empty(),
+        "results the guard cannot read a verdict out of:\n  {}",
+        refused.join("\n  ")
+    );
+
+    assert_eq!(
+        swept, RESULTS,
+        "the sweep read {swept} results; a sweep that read none would otherwise agree with \
+         everything"
+    );
+}
+
+/// No experiment name resolves to two documents, which is what lets a citation name only the name.
+///
+/// Prevention rather than measurement, and the honest reading of it: the numbers repeat across the
+/// rows — both hold an `04` — and the names do not, so a citation is unambiguous by the naming
+/// convention rather than by anything enforcing it. This is what turns a convention into a refusal,
+/// and it is the only thing standing between `result_of`'s ambiguity arm and being unreachable
+/// forever.
+#[test]
+fn the_rows_hold_no_experiment_name_in_common() {
+    let [frontier, agents] = ROWS.map(experiments);
+
+    let shared: Vec<&String> = frontier
+        .iter()
+        .filter(|named| agents.contains(named))
+        .collect();
+
+    assert!(
+        shared.is_empty(),
+        "these names resolve to a result in both rows, so a citation of them names neither: \
+         {shared:?}"
+    );
+    assert!(
+        !frontier.is_empty() && !agents.is_empty(),
+        "both rows have to hold results for the comparison to have compared anything"
+    );
 }
 
 /// Every module of the application declares what earned it, and every claim resolves.

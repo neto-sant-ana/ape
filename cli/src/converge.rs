@@ -47,6 +47,18 @@
 //! observed. Two decisions on different branches have no order of their own; the repository needs
 //! one because a file is a sequence.
 //!
+//! # The recovery has an order, and it is not the one a reader would guess
+//!
+//! *Read again and admit again* is what a refused party is told, here and in [`crate::repository`],
+//! and it is written without qualification in both. It has an order: a Canon refuses an admission
+//! dated before its `recorded_through`, so **the party whose knowledge is dated earlier has to land
+//! first**. A party that re-reads a journal already recorded past its own instant cannot admit what
+//! it holds, and re-reading again will not change that.
+//!
+//! Invisible to the coordination experiment, whose two parties learned on the same day. Visible to
+//! the multiagent one, where two agents chose different instants, each for a stated reason — and
+//! handed the composition to whichever branch owns the sentence, which is this one.
+//!
 //! # A party that cannot converge writes nothing
 //!
 //! The merged repository is rebuilt in memory before any of it is written. A merge that does not
@@ -60,7 +72,7 @@
 //! is now whole, and the repository this one replaces is still on disk.
 //!
 //! Earned by: 05-coordination (Confirmed), 07-atomicity (Confirmed), 08-contention (Confirmed),
-//! 09-collision (Confirmed), 11-veracity (Confirmed)
+//! 09-collision (Confirmed), 11-veracity (Confirmed), 04-multiagent (Confirmed)
 
 use std::collections::BTreeSet;
 
