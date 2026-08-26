@@ -60,7 +60,7 @@
 //! is now whole, and the repository this one replaces is still on disk.
 //!
 //! Earned by: 05-coordination (Confirmed), 07-atomicity (Confirmed), 08-contention (Confirmed),
-//! 09-collision (Confirmed)
+//! 09-collision (Confirmed), 11-veracity (Confirmed)
 
 use std::collections::BTreeSet;
 
@@ -119,8 +119,18 @@ struct Sequence {
 
 /// Whichever of the two journals extends the other, refusing two that diverge.
 ///
-/// Compared by address rather than by record. An [`EntryId`] is derived from what admitting
+/// Two comparisons over the shared prefix, and the second is not a refinement of the first.
+///
+/// **By address**, which settles the knowledge. An [`EntryId`] is derived from what admitting
 /// produced, so two entries that agree are the same knowledge however either side spelled it.
+///
+/// **And by recording instant**, which the address cannot settle, because no identity contains one.
+/// Two parties that learn the same fact on different days write journals that agree entry for entry
+/// and are not the same journal: the instant is what a cut resolves its Event head against, so
+/// keeping the converging party's would re-derive a world the other party already decided — and
+/// nothing downstream would notice, because the witness is a set of addresses and a merge writes
+/// its own `worlds.json`. Measured in `lab/frontier/docs/11-veracity`, where a merged record
+/// answered a settled level of 0 for a world its decider had settled at 120.
 fn appended(arrived: &Corroborated, held: &Corroborated) -> Result<Sequence, ConvergeError> {
     let (there, here) = (&arrived.admitted.entries, &held.admitted.entries);
 
@@ -130,6 +140,20 @@ fn appended(arrived: &Corroborated, held: &Corroborated) -> Result<Sequence, Con
                 position,
                 expected: expected.clone(),
                 found: found.clone(),
+            });
+        }
+
+        let (theirs, ours) = (
+            arrived.journal[position].recorded_at(),
+            held.journal[position].recorded_at(),
+        );
+
+        if theirs != ours {
+            return Err(ConvergeError::RecordedDifferently {
+                position,
+                entry: found.clone(),
+                held: ours.to_owned(),
+                arrived: theirs.to_owned(),
             });
         }
     }

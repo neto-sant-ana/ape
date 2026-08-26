@@ -36,7 +36,7 @@
 //! step with the lineage rather than wholly before it.
 //!
 //! Earned by: 01-divergence (Confirmed), 03-convergence (Confirmed), 05-coordination (Confirmed),
-//! 06-exploration (Confirmed), 10-witness (Confirmed)
+//! 06-exploration (Confirmed), 10-witness (Confirmed), 11-veracity (Confirmed)
 
 use std::collections::BTreeSet;
 
@@ -144,6 +144,14 @@ pub struct Taken {
     /// witness over the ordered prefix would refuse a repository whose worlds are identical.
     /// What it must disagree with is a prefix that is not the one the decision was taken
     /// against, which is a question about membership.
+    ///
+    /// # And membership is over addresses, which is the one thing it cannot see
+    ///
+    /// An [`EntryId`] is derived from what admitting produced, and no identity carries a recording
+    /// instant — so a prefix whose entries were **learned on other days** has the same members and
+    /// satisfies this. That is not reachable within one journal, where recording is monotonic and
+    /// the neighbours bound it; it is reachable between two, and [`crate::converge`] is where the
+    /// comparison that catches it lives.
     pub witness: BTreeSet<EntryId>,
     /// The party that took it, where anything says.
     ///

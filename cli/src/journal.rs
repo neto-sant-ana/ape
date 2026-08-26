@@ -32,7 +32,8 @@
 //! named entry and stops, so that something else can happen against exactly the knowledge
 //! that stood then.
 //!
-//! Earned by: 00-reconstruction (Confirmed), 05-coordination (Confirmed)
+//! Earned by: 00-reconstruction (Confirmed), 05-coordination (Confirmed),
+//! 11-veracity (Confirmed)
 
 use std::collections::BTreeSet;
 
@@ -188,6 +189,27 @@ pub enum Admission {
         occurred_at: String,
         recorded_at: String,
     },
+}
+
+impl Admission {
+    /// When this admission says knowledge entered the system.
+    ///
+    /// The one field of an entry that is neither content nor reference, and therefore the one an
+    /// [`EntryId`] does not cover. Two journals can hold the same entry and disagree here, which is
+    /// why anything comparing journals has to reach it explicitly.
+    pub fn recorded_at(&self) -> &str {
+        match self {
+            Self::Role { recorded_at, .. }
+            | Self::Agent { recorded_at, .. }
+            | Self::Eligibility { recorded_at, .. }
+            | Self::Resource { recorded_at, .. }
+            | Self::ResourceInstance { recorded_at, .. }
+            | Self::Action { recorded_at, .. }
+            | Self::Statement { recorded_at, .. }
+            | Self::Commitment { recorded_at, .. }
+            | Self::Event { recorded_at, .. } => recorded_at,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

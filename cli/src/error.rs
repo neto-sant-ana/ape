@@ -161,6 +161,28 @@ pub enum ConvergeError {
         found: crate::journal::EntryId,
     },
 
+    /// The two journals hold the same entry and disagree about when it was recorded.
+    ///
+    /// Separate from [`ConvergeError::Diverged`] because the address is the *same*, and a refusal
+    /// naming two identical identities sends a reader looking for a difference that is not there.
+    /// A recording instant belongs to no identity, so this is the one way two journals can be a
+    /// different journal and agree entry for entry.
+    ///
+    /// It has to be a refusal rather than a choice. The instant is what a cut resolves its Event
+    /// head against, so keeping either party's would move a world the other party decided — and the
+    /// record has no representation for having been told twice. The party re-reads and decides
+    /// again, which is the recovery every other refusal here offers.
+    #[error(
+        "the journal disagrees about entry {position}, {entry}: \
+         this party recorded it at {held} and {arrived} is there"
+    )]
+    RecordedDifferently {
+        position: usize,
+        entry: crate::journal::EntryId,
+        held: String,
+        arrived: String,
+    },
+
     /// Decisions that cannot be put in an order, because none of what is left extends a world
     /// anything produced. A lineage whose worlds do not reach a genesis is not a lineage.
     #[error("{remaining} decisions extend worlds nothing in the merge produces")]
