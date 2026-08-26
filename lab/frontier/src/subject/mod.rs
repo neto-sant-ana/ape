@@ -12,6 +12,7 @@
 
 pub mod atomicity;
 pub mod collision;
+pub mod commensurability;
 pub mod contention;
 pub mod convergence;
 pub mod coordination;
