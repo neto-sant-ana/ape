@@ -36,7 +36,8 @@
 //! step with the lineage rather than wholly before it.
 //!
 //! Earned by: 01-divergence (Confirmed), 03-convergence (Confirmed), 05-coordination (Confirmed),
-//! 06-exploration (Confirmed), 10-witness (Confirmed), 11-veracity (Confirmed)
+//! 06-exploration (Confirmed), 10-witness (Confirmed), 11-veracity (Confirmed),
+//! 14-individuation (Refuted)
 
 use std::collections::BTreeSet;
 
@@ -160,10 +161,17 @@ pub struct Taken {
     /// every such decision carry an agent invented to fill it — which is the one thing an
     /// unwitnessed claim must not be made to do.
     ///
-    /// It is **not** optional in order to keep already-written records readable. That was the
-    /// reason given here first, and it was wrong about where such records are: a suite that writes
-    /// and reads with one version of this type is not constrained by it at all. The rule that
-    /// governs what a concluded experiment does and does not own is in `lab/README.md`.
+    /// It is **not** optional in order to keep already-written records readable. That reason was
+    /// given here first and it is still not this field's reason — but the sentence it came with was
+    /// wrong about the workspace, and experiment 14 is what found out. It said a suite that writes and
+    /// reads with one version of a type is not constrained by it *at all*. Four repositories under
+    /// `lab/agents/04-multiagent` were written once and are read as data by a live suite, so the
+    /// workspace does hold records a shape change would strand — measured, by changing one, at which
+    /// point every one of that suite's seven tests refused with an address that no longer resolves.
+    ///
+    /// What that constrains is a **shape**, not this field's optionality: an absent `by` reads back
+    /// fine. The rule that governs what a concluded experiment does and does not own is in
+    /// `lab/README.md`.
     ///
     /// An [`AgentId`] rather than a label, because it is the strongest checkable thing available:
     /// an identity resolves against the knowledge that stood when the decision was taken, and a
