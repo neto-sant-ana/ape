@@ -223,3 +223,57 @@ meaning outside the engine's memory. Its concluded experiments keep one director
 **[`agents/`](agents)** — whether an autonomous LLM agent can express, evaluate and later
 reconstruct an operational decision through APE without extending its ontology, and whether several
 of them can coordinate through it without the engine inferring what any of them meant.
+
+---
+
+# The agents row is on stand-by, and that is a decision
+
+Its last experiment concluded on 17/08/2026 and nothing has moved since. **That is deliberate, and a
+row that is parked reads exactly like a row that was abandoned** — which is why it is written here
+rather than left to be inferred from the dates.
+
+## Why
+
+**Because the substrate has already moved under it once, and the cost is on the record.** The row's own
+[re-run debt](agents/00-question/05-the-re-runs-that-did-not-happen.md) is three caveats that the CLI's
+repository made liftable and nobody lifted. Its experiments 01 to 03 are results of an in-memory
+boundary, pinned at engine `db3f965`; 04 is a result against the repository. Running more agent
+experiments while the frontier row keeps changing the application would produce more debt of exactly
+that kind, and the debt document already says a re-run *"would make three sentences more precise"* —
+which is not worth paying for twice.
+
+**And the frontier row is not finished changing the application.** Measured, per experiment, in lines
+added to `cli/src`:
+
+```text
+07 08   the generation machinery and the turn's comparison    the substrate as it now stands
+09      declined its remedy                                  no behaviour
+10      corrected one sentence                               no behaviour
+11      one comparison in `converge`                         ~37 lines
+```
+
+Two consecutive experiments changing nothing is what stabilizing looks like, and it nearly happened.
+But the next queued experiment is [the one that needs an
+operation](QUEUE.md) — the second comparison that three results have now named — so the trend is
+expected to break once more before it holds.
+
+## What resumes it
+
+> **Two consecutive frontier experiments that add no behaviour to `cli/src`**, the second of them
+> after the operation that comparison needs.
+
+Not *the queue is empty*, which never happens: experiment 11 alone added three rows to it. The
+condition is about the application's surface, because that is what an agents-row subject compiles
+against and what its measurements are taken through.
+
+## What is not parked
+
+**The guard that would refuse the row's work.** `cli/tests/pedigree.rs` resolves a citation's verdict
+out of a result document, and it read the frontier row alone — so nothing the agents row earns could
+be cited by the application, and the divergence in how the two rows wrote a verdict was nobody's
+error. Fixed while the row is parked, which is the right time: it is a defect in a frontier-row guard
+rather than agents-row work, and doing it now means nobody meets it mid-experiment.
+
+**Saying what the row's state is**, which is this section. A stand-by that is not written down is
+indistinguishable from a stall, and the point of parking a row is that somebody else can rely on it
+staying parked.

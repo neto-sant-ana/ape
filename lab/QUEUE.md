@@ -173,16 +173,23 @@ that way, because *the work may proceed* is not *something asked for it*. No exp
 obstructed by its absence, and coherence is not pressure — which is the same standard applied to every
 declined Part B in the row.
 
-**One blocker would also have to move first, and it is structural.** `cli/tests/pedigree.rs` resolves a
-citation against `lab/frontier/docs/<experiment>/99-result.md` — the **frontier row only**. So nothing
-the agents row earns can be cited by the application as it stands. That is a finding about the guard
-rather than about the work, and it is the first time it has mattered.
+**The blocker that would have stopped it is gone.** `cli/tests/pedigree.rs` resolved a citation against
+`lab/frontier/docs/<experiment>/99-result.md` — the **frontier row only** — so nothing the agents row
+earned could be cited by the application. It now searches both rows and refuses a name that resolves in
+two. Two things turned up in the fixing that the one-line description did not have: the agents row wrote
+a verdict in three other shapes, none of them the one the reader reads, so the divergence was nobody's
+error while the reader looked at half the laboratory; and the four documents were normalized rather than
+the reader taught the shapes. `04-multiagent` is now cited by `cli/src/converge.rs`, which is the first
+citation of this row the application has ever held.
 
 ---
 
 ## Re-run debt — agents row
 
-Recorded in [`agents/00-question/05-the-re-runs-that-did-not-happen.md`](agents/00-question/05-the-re-runs-that-did-not-happen.md),
+**Inside the row's stand-by, and unpaid on purpose.** Each of the three is settled by an *agent* handed
+the repository, so paying them is agents-row work; the condition that resumes the row is in
+[`README.md`](README.md). Recorded in
+[`agents/00-question/05-the-re-runs-that-did-not-happen.md`](agents/00-question/05-the-re-runs-that-did-not-happen.md),
 which also states why the debt is acceptable and where it is not. Three caveats the repository
 substrate made liftable, and nobody has lifted:
 
@@ -201,9 +208,10 @@ agent handed a **larger boundary uses more of it**. Every earlier run met silenc
 author on an admission; no *on-behalf-of* between agents; and `Corroborated` cannot extend what was
 read, so a party that has decided rebuilds the struct field by field.
 
-**One composition handed over and not written**: the repair *read again and admit again* has an order,
-because a Canon refuses an admission dated before its `recorded_through` — so the party whose knowledge
-is dated earlier must land first. Both halves are documented; only their composition is not.
+**And the one composition handed over is now written** — in `cli/src/converge.rs`, the branch that owns
+the sentence: *read again and admit again* has an order, because a Canon refuses an admission dated
+before its `recorded_through`, so the party whose knowledge is dated earlier has to land first. It
+needed no agent, which is why it was the one item of this section payable while the row is parked.
 
 ---
 

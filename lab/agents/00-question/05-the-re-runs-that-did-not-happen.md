@@ -4,6 +4,22 @@ The substrate moved to the CLI's repository, and the three experiments were not 
 Going straight to the fourth was a decision, and this is the debt it leaves, stated so that nobody
 later reads an unmeasured prediction as a settled one.
 
+> **Status, 26/08/2026: unpaid on purpose, and inside the row's stand-by.** S2 to S4 are each settled
+> by an *agent* handed the repository, so paying them is agents-row work — and the row is parked while
+> the frontier row is still changing the application. The condition that resumes both is in
+> [`lab/README.md`](../../README.md): two consecutive frontier experiments that add no behaviour to
+> `cli/src`.
+>
+> Running them now would produce debt of exactly the kind this page records. That is not a new
+> argument — it is the one below, under *what would make the debt worth paying*, which already says
+> the three are not the instrument worth building.
+>
+> **What did come off the list is the composition**, which needed no agent: *read again and admit
+> again* has an order, and it is now written in `cli/src/converge.rs`, the branch that owns the
+> sentence. That is also the first thing the application has ever cited this row for — the guard
+> resolved a citation against the frontier row alone until it was fixed, so nothing here **could** be
+> cited, and nobody had met it.
+
 ---
 
 ## Settled without a re-run, and on what
