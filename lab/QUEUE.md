@@ -88,8 +88,10 @@ one axis confirmed the other — it is that two different questions happened to 
 was the case for *a coordinate that is not a position*, which had four sharpening arrivals **and** was
 the item most expensive to defer; it was run as experiment 13 and is below, under Closed.
 
-Today they agree again, on **whether an address should say when the entry was recorded** — which is
-now the item that would change what an `EntryId` is, and the one 13's measurement bears on directly.
+They agreed again on **whether an address should say when the entry was recorded**, which was run as
+experiment 14 and is below, under Closed. **Twice in a row the item both axes pointed at came back
+refused**, and that is worth reading rather than filing: agreement between the two axes says an item is
+*ripe and expensive to defer*, and neither of those is a prediction that the answer is yes.
 
 | named in | item |
 |---|---|
@@ -103,7 +105,8 @@ now the item that would change what an `EntryId` is, and the one 13's measuremen
 | 07 10 11 | **Which line of knowing a claim is about** — the thing that would let a merge keep the context instead of dissolving it. 07 wanted a witness of the journal's extent; 10 measured why a merge needs one; 11 measured that the line is not only *which* journal but *when each entry was learned*, and that the record has no representation for having been told the same thing twice on two days. It is **not** authenticity, by that candidate's own discriminator: a journal's identity is derivable from what admitting produced, so the distinguishing fact *is* in the record — which puts it with the readmission, the one face of that family that could be answered from inside |
 | 11 | **What a record owes two writers who disagree about an instant** — experiment 11's Part B refuses where an application would rather record. Two parties learning one fact on different days is ordinary, and the honest answer is not *your journals disagree* but *this entry was learned on day 3 by one of you and day 11 by the other*. Refusing invents nothing, which is why it was built; recording would need a shape nothing has measured |
 | 11 | **A merge that weighs the arriving worlds** — `converge` reads the arriving record's `worlds.json` and discards it, which makes a merge the one operation exempt from the guard that compares a decision against the world it produced. 11 closed the one route it found through that exemption and did not look for a second |
-| 11 13 | **Whether an address should say when the entry was recorded** — it was queued as a variable of the comparison experiment, and experiment 12 ran without needing it: a union is ordered by `recorded_at` whether or not the address carries it, and that ordering is what decides which of two records loses a decision. So the item survives its host and is the proposal to say it **once, at the address**, instead of at every comparison. An `EntryId` is the application's, and already a string; a composite one would let the three guards that exist catch what Part B needed a fourth comparison for, with the kernel keeping content-addressing, idempotent readmission and 09's agreement. It is **not** a second Part B for 11, by that protocol's own condition — a repair may close only the state that was found, and this changes what an address *is*, which reaches the witness, `replay_through` and the readmission diagnosis. Four predictions and three unmeasured: that it makes `RecordedDifferently` dead code; that it closes `ReadmittedEntryIsAmbiguous` by making two occurrences distinct; that it leaves 09's agreement standing at the world level and not at the journal level; and how many committed-repository suites need re-pinning. 11's subject already produces the case. **13 sharpened both ends and did not run it.** It measured the pin completing at the stage that carries recording instants and not before, so a composite address would make the *present* witness complete the reference with no field added — which is a fifth prediction, and the strongest argument the item has. And it measured the ceiling: a composite address does not make an instant checkable by anybody, so what it buys is where the pin lives and never what it is worth. The subject and the five candidates 13 built are the case, whole |
+| 14 | **Something that individuates a prefix rather than an entry** — the direction the address question leaves standing, and the first time the row has one. Experiment 14 measured that fixing a reference costs exactly one thing and that putting it *at the address* is refused: an address must stay a function of the entity it names. What a decision needs pinned is not an entry, it is the **prefix** ending at one — so a value that individuates a prefix would fix a reference and leave every address a name. Named as a direction and not as a design, which is what the methodological constraint requires and what 14 is the argument for |
+| 14 | **A shape change strands four committed repositories, and nothing says so where it would be read** — `lab/agents/04-multiagent/run-*/repo` are written once and read as data by a live suite. Measured: changing what an address is refuses every one of that suite's seven tests, each with an address that no longer resolves. `cli/src/lineage.rs` now says so, and what is queued is whether anything should say it where a *shape* is declared rather than in one field's docstring |
 | 03 04 05 | **What a discarded or discredited lineage owes** the ones that took intention from it |
 | 07 08 | **A series of generations, and what would prune one** — where exploration's pruning question meets atomicity's rollback |
 | 07 | **A witness of the journal's extent** — recording how long a journal was, rejected in 07 as a substitute for atomicity, and still the only shape that would roll back a torn journal. It pointed the opposite way from [`05-witness`](candidates/05-witness.md), and experiment 10's answer makes it the surviving direction: the record's one history-shaped claim is the witness, and this asks for a second |
@@ -124,7 +127,7 @@ now the item that would change what an `EntryId` is, and the one 13's measuremen
 | 02 | **Substitution** — one entry swapped for another, which no subject so far can produce |
 | 00 01 | **Dependencies, cancellation and unfulfillability** — untravelled paths through the same interpretation |
 
-**Deferred by all fourteen: cost.** No experiment has measured it and every one of them says so. It now
+**Deferred by all fifteen: cost.** No experiment has measured it and every one of them says so. It now
 has terms somebody could measure: reconstruction admits the journal in step with the lineage; every
 read derives and compares; a whole write copies three files rather than replacing three; and a turn
 reads three files before renaming. What is missing is not a method — it is a reason to want the number.
@@ -264,6 +267,21 @@ the witness's place         10 — no. Dependence is narrower, derivable and adm
                             blocked cases; and the witness is the only guard whose subject
                             is history, so what it stops refusing nothing else refuses.
                             The capability survives as an operation, not as a record
+whether an address should
+say when the entry was
+recorded                    14 — no, and not for the reason the item was weighed by. It does
+                            what it promised: the witness completes the pin one stage earlier,
+                            with no field added. It also stops an address being a FUNCTION of
+                            the entity it names — derivable today, and under a dated address a
+                            lookup the port refuses for seven of the nine families: every
+                            `Knowledge` read unwraps the envelope, and `CanonicalKnowledge`
+                            offers one for a Commitment and an Event alone. The adapter holds
+                            what the port withholds, so completing it is a PORT WIDENING and an
+                            obligation every adapter would newly owe — conformance requires the
+                            instant to survive for two families and no more. Still the engine,
+                            which the experiment excluded. Two records a day apart
+                            also go from thirteen shared addresses to none, and their worlds
+                            stay one world — a trade, and a trade is reported rather than taken
 a coordinate that is not
 a position                  13 — the reference IS fixable, and what fixes it is one recording
                             instant per witnessed entry. That value is the one thing in a

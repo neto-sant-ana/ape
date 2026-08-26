@@ -252,6 +252,7 @@ added to `cli/src`:
 11      one comparison in `converge`                         ~37 lines
 12      built no Part B                                      no behaviour
 13      refused its Part B, with the reason published        no behaviour
+14      built its Part B, measured it, and reverted it       no behaviour, one sentence corrected
 ```
 
 ## What resumes it
@@ -271,11 +272,15 @@ witnessed entry, and a recording instant is the one value in a repository that n
 what a completed pin buys is a claim no receiver can weigh. That is the ripest face and the most
 expensive to defer, and it is settled: `Taken` does not grow a pin.
 
-**It did not answer the other three, and it moved two of them.** A witness of the journal's extent
-(07) is untouched. Recording that a decision was carried (12) is untouched. *Whether an address should
-say when the entry was recorded* is the one 13 bears on directly, and it now has a sharper question
-than the one it was queued with — see [`QUEUE.md`](QUEUE.md), where the change is recorded. So the row
-stays parked, and what would unpark it is smaller than four experiments rather than three.
+**Two of the four are answered.** Experiment 14 ran the fourth — *whether an address should say when
+the entry was recorded* — built it, measured it, and reverted it. An address must stay a function of
+the entity it names, and a dated one is not: for seven of the nine kinds the port does not hand the
+instant over, though the adapter holds it. So completing that change is a port widening — and an
+obligation every adapter would newly owe — which needs the engine, and its own boundary excluded one.
+
+**Two remain, and neither is about what an address is.** A witness of the journal's extent (07), and
+recording that a decision was carried (12). The row stays parked; what would unpark it is two
+experiments, and both of them add a field rather than change what one means.
 
 **Corrected twice in six days, and both times for the same reason** — the condition kept measuring
 something adjacent to what it is for.
