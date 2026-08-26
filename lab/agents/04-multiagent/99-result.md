@@ -1,4 +1,6 @@
-# Result — Confirmed, and four predictions out of five were wrong
+# Result
+
+**Confirmed**, and four predictions out of five were wrong.
 
 > *Can independently acting LLM agents evolve different intentions from a shared operational world and
 > use Synthesis to reconcile their changes without requiring the engine to infer their intent?*

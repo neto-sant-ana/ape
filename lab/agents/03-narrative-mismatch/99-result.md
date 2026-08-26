@@ -1,8 +1,6 @@
 # Result
 
-```text
-Confirmed, and the boundary is not where it was expected
-```
+**Confirmed, and the boundary is not where it was expected**
 
 Narrative and record do not conflict. They pass each other.
 

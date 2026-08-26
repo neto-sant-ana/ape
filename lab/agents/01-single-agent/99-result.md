@@ -1,8 +1,6 @@
 # Result
 
-```text
-Confirmed, weakly
-```
+**Confirmed, weakly**
 
 The boundary held. Every success criterion was met, and none of them was met impressively.
 

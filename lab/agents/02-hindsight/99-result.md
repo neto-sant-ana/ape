@@ -1,8 +1,6 @@
 # Result
 
-```text
-Confirmed, and narrowed
-```
+**Confirmed, and narrowed**
 
 The graph supports an audit of a decision under what could be known, performed by someone told
 nothing. It carries no evidence that anyone performed one at the time.
