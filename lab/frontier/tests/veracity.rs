@@ -825,6 +825,14 @@ fn every_mixture_of_two_generations_is_refused_or_incomplete() {
             }
         }
 
+        // A consumer breaking, recorded rather than absorbed. Experiment 16 gave the whole write a
+        // fourth file — the addresses the journal comes to — and a mixture assembled by single-file
+        // writes leaves the older generation's claim over the newer generation's journal, so every
+        // mixture that takes the journal is now refused by it. This phase enumerates eight mixtures
+        // of THREE files; the fourth is not in that space, and classifying with it present would be
+        // measuring 16's repair instead of what a mixture of two generations says.
+        std::fs::remove_file(repository.custody_path()).expect("a whole write put one there");
+
         let said = says(&repository, &arrangement);
 
         if let Says::Answers(_) = &said {

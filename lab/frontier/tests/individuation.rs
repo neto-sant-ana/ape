@@ -42,19 +42,31 @@ fn held(journal: &[Admission]) -> BTreeSet<EntryId> {
 // Phase 0 — What *the same entry* means, and where the application asks
 // ---------------------------------------------------------------------------------------------
 
-/// The places an address is compared are read out of the application, and there are five.
+/// The places an address is compared are read out of the application, and there are six.
 ///
 /// Derived rather than listed, which is the difference between a closed space and a confident one: a
 /// function that starts comparing addresses turns this red and names itself, and the count is what
 /// says the scan ran at all.
 ///
 /// The scan is lexical, and its one limit is named here rather than left to be discovered. It finds a
-/// function by the tokens in its body — an address type, or a field that holds one, together with a
-/// comparison — so `converge::appended` is found because its body binds `entries` and not because the
-/// line `found != expected` says anything about an address. A comparison in a function that mentions
-/// neither would be missed, and nothing here can rule that out.
+/// function by the tokens in its **signature and body** — an address type, or a field that holds one,
+/// together with a comparison — so `converge::appended` is found because its body binds `entries` and
+/// not because the line `found != expected` says anything about an address. A comparison in a function
+/// that mentions neither would be missed, and nothing here can rule that out.
+///
+/// # It read the body alone, and that missed a real site
+///
+/// Recorded rather than quietly fixed. Experiment 16 added `reading::held`, which takes two slices of
+/// addresses and compares them — and its body names neither an address type nor a field holding one,
+/// because the addresses arrive as **parameters**. The scan found it only while the signature happened
+/// to be wrapped across lines, and stopped finding it the moment `rustfmt` fitted the signature onto
+/// one. A guard that depends on where a formatter breaks a line is a guard that reads the wrong
+/// source, so the declaring line is now part of what is scanned.
+///
+/// The five it reported are unchanged by the repair — checked, and the reason it matters is that a
+/// derived guard whose derivation moves is worth less than the list it replaced.
 #[test]
-fn the_places_an_address_is_compared_are_derived_and_there_are_five() {
+fn the_places_an_address_is_compared_are_derived_and_there_are_six() {
     const ADDRESSED: [&str; 4] = ["EntryId", ".entries", ".witness", ".after"];
     const COMPARED: [&str; 5] = ["==", "!=", ".difference(", ".contains(", ".position("];
 
@@ -99,6 +111,9 @@ fn the_places_an_address_is_compared_are_derived_and_there_are_five() {
                 Some(function) => {
                     close(&mut current, &mut body, &mut found);
                     current = Some(function);
+                    // The declaring line is part of what is scanned: a function whose addresses
+                    // arrive as parameters names them nowhere else. See the note above.
+                    body.push_str(line);
                 }
                 None => body.push_str(line),
             }

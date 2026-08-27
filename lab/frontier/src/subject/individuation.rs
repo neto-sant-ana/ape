@@ -117,14 +117,21 @@ pub const SWAPPED: [usize; 2] = [0, 1];
 
 /// The places in `cli/src` an [`EntryId`] is compared, which is what *the same entry* means.
 ///
-/// Derived rather than listed — see the phase that reads this — and the count is the guard: a sixth
-/// site is a change to the application, and a fifth that is not one of these is this list being wrong.
-pub const SITES: [&str; 5] = [
+/// Derived rather than listed — see the phase that reads this — and the count is the guard: a new
+/// site is a change to the application, and one that is not in this list is this list being wrong.
+///
+/// **It caught one, and the list is longer than the result that published it.** Experiment 14
+/// measured five and used them to price a change it went on to refuse — an address that says when the
+/// entry was recorded. Experiment 16 added `reading::held`, the sixth, when the record gained a claim
+/// about what it holds. The published five stand against the commit they were taken at, and the
+/// change is recorded here rather than absorbed: that change now costs six sites, not five.
+pub const SITES: [&str; 6] = [
     "journal::replay_through",
     "lineage::corroborate",
     "lineage::diagnosed",
     "converge::appended",
     "converge::ordered",
+    "reading::held",
 ];
 
 /// What the decision answers where the Event was learned early, and where it was learned late.
