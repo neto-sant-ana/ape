@@ -13,7 +13,7 @@
 //! how those are partitioned, so a record naming a single commitment would report two worlds
 //! as the same world.
 //!
-//! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed)
+//! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed), 16-custody (Confirmed)
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -27,7 +27,7 @@ use ape::kernel::value_objects::Date;
 
 use crate::error::ReadingError;
 use crate::history::ResidentHistory;
-use crate::journal::{Admission, Replayed};
+use crate::journal::{Admission, EntryId, Replayed};
 use crate::level;
 use crate::lineage::{self, Lineage, Taken};
 use crate::repository::Repository;
@@ -342,6 +342,10 @@ pub fn corroborated(repository: &Repository) -> Result<Corroborated, ReadingErro
 
     let (lineage, admitted) = lineage::rebuild(&mut canon, &journal, &decisions)?;
 
+    if let Some(claimed) = repository.read_custody()? {
+        held(&admitted.entries, &claimed)?;
+    }
+
     corroborate(lineage.decided(), &worlds)?;
 
     Ok(Corroborated {
@@ -351,6 +355,36 @@ pub fn corroborated(repository: &Repository) -> Result<Corroborated, ReadingErro
         journal,
         decisions,
     })
+}
+
+/// Weigh what the journal came to against what the record claims to hold.
+///
+/// The claim a witness cannot make. A witness covers the prefix a decision stood on, so a journal
+/// that lost or gained an entry **after** the last decision satisfies every witness in the lineage
+/// and every world in the worlds file — measured, and a decision taken afterwards then stands on a
+/// prefix nothing said was short.
+///
+/// Over membership, not order, for the reason [`Taken::witness`] gives: an entry's identity is its
+/// content, so a journal whose entries came back in another order holds the same entries and the
+/// record's own reader answers the same way. Sound about what was lost or gained, and silent about
+/// what was moved.
+fn held(admitted: &[EntryId], claimed: &[EntryId]) -> Result<(), ReadingError> {
+    let offered: BTreeSet<_> = admitted.iter().collect();
+    let holds: BTreeSet<_> = claimed.iter().collect();
+
+    if let Some(unheld) = offered.difference(&holds).next() {
+        return Err(ReadingError::UnheldKnowledge {
+            entry: (*unheld).clone(),
+        });
+    }
+
+    if let Some(missing) = holds.difference(&offered).next() {
+        return Err(ReadingError::HeldKnowledgeAbsent {
+            entry: (*missing).clone(),
+        });
+    }
+
+    Ok(())
 }
 
 /// Weigh the worlds a repository says it decided against the worlds its decisions produce.
