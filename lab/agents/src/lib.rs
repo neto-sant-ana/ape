@@ -18,6 +18,8 @@
 //!   knowledge arriving afterwards that makes it look otherwise.
 //! - [`coordination`] — the world experiment 04 hands to two parties, and the repository they
 //!   both decide against.
+//! - [`reconciliation`] — the same world taken away twice, and the two records that came back
+//!   disagreeing, which experiment 05 hands to one party as data.
 //!
 //! What the agent produces is not here. It is recorded as it was written, in the directory
 //! of the experiment that produced it, because a run is evidence rather than source.
@@ -25,4 +27,5 @@
 pub mod coordination;
 pub mod hindsight;
 pub mod policy;
+pub mod reconciliation;
 pub mod world;
