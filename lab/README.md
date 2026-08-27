@@ -220,6 +220,13 @@ is the failure a candidate file fixes one item at a time, and the queue is that 
 meaning outside the engine's memory. Its concluded experiments keep one directory each in
 [`frontier/docs/`](frontier/docs), and their subjects and phases are the `ape-frontier` crate.
 
+One document there is not an experiment: [`MERGING.md`](frontier/docs/MERGING.md), the assembled answer
+to whether two records can be merged. **A question seven experiments each answered a piece of had
+nowhere to be answered**, so it kept being asked — and a numbered directory is the wrong shape for an
+answer nobody ran a protocol to get. It restates none of them and points at all of them, which is the
+same discipline [`QUEUE.md`](QUEUE.md) keeps one level up. If a second assembled answer arrives, it
+goes beside that one.
+
 **[`agents/`](agents)** — whether an autonomous LLM agent can express, evaluate and later
 reconstruct an operational decision through APE without extending its ontology, and whether several
 of them can coordinate through it without the engine inferring what any of them meant.
