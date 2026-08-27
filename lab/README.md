@@ -253,6 +253,7 @@ added to `cli/src`:
 12      built no Part B                                      no behaviour
 13      refused its Part B, with the reason published        no behaviour
 14      built its Part B, measured it, and reverted it       no behaviour, one sentence corrected
+15      refused its Part B — the operation is composition    no behaviour
 ```
 
 ## What resumes it
