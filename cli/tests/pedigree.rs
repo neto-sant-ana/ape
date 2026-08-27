@@ -42,7 +42,7 @@ const MODULES: usize = 12;
 const CITATIONS: usize = 34;
 
 /// Concluded experiments across both rows, so a sweep that read none cannot report agreement.
-const RESULTS: usize = 21;
+const RESULTS: usize = 22;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

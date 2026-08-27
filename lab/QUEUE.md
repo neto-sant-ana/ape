@@ -103,7 +103,8 @@ refused**, and that is worth reading rather than filing: agreement between the t
 | 13 | **A way to hand one decision over at all** — there is none. `converge` merges two whole repositories and `holds` answers about an identity; nothing takes a single decision. Every question the row still has about two records exchanging deliberation is asking for this, and 13 measured the price: the receiver must already hold the content, and the instants it would be told are unverifiable by anyone, including the record they came from |
 | 12 13 | **A comparison over journals that is about membership rather than sequence** — `converge` refuses two journals holding the same knowledge in a different order, which the record's own reader accepts and answers correctly. Sound and not complete, the same shape 12 measured for the witness. The smallest item here: the incomplete side costs a party an attempt rather than a decision |
 | 12 | **An operation whose result is not a repository** — a partial meeting is a **question**, and every operation the application has returns a record. What it would return instead — the carried set, the left-over set, and nothing written — is a shape nothing here has. The shape everything else 12 asked for needs |
-| 12 15 | **Recording that a decision was carried rather than taken** — three of four decisions survive a meeting and the record cannot say one of them arrived. Distinct from 09's Request 3, which asks how to say *both of us decided this*. **15 measured that the field it would occupy already means something else**: `by` is the party that *took* the decision, and a retaken decision was taken here. The receiving record *can* write the other's party and nothing refuses — an `AgentId` is content-addressed and it learned the agent — so what is missing is not a place to put it but a **second** relation, and the absence of provenance is the shape refusing to hold a sentence that would be false |
+| 17 | **A name for a record** — the gap both shapes 17 measured were reaching for, and it is the row's first item whose absence is a *vocabulary* rather than an operation. The record names a **party** (`AgentId`, content-addressed, and it resolves in a receiver) and a **world** (`ThesisId`, derived and never admitted, so it resolves nowhere but where it was produced). It has no name for a record. A party is too coarse — a party can relay — and a world is unreachable, which is why naming the source failed twice for two different reasons and not once for one. 17's protocol listed this as a third shape left open; the phases found it is what the other two were for |
+| 17 | **Something that individuates a crossing** — the event a writer actually witnessed, and the only thing it is in a position to name. The record has no representation of one: it holds the material afterwards, and the material afterwards is byte-identical to what a record reasoning alone holds. Sits beside 14's *something that individuates a prefix rather than an entry*, and for the same reason — the thing that needs a name is not an entry |
 | 13 16 | **A refusal that says which side is missing** *(second arrival)* — 16 met it from inside one record: a record that lost an entry no world was a function of is refused, later, by a fork it can no longer take, and told `UnknownCommitment`. True, and not the reason. The first arrival where the missing side is the record's **own** journal rather than another party's, which is also the first where the record could say so — it now holds a claim about what it holds |
 | 10 11 16 | **Which line of knowing a claim is about** — the thing that would let a merge keep the context instead of dissolving it. 07 wanted a witness of the journal's extent and **16 wrote one**, which answers the *extent* half and not this one: `custody.json` says which entries a record holds, and says nothing about which line of knowing any of them came down. 10 measured why a merge needs that; 11 measured that the line is not only *which* journal but *when each entry was learned*, and that the record has no representation for having been told the same thing twice on two days. It is **not** authenticity, by that candidate's own discriminator: a journal's identity is derivable from what admitting produced, so the distinguishing fact *is* in the record — which puts it with the readmission, the one face of that family that could be answered from inside |
 | 11 | **What a record owes two writers who disagree about an instant** — experiment 11's Part B refuses where an application would rather record. Two parties learning one fact on different days is ordinary, and the honest answer is not *your journals disagree* but *this entry was learned on day 3 by one of you and day 11 by the other*. Refusing invents nothing, which is why it was built; recording would need a shape nothing has measured |
@@ -130,7 +131,7 @@ refused**, and that is worth reading rather than filing: agreement between the t
 | 02 | **Substitution** — one entry swapped for another, which no subject so far can produce |
 | 00 01 | **Dependencies, cancellation and unfulfillability** — untravelled paths through the same interpretation |
 
-**Deferred by all seventeen: cost.** No experiment has measured it and every one of them says so. It
+**Deferred by all eighteen: cost.** No experiment has measured it and every one of them says so. It
 now has terms somebody could measure: reconstruction admits the journal in step with the lineage; every
 read derives and compares; a whole write **replays the journal it is handed** and copies four files
 rather than replacing three; a turn reads four files before renaming; and every read compares two sets
@@ -310,6 +311,19 @@ family                      answered by reading, not by an experiment — three 
                             where it belongs, in `core/src/docs/04-canon.md`, beside the
                             Extension test the reading produced. The question 14 ended on, and
                             the last one that needed an engine decision
+recording that a decision
+was carried rather than
+taken                       17 — CLOSED rather than answered, and by two measurements. It
+                            cannot be done by naming where the intention came from: an author
+                            and a relay are byte-identical in all four files, so the name does
+                            not distinguish the source from somebody the source had it from,
+                            and the writer has no way of telling which it is saying. And it
+                            cannot be done by a flag: a record that took and a record that
+                            never met anybody are also byte-identical, so the flag would be
+                            the only thing separating them and unverifiable on its own. What
+                            survives is not this item — it is the two above, which ask for a
+                            vocabulary rather than for a field
+
 a witness of the journal's
 extent                      16 — YES, and it is the row's oldest item leaving the board. The
                             witness covers the prefix a decision stood on and nothing since,

@@ -242,19 +242,12 @@ experiments while the frontier row keeps changing the application would produce 
 that kind, and the debt document already says a re-run *"would make three sentences more precise"* —
 which is not worth paying for twice.
 
-**And the frontier row is not finished changing the application.** Measured, per experiment, in lines
-added to `cli/src`:
+**And the frontier row was not finished changing the application.** What each experiment added to
+`cli/src` is the table under *Corrected twice* below — one set of facts serving two arguments, and
+therefore held in one place. It was written out twice until experiment 17, and by then the two copies
+had begun to disagree about how many rows there were.
 
-```text
-07 08   the generation machinery and the turn's comparison    the substrate as it now stands
-09      declined its remedy                                  no behaviour
-10      corrected one sentence                               no behaviour
-11      one comparison in `converge`                         ~37 lines
-12      built no Part B                                      no behaviour
-13      refused its Part B, with the reason published        no behaviour
-14      built its Part B, measured it, and reverted it       no behaviour, one sentence corrected
-15      refused its Part B — the operation is composition    no behaviour
-```
+That is the reason as it stood when the row was parked. It no longer holds; see *What resumes it*.
 
 ## What resumes it
 
@@ -288,11 +281,32 @@ beside the two that already exist rather than moving either of them.
 That is also the face that produced the sharpest reading of the shape: the uncovered region is a
 **fixed point** of a record's life, not a lag. Covering a tail is an operation that opens a new one.
 
-**One remains, and it is not about what an address is either.** Recording that a decision was carried
-(12), which experiment 15 sharpened rather than answered: the field it would occupy already means
-something else, so what is missing is a **second relation** and not a place to put one. The row stays
-parked; what would unpark it is one experiment, and it adds a relation rather than changing what one
-means.
+**All four are answered, and the condition is met.** Experiment 17 ran the last of them — *recording
+that a decision was carried* (12) — and **closed** it rather than answering it. Naming where the
+intention came from does not work, because an author and a relay are byte-identical in all four files,
+so the name does not distinguish the source from somebody the source had it from and the writer has no
+way of telling which it is saying. A flag does not work either, because a record that took and a record
+that never met anybody are also byte-identical. What survives is a request for a **vocabulary** — the
+record has a name for a party and a name for a world and none for a record — and that is not a change
+to `Taken`.
+
+```text
+13   a coordinate that is not a position          refused, with a published reason
+14   an address that says when it was recorded    built, measured, reverted
+16   a witness of the journal's extent            answered YES, and built
+17   recording that a decision was carried        closed, with a published reason
+```
+
+> `Taken` and `EntryId` are unchanged by all four. **The shape settled**, and the row's own condition
+> is what says so rather than anybody's judgement that enough time has passed.
+
+**What did change under the row while it was parked**, and it is one thing: experiment 16 added a
+fourth file to the whole write. A new agents run writes `custody.json`; the four repositories nobody
+can re-run do not have one and were measured rebuilding unchanged. That is additive, and it is the
+whole of the substrate movement this stand-by was protecting against.
+
+**Resuming is the operator's call, not this file's.** What this section owed was to say when the
+condition was met, and it is met.
 
 **Corrected twice in six days, and both times for the same reason** — the condition kept measuring
 something adjacent to what it is for.
@@ -314,6 +328,7 @@ thing, and front-loading the large ones makes it worse rather than better:
 14      built its change, measured it, and reverted it         no behaviour
 15      refused its Part B on both halves                      no behaviour
 16      built its Part B — a fourth file in the whole write    ~90 lines
+17      refused its Part B on two of three conditions          no behaviour
 ```
 
 **The largest experiments produced the least code.** The bigger the change an experiment weighs, the
