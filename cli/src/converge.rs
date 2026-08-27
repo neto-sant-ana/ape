@@ -72,7 +72,8 @@
 //! is now whole, and the repository this one replaces is still on disk.
 //!
 //! Earned by: 05-coordination (Confirmed), 07-atomicity (Confirmed), 08-contention (Confirmed),
-//! 09-collision (Confirmed), 11-veracity (Confirmed), 04-multiagent (Confirmed)
+//! 09-collision (Confirmed), 11-veracity (Confirmed), 15-assimilation (Confirmed),
+//! 04-multiagent (Confirmed)
 
 use std::collections::BTreeSet;
 
@@ -152,6 +153,7 @@ fn appended(arrived: &Corroborated, held: &Corroborated) -> Result<Sequence, Con
                 position,
                 expected: expected.clone(),
                 found: found.clone(),
+                shared: shared(there, here),
             });
         }
 
@@ -180,6 +182,27 @@ fn appended(arrived: &Corroborated, held: &Corroborated) -> Result<Sequence, Con
         records: longer.journal.clone(),
         entries: longer.admitted.entries.clone(),
     })
+}
+
+/// How many entries the two journals hold in common.
+///
+/// Computed only on the error path, where a divergence has already been found, so the cost is paid
+/// once for a refusal rather than on every merge. What it turns *the two sequences part here* into is
+/// *the two sequences part here and this much of them is one body of knowledge*, which is the
+/// difference between a caller concluding the records are incompatible and a caller knowing they are
+/// not.
+///
+/// **Membership rather than position**, which is the comparison the divergence above is not making —
+/// and that is the whole reason the two numbers disagree. Two records can share nearly everything and
+/// still diverge at an early position, because sharing is membership and extension is order.
+///
+/// Symmetric, and every directional count follows from it and the two lengths a caller already holds.
+/// A count of what one side lacks would have to pick a side, and which record is *the other one*
+/// depends on which argument the caller passed.
+fn shared(one: &[EntryId], other: &[EntryId]) -> usize {
+    let held: BTreeSet<&EntryId> = other.iter().collect();
+
+    one.iter().filter(|entry| held.contains(entry)).count()
 }
 
 /// Every decision either side holds, each with the world it produced, and each held once.
@@ -263,4 +286,44 @@ pub fn holds(repository: &Repository, world: ThesisId) -> Result<bool, ConvergeE
         .archive()
         .thesis(world)
         .is_some())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use ape::kernel::entities::CommitmentId;
+
+    fn address(byte: u8) -> EntryId {
+        EntryId::of(CommitmentId::from([byte; 32]))
+    }
+
+    /// What the refusal counts is membership, and it is symmetric.
+    ///
+    /// Kept apart from the refusal it feeds so that it can be weighed without two repositories. That
+    /// the number reaches a caller, and that it is the same number reached by intersecting two
+    /// journals' addresses in an unrelated phase, is guarded by the experiment that asked for it, in
+    /// `lab/frontier/tests/assimilation.rs`.
+    #[test]
+    fn what_two_journals_share_does_not_depend_on_which_is_asked_first() {
+        let one = [address(1), address(2), address(3)];
+        let other = [address(2), address(3), address(9)];
+
+        assert_eq!(shared(&one, &other), 2);
+        assert_eq!(shared(&other, &one), 2, "and it reads the same either way");
+    }
+
+    /// Sharing is membership and extension is order, which is why this and the divergence disagree.
+    ///
+    /// Two journals whose very first entries differ diverge at position 0 and may still hold almost
+    /// everything in common. That is the whole reason the refusal carries this number: without it, a
+    /// caller reads *position 0* and concludes the two records have nothing to do with each other.
+    #[test]
+    fn two_journals_that_diverge_at_the_first_entry_can_share_everything_else() {
+        let one = [address(1), address(2), address(3)];
+        let other = [address(2), address(3), address(1)];
+
+        assert_ne!(one[0], other[0], "they part at the first position");
+        assert_eq!(shared(&one, &other), 3, "and hold every entry in common");
+    }
 }

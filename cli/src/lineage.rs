@@ -37,7 +37,7 @@
 //!
 //! Earned by: 01-divergence (Confirmed), 03-convergence (Confirmed), 05-coordination (Confirmed),
 //! 06-exploration (Confirmed), 10-witness (Confirmed), 11-veracity (Confirmed),
-//! 14-individuation (Refuted)
+//! 13-indexicality (Confirmed), 14-individuation (Refuted)
 
 use std::collections::BTreeSet;
 
@@ -51,7 +51,7 @@ use ape::kernel::entities::{AgentId, CommitmentId};
 use ape::kernel::value_objects::Date;
 
 use crate::archive::ResidentArchive;
-use crate::error::LineageError;
+use crate::error::{JournalError, LineageError};
 use crate::history::ResidentHistory;
 use crate::journal::{self, Admission, EntryId, Replayed};
 
@@ -389,7 +389,8 @@ pub fn rebuild(
     let mut lineage = Lineage::new();
 
     for taken in decisions {
-        journal::replay_through(canon, journal, &mut admitted, &taken.after)?;
+        journal::replay_through(canon, journal, &mut admitted, &taken.after)
+            .map_err(|refusal| misdirected(journal, taken, refusal))?;
 
         corroborate(&admitted, taken).map_err(|refusal| diagnosed(journal, taken, refusal))?;
         attributed(&admitted, taken)?;
@@ -425,6 +426,52 @@ fn corroborate(admitted: &Replayed, taken: &Taken) -> Result<(), LineageError> {
     }
 
     Ok(())
+}
+
+/// Say which half of the pair is missing, where the coordinate is not in the journal.
+///
+/// A coordinate the journal does not hold is two faults with two repairs — a coordinate that moved in
+/// the right journal, and a right coordinate in somebody else's — and `UnknownEntry` is returned for
+/// both. It is the correct and complete thing to say about the first: *the journal holds no entry X*
+/// is what a reader needs when the journal is the one the decision was taken against. It is the wrong
+/// half of the pair for the second, where the address named was never in doubt.
+///
+/// The other half is derivable here and nowhere lower down, because it is the **witness** that
+/// separates them and `replay_through` has never seen one. So the discrimination lives at the seam
+/// where both the journal and the decision are in hand, on the error path, like its neighbour below.
+///
+/// The rule is the one experiment 13 stated: the record knows whether it holds any entry the witness
+/// names. None of them is a different journal; some of them is a coordinate that moved, and that keeps
+/// the name it already had.
+fn misdirected(journal: &[Admission], taken: &Taken, refusal: JournalError) -> LineageError {
+    if !matches!(refusal, JournalError::UnknownEntry(_)) {
+        return refusal.into();
+    }
+
+    let mut aside = Canon::new(ResidentHistory::new());
+
+    let Ok(whole) = journal::replay(&mut aside, journal) else {
+        return refusal.into();
+    };
+
+    match placed(&whole.entries, &taken.witness) {
+        0 => LineageError::DecidedAgainstAnotherJournal {
+            entry: taken.after.clone(),
+            witnessed: taken.witness.len(),
+        },
+        _ => refusal.into(),
+    }
+}
+
+/// How many of the entries a witness names the journal actually offers.
+///
+/// Separated from its caller so that it can be weighed without a Canon: what decides between the two
+/// faults is a set comparison, and a guard that had to build a repository to reach it would be
+/// measuring the arrangement.
+fn placed(offered: &[EntryId], witness: &BTreeSet<EntryId>) -> usize {
+    let held: BTreeSet<&EntryId> = offered.iter().collect();
+
+    witness.iter().filter(|entry| held.contains(entry)).count()
 }
 
 /// Say why a witness outran the replay, where the reason is a readmission.
@@ -491,4 +538,54 @@ fn attributed(admitted: &Replayed, taken: &Taken) -> Result<(), LineageError> {
 
 fn date(value: &str) -> Result<Date, LineageError> {
     Date::parse(value).map_err(|_| LineageError::UnreadableInstant(value.to_owned()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use ape::kernel::entities::CommitmentId;
+
+    fn address(byte: u8) -> EntryId {
+        EntryId::of(CommitmentId::from([byte; 32]))
+    }
+
+    /// The discrimination between the two faults is a set comparison, and this is the whole of it.
+    ///
+    /// Kept apart from the refusal it feeds so that it can be weighed without a repository. The
+    /// wiring — that a coordinate the journal does not hold reaches this, and which refusal each
+    /// answer produces — is guarded by the experiment that asked for it, in
+    /// `lab/frontier/tests/indexicality.rs`. What is here is the rule that phase cannot see: what the
+    /// count does at each of its three interesting values.
+    #[test]
+    fn how_much_of_a_witness_a_journal_offers_is_what_separates_the_two_faults() {
+        let witness: BTreeSet<EntryId> = [address(1), address(2)].into();
+
+        assert_eq!(
+            placed(&[address(8), address(9)], &witness),
+            0,
+            "a journal offering none of them is not the one the decision was taken against"
+        );
+        assert_eq!(
+            placed(&[address(1), address(9)], &witness),
+            1,
+            "one of them is a journal that is partly this decision's, so the coordinate is what moved"
+        );
+        assert_eq!(
+            placed(&[address(1), address(2), address(9)], &witness),
+            2,
+            "and all of them is the ordinary case, where only the coordinate can be wrong"
+        );
+    }
+
+    /// An empty witness offers nothing to separate them, and the count says so rather than guessing.
+    ///
+    /// A decision cannot be taken before anything is admitted — `Taken::now` refuses it — so this is
+    /// unreachable through the application. It is asserted because the rule above is a division into
+    /// *none* and *some*, and a set with no members falls on the *none* side by arithmetic rather
+    /// than by anything anybody decided.
+    #[test]
+    fn an_empty_witness_falls_on_the_side_arithmetic_puts_it() {
+        assert_eq!(placed(&[address(1)], &BTreeSet::new()), 0);
+    }
 }

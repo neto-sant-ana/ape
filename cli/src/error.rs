@@ -164,13 +164,35 @@ pub enum ConvergeError {
     /// knowledge is a sequence, every standing decision names the entries that stood when it was
     /// taken, and a journal whose earlier entries moved makes those decisions disagree with it.
     /// The party re-reads and admits again.
+    ///
+    /// # It says how much the two hold in common, because without that a reader draws the wrong
+    /// conclusion
+    ///
+    /// Measured in `lab/frontier/docs/15-assimilation`: this refusal named a position and nothing
+    /// else, and a caller reading it concludes the two records are **incompatible**. They were not —
+    /// ten of the other record's entries and both of its decisions could have been taken. A
+    /// divergence is a statement about *sequence*; what a caller needs next is one about
+    /// **membership**, and the record has it in hand at the moment it refuses.
+    ///
+    /// `shared` is symmetric on purpose, and that is not tidiness. A count of what one side lacks
+    /// picks a side, and this operation is asymmetric in a way the question is not: a party puts back
+    /// into a repository, so *which* record is the other one depends on which argument a caller
+    /// passed. Everything directional follows from this number and the two lengths a caller already
+    /// holds; the number itself cannot be read backwards.
+    ///
+    /// It is the knowledge half and only the knowledge half. 15 measured that what is left to
+    /// **decide** is always the whole of the other lineage, because a retaken world is never a world
+    /// the other record decided — so a count of decisions here would be a constant wearing the clothes
+    /// of information.
     #[error(
-        "the journal diverges at entry {position}: this party holds {expected}, and {found} is there"
+        "the journal diverges at entry {position}: this party holds {expected}, and {found} is there \
+         — the two hold {shared} entries in common, so they are divergent rather than incompatible"
     )]
     Diverged {
         position: usize,
         expected: crate::journal::EntryId,
         found: crate::journal::EntryId,
+        shared: usize,
     },
 
     /// The two journals hold the same entry and disagree about when it was recorded.
@@ -256,6 +278,29 @@ pub enum LineageError {
     ReadmittedEntryIsAmbiguous {
         readmitted: crate::journal::EntryId,
         entry: crate::journal::EntryId,
+    },
+
+    /// A coordinate this journal does not hold, in a journal that holds nothing else the decision
+    /// names either.
+    ///
+    /// `JournalError::UnknownEntry` says *the journal holds no entry X*, which is true and complete
+    /// where the journal **is** the one the decision was taken against and the coordinate is what
+    /// moved. It is the wrong half of the pair where the coordinate is right and the journal is
+    /// somebody else's: measured in `lab/frontier/docs/13-indexicality`, where two states predicted
+    /// to be refused differently came back refused by the same guard with the same name, and a reader
+    /// was handed the half of the pair that was never in doubt.
+    ///
+    /// The other half is derivable at the moment of refusal and this is it: how many of the entries
+    /// the decision's witness names the journal actually offers. None of them is not a coordinate
+    /// that moved — it is a different journal, and the repair is to go and find the right one rather
+    /// than to look for a corrupted address.
+    #[error(
+        "the decision was taken after entry {entry}, and this journal offers none of the {witnessed} \
+         entries it names: it was decided against another journal"
+    )]
+    DecidedAgainstAnotherJournal {
+        entry: crate::journal::EntryId,
+        witnessed: usize,
     },
 
     /// A decision attributed to a party the knowledge behind it does not hold.
