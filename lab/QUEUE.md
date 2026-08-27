@@ -227,6 +227,47 @@ citation of this row the application has ever held.
 
 ---
 
+## Named by `agents/05` — three items, and the first is the largest thing the row has queued
+
+The agents row records a need it finds as a **request**. These are the three that run came back with,
+and the first is not a request — it is a question about what the engine means, which is why it is
+here rather than in a request table.
+
+**Does `recorded_at` say when the record learned it, or when it was recorded?** Both readings are
+consistent with everything the crates say, and they prescribe opposite merges. Preserve the foreign
+instant and the other party's worlds survive by identity; re-date it and either the retake is refused
+outright (`CommitmentNotKnownAtCut`, measured) or the cut moves and the world is a different world.
+The choice is one line in a caller's merge function and is documented nowhere. **Experiment 15
+answered it by principle** — *a record learns a foreign fact when it is shown it, and what it may
+claim is that day and not the other's* — and its universal-sounding conclusion, that *a retaken world
+is never a world the other record decided*, is a property of that principle rather than of the
+engine. The laboratory never had to choose, because until now one line of knowledge had one holder.
+Bears on `06-scenario` and on Synthesis.
+
+**A guard for the composition, or a published reason there is none.** `agents/05` measured that the
+reconciliation of two divergent records is findable from the public surface by a caller who was never
+told — and that **nothing in the crate guards it**. The same parts assembled in an order that quietly
+loses a world are equally available, and the only reason that run did not lose one is that the agent
+built its own check and made the write conditional on it, unprompted. *Composable from the public
+surface* has been this laboratory's stated reason for declining to build something more than once; it
+survives as a claim about findability and fails as a claim about safety, and those were never the same
+claim.
+
+**The provenance of a retaken intention, now reached for by four agents across two rows.** `by` is the
+party that took the decision, and a record that retakes another's intention has no field that says so.
+17 measured it; `agents/05` reached the same two halves without knowing 17 existed. This is the same
+missing vocabulary the row's *a name for a record* request describes, arriving from the merge side.
+
+## Named by `agents/05` — method
+
+**The barrier must cover the scratchpad, not only `lab/`.** The first enforced isolation in the row
+closed `lab/` with a permission bit and left the session's own scratchpad open — which held the commit
+messages describing the experiment, including the one naming the control. Nothing but the agent's
+restraint kept it out, corroborated after the fact by access times. Next run: the briefing gets its own
+scratchpad, named in the prompt, and the session's own is closed for the duration the same way.
+
+---
+
 ## Re-run debt — agents row
 
 **Inside the row's stand-by, and unpaid on purpose.** Each of the three is settled by an *agent* handed

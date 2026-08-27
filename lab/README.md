@@ -233,11 +233,16 @@ of them can coordinate through it without the engine inferring what any of them 
 
 ---
 
-# The agents row is on stand-by, and that is a decision
+# The agents row was on stand-by, and it resumed on 27/08/2026
 
-Its last experiment concluded on 17/08/2026 and nothing has moved since. **That is deliberate, and a
-row that is parked reads exactly like a row that was abandoned** — which is why it is written here
-rather than left to be inferred from the dates.
+**Resumed**, with [`agents/05-reconciliation`](agents/05-reconciliation/99-result.md) — the condition
+below was met by experiment 17 and the operator called it. The section is kept rather than deleted,
+because what it records is *why a row was parked and what it took to unpark it*, which is the part
+that outlasts the parking.
+
+It was parked from 17/08/2026 to 27/08/2026. **That was deliberate, and a row that is parked reads
+exactly like a row that was abandoned** — which is why it was written here rather than left to be
+inferred from the dates.
 
 ## Why
 
@@ -313,7 +318,13 @@ can re-run do not have one and were measured rebuilding unchanged. That is addit
 whole of the substrate movement this stand-by was protecting against.
 
 **Resuming is the operator's call, not this file's.** What this section owed was to say when the
-condition was met, and it is met.
+condition was met, and it is met — and it was called on 27/08/2026.
+
+**And the one substrate movement it was protecting against turned out to be invisible to a caller.**
+Experiment 05 handed an agent the fourth file and pre-registered that it would not use it. It did
+not: `custody` appears nowhere in the program it wrote or in its output, and the record it produced
+carries a correct custody claim regardless, because the whole write derives one. A boundary the
+caller has to think about to get right would be the worse result.
 
 **Corrected twice in six days, and both times for the same reason** — the condition kept measuring
 something adjacent to what it is for.
