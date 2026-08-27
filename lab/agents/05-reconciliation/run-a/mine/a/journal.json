@@ -1,0 +1,195 @@
+[
+  {
+    "admits": "role",
+    "label": "spender",
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "role",
+    "label": "counterparty",
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "agent",
+    "label": "house",
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "agent",
+    "label": "market",
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "resource",
+    "label": "cash",
+    "kind": {
+      "between": {
+        "lower": "0",
+        "upper": "1000"
+      }
+    },
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "eligibility",
+    "agent": "fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562",
+    "roles": [
+      "3d359fe8c7ff74044b22d66f9a5bf29cf848739401b16456a69ccf64829d6f4f"
+    ],
+    "effective_from": "2026-01-01",
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "eligibility",
+    "agent": "0d3a24e8704bd9f36112a65e0e7cb15fe596d542dc5212ba5b8efeeb66c24ace",
+    "roles": [
+      "48845bf3932457367beba3b252731695cbef505e4c5b6bce1acf708444564626"
+    ],
+    "effective_from": "2026-01-01",
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "resource-instance",
+    "label": "account",
+    "resource": "9da39b547d3ee483bdbbd98aee6e1508639cb3f4c37c3511c43dc23843fa949a",
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "action",
+    "verb": "receive",
+    "kind": {
+      "quantifiable": "increase"
+    },
+    "resource": "9da39b547d3ee483bdbbd98aee6e1508639cb3f4c37c3511c43dc23843fa949a",
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "action",
+    "verb": "spend",
+    "kind": {
+      "quantifiable": "decrease"
+    },
+    "resource": "9da39b547d3ee483bdbbd98aee6e1508639cb3f4c37c3511c43dc23843fa949a",
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "statement",
+    "actors": [
+      "48845bf3932457367beba3b252731695cbef505e4c5b6bce1acf708444564626"
+    ],
+    "recipients": [
+      "3d359fe8c7ff74044b22d66f9a5bf29cf848739401b16456a69ccf64829d6f4f"
+    ],
+    "action": "f08e670889cebb746387802e39f869ca2f76c9c29d9a61a83a3d74fa364ba859",
+    "fulfills": [
+      "Settled"
+    ],
+    "cancels": [
+      "Cancelled"
+    ],
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "statement",
+    "actors": [
+      "3d359fe8c7ff74044b22d66f9a5bf29cf848739401b16456a69ccf64829d6f4f"
+    ],
+    "recipients": [
+      "48845bf3932457367beba3b252731695cbef505e4c5b6bce1acf708444564626"
+    ],
+    "action": "5f5255e453e4eaff04dc1546aa57c86a036a1e6daad4df76b2508639237e6600",
+    "fulfills": [
+      "Settled"
+    ],
+    "cancels": [
+      "Cancelled"
+    ],
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "commitment",
+    "accountable": "0d3a24e8704bd9f36112a65e0e7cb15fe596d542dc5212ba5b8efeeb66c24ace",
+    "executors": [
+      "0d3a24e8704bd9f36112a65e0e7cb15fe596d542dc5212ba5b8efeeb66c24ace"
+    ],
+    "beneficiaries": [
+      "fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562"
+    ],
+    "statement": "dabb76d32d2548e014a176f70c72f2bdf0d2ace3e5dcd65220a3ed07e2231666",
+    "resource": "8098643f890f456c60ef73ea3ef46c9e7bbf9715d52ca29437907427a5174100",
+    "committed_at": "2026-01-01",
+    "due_date": "2026-01-02",
+    "magnitude": "100",
+    "dependencies": [],
+    "recorded_at": "2026-01-01"
+  },
+  {
+    "admits": "event",
+    "commitment": "3167ccd390cf517c6ddd17ef553772d970784ed8f53d1754392386f604714f4c",
+    "observation": "Settled",
+    "occurred_at": "2026-01-02",
+    "recorded_at": "2026-01-02"
+  },
+  {
+    "admits": "agent",
+    "label": "operations",
+    "recorded_at": "2026-01-03"
+  },
+  {
+    "admits": "agent",
+    "label": "finance",
+    "recorded_at": "2026-01-03"
+  },
+  {
+    "admits": "eligibility",
+    "agent": "326993e96a20964d9b4317764638aea39d48c5ee990495221aecc4f437e0f8a3",
+    "roles": [
+      "3d359fe8c7ff74044b22d66f9a5bf29cf848739401b16456a69ccf64829d6f4f"
+    ],
+    "effective_from": "2026-01-03",
+    "recorded_at": "2026-01-03"
+  },
+  {
+    "admits": "eligibility",
+    "agent": "108077234acde7911af42ac2a820bcdb2e770e9c923608f9454a2eec6c71970b",
+    "roles": [
+      "3d359fe8c7ff74044b22d66f9a5bf29cf848739401b16456a69ccf64829d6f4f"
+    ],
+    "effective_from": "2026-01-03",
+    "recorded_at": "2026-01-03"
+  },
+  {
+    "admits": "commitment",
+    "accountable": "fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562",
+    "executors": [
+      "fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562"
+    ],
+    "beneficiaries": [
+      "0d3a24e8704bd9f36112a65e0e7cb15fe596d542dc5212ba5b8efeeb66c24ace"
+    ],
+    "statement": "1cb6093bb3776703e8e19199a07367dabf4a349793cdf7027ea7cdb5e5c25fe3",
+    "resource": "8098643f890f456c60ef73ea3ef46c9e7bbf9715d52ca29437907427a5174100",
+    "committed_at": "2026-01-05",
+    "due_date": "2026-01-10",
+    "magnitude": "20",
+    "dependencies": [],
+    "recorded_at": "2026-01-05"
+  },
+  {
+    "admits": "commitment",
+    "accountable": "fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562",
+    "executors": [
+      "fe0e80f6960e5f133afe9f98b8857fad8636865ad320e8baaa099de8285dd562"
+    ],
+    "beneficiaries": [
+      "0d3a24e8704bd9f36112a65e0e7cb15fe596d542dc5212ba5b8efeeb66c24ace"
+    ],
+    "statement": "1cb6093bb3776703e8e19199a07367dabf4a349793cdf7027ea7cdb5e5c25fe3",
+    "resource": "8098643f890f456c60ef73ea3ef46c9e7bbf9715d52ca29437907427a5174100",
+    "committed_at": "2026-01-07",
+    "due_date": "2026-01-20",
+    "magnitude": "60",
+    "dependencies": [],
+    "recorded_at": "2026-01-07"
+  }
+]

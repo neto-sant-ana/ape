@@ -345,9 +345,13 @@ fn what_two_journals_hold_in_common() {
 ///
 /// Counted before the build rather than estimated, because a compilation error lands in a minute and
 /// a repository that stops replaying lands only when somebody runs the suite that reads it. These are
-/// a concluded agents-row experiment's published artefacts — its published result is what they are
+/// concluded agents-row experiments' published artefacts — their published results are what they are
 /// evidence for — and `lab/README.md` says a concluded experiment keeps its own.
-const COMMITTED: (usize, usize) = (4, 2);
+///
+/// Four to seven on 27/08/2026: `agents/05-reconciliation` published three more — the two records an
+/// agent was handed and the one it produced. The second number is unchanged because it counts source
+/// files naming `04-multiagent`, and 05's records are read by nobody: they are the run, not a fixture.
+const COMMITTED: (usize, usize) = (7, 2);
 
 #[test]
 fn the_workspace_holds_records_on_disk_that_live_code_reads() {

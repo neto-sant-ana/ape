@@ -137,3 +137,16 @@ person does not have to work it out.
 The agent is also asked to list every path it read. That is self-reported and is now a **check on the
 barrier** rather than the barrier itself. If the list holds anything under `lab/`, the run is void and
 is recorded as void — fixed in advance so that the question afterwards is not how much it saw.
+
+---
+
+## Everything above was written before the agent existed. What happened is elsewhere
+
+The run is recorded in [`01`](../01-what-came-back.md) and judged from
+[`02`](../02-the-documented-carried-and-the-undocumented-happened.md) onward, so that this page stays
+what it claims to be.
+
+`GOAL.md`, `main.rs`, `ANSWER.md`, `output.txt` and both records as the run left them are in this
+directory. The run is not void — nothing under `lab/` is in the agent's path list, and the access times
+of this session's own files corroborate it. **The barrier had a gap beside it**, and that is
+[`04`](../04-the-channel-the-barrier-did-not-cover.md).

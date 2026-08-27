@@ -1,0 +1,138 @@
+reconciling mine/ (operations) with theirs/ (finance)
+
+
+=== THE TWO RECORDS, AS EACH RECONSTRUCTS ON ITS OWN ===
+
+  operations (mine/): 20 entries, 3 decisions, 3 worlds
+  finance   (theirs/): 20 entries, 3 decisions, 3 worlds
+
+
+=== WHO IS WHO ===
+
+  fe0e80f6960e  house
+  0d3a24e8704b  market
+  326993e96a20  operations
+  108077234acd  finance
+
+
+=== WHAT THE TWO RECORDS HAVE, AND HAVE NOT, GOT IN COMMON ===
+
+  knowledge
+    entries: operations 20, finance 20
+    identical prefix: 19 entries
+    held in common at all: 19 entries
+    only operations knows 4b8b9b889036
+    only finance    knows 652a011d545f
+
+  intention
+    worlds: operations 3, finance 3
+    both decided       74a6a53e4e4d
+    only operations decided 1f093bfa4767
+    only operations decided b939289591aa
+    only finance    decided 558f991d1bd3
+    only finance    decided dd201a84e58e
+    operations's decisions claim: operations
+    finance's decisions claim: finance
+
+
+=== PUTTING FINANCE'S RECORD BACK AS IT STANDS: MEASURED, NOT ASSUMED ===
+
+  converge(mine, theirs) refuses:
+    the journal diverges at entry 19: this party holds 652a011d545fddb2f76257420dcfac55c0db58e433dd3f887923ddcc4e1d1ebe, and 4b8b9b8890365fc386a67977ccd312256ad1ece7ba0b5d1e00451379756609cd is there — the two hold 19 entries in common, so they are divergent rather than incompatible
+
+  Sequence, not membership. Neither journal extends the other, so there is no
+  order in which one can be appended to the other. The refusal wrote nothing.
+
+
+=== ONE JOURNAL: OPERATIONS' KNOWLEDGE, THEN FINANCE'S ===
+
+  21 entries, recorded in this order:
+    [19] 4b8b9b889036  recorded_at 2026-01-07
+    [20] 652a011d545f  recorded_at 2026-01-08
+
+  Operations' 2026-01-07 entry has to land before finance's 2026-01-08 one: a Canon
+  refuses an admission dated before its watermark, so the party that learned earlier goes first.
+
+
+=== WHY FINANCE'S DECISIONS CANNOT BE REPLAYED AS WRITTEN ===
+
+  genesis after 2f54506ad11b replays as written.
+  advance after 652a011d545f cannot replay as written:
+    the merged prefix holds 4b8b9b889036, which its witness does not name
+  fork    after 652a011d545f cannot replay as written:
+    the merged prefix holds 4b8b9b889036, which its witness does not name
+
+
+=== AND THE OTHER ORDER IS NOT A WAY OUT ===
+
+  If finance's entry went first, operations' own records would fail the same way:
+
+    operations' advance would find 652a011d545f in its prefix, unnamed by its witness
+    operations' fork    would find 652a011d545f in its prefix, unnamed by its witness
+
+  An address is derived from content, so the same twenty-one entries are the same
+  twenty-one addresses in any order — whichever entry is last, the decisions taken after
+  it stand on a prefix holding the other party's, which their witnesses do not name.
+
+  And the order was never a choice in the first place — the Canon refuses that
+  journal outright:
+    recorded_at Date(2026-01-07) precedes Date(2026-01-08), through which history is already recorded
+
+  Recording is monotonic. The party that learned earlier lands first, so the party
+  that retakes is finance, by arithmetic rather than by preference.
+
+
+=== RE-DECIDING FINANCE'S INTENTIONS AGAINST THE MERGED PREFIX ===
+
+  2 of finance's 3 decisions are not already operations': retaking those.
+
+  Every world either record claimed, weighed against what the merge produces:
+
+    operations 74a6a53e4e4d  produced again, identically
+    operations 1f093bfa4767  produced again, identically
+    operations b939289591aa  produced again, identically
+    finance    74a6a53e4e4d  produced again, identically
+    finance    558f991d1bd3  produced again, identically
+    finance    dd201a84e58e  produced again, identically
+
+  Nothing was lost by re-deciding: in this arrangement the extra entry is a
+  Commitment, so it moves no Event head, and an advance absorbs only what its cut
+  froze. Both of finance's worlds come back with the identities finance recorded.
+
+
+=== WRITING THE MERGED RECORD INTO mine/ ===
+
+  converge(mine, merged) accepted and wrote the whole record.
+
+
+=== mine/, RE-READ FROM DISK BY A READER THAT WAS TOLD NOTHING ===
+
+  operations (mine/): 21 entries, 5 decisions, 5 worlds
+    74a6a53e4e4d  parent -              by (nobody)
+    1f093bfa4767  parent 74a6a53e4e4d   by operations
+    b939289591aa  parent 1f093bfa4767   by operations
+    558f991d1bd3  parent 74a6a53e4e4d   by finance
+    dd201a84e58e  parent 558f991d1bd3   by finance
+
+
+=== WHAT THE TWO INTENTIONS DO TO EACH OTHER — READ, NOT DECIDED ===
+
+  base   74a6a53e4e4d  (the world both parties left from)
+  source dd201a84e58e  (finance's tip)
+  target b939289591aa  (operations' tip)
+
+  what finance decided, relative to the base:
+    introduced 652a011d545f
+
+  conflicted — it would break 1 rule(s):
+    652a011d545f was recorded 2026-01-08, and the target recognizes history only to 2026-01-07
+
+  Not decided, and the refusal says why in a way worth reading. Operations' tip
+  recognizes history only up to the instant operations last advanced to; finance's
+  commitment was recorded after that. So the two intentions do not merely disagree —
+  one of them names knowledge the other's world has not yet recognized.
+
+  Collapsing them would take a decision neither party made: operations advancing its own
+  tip to finance's instant, and then answering what becomes of the commitment operations
+  omitted and finance kept. A lineage is a tree, both intentions stand as branches, and
+  inventing the world that reconciles them is not this process's to do.

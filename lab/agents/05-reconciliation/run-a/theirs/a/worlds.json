@@ -1,0 +1,39 @@
+[
+  {
+    "thesis": "74a6a53e4e4d559ff967697523bb44138973421c1d17e718694b8b9eb4fa0905",
+    "thesis_parent": null,
+    "known_at": "2026-01-06",
+    "event_head": "6d336a99e589182e6450905e02070dfbaa4febcdce6134829b166e570b1a7096",
+    "frozen": [
+      "3167ccd390cf517c6ddd17ef553772d970784ed8f53d1754392386f604714f4c"
+    ],
+    "open": [
+      "2f54506ad11b1279c35b86b82a84df617d7d7fc740a92b5294a590b48a309ec2"
+    ]
+  },
+  {
+    "thesis": "558f991d1bd39c3d3578cf226f14940920d6e919c37d2ea4bcf670f68b066e96",
+    "thesis_parent": "74a6a53e4e4d559ff967697523bb44138973421c1d17e718694b8b9eb4fa0905",
+    "known_at": "2026-01-08",
+    "event_head": "6d336a99e589182e6450905e02070dfbaa4febcdce6134829b166e570b1a7096",
+    "frozen": [
+      "3167ccd390cf517c6ddd17ef553772d970784ed8f53d1754392386f604714f4c"
+    ],
+    "open": [
+      "2f54506ad11b1279c35b86b82a84df617d7d7fc740a92b5294a590b48a309ec2"
+    ]
+  },
+  {
+    "thesis": "dd201a84e58e1baf5796740358581936cfe93037f1b100ad1ad6d6ea06a0cce6",
+    "thesis_parent": "558f991d1bd39c3d3578cf226f14940920d6e919c37d2ea4bcf670f68b066e96",
+    "known_at": "2026-01-08",
+    "event_head": "6d336a99e589182e6450905e02070dfbaa4febcdce6134829b166e570b1a7096",
+    "frozen": [
+      "3167ccd390cf517c6ddd17ef553772d970784ed8f53d1754392386f604714f4c"
+    ],
+    "open": [
+      "2f54506ad11b1279c35b86b82a84df617d7d7fc740a92b5294a590b48a309ec2",
+      "652a011d545fddb2f76257420dcfac55c0db58e433dd3f887923ddcc4e1d1ebe"
+    ]
+  }
+]
