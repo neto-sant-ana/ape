@@ -872,14 +872,24 @@ fn the_report_is_composable_from_what_the_application_already_offers() {
     assert_eq!(composed.len(), LACKING);
 }
 
-/// And the operation a caller would reach for refuses where ten entries were takeable.
+/// And the operation a caller would reach for now says how much was takeable.
 ///
-/// Which is the one thing here that is a **defect** rather than an absence. `converge` is what an
-/// application calls when it is handed another record, and it answers `Diverged` at a position — a
-/// caller reading that concludes the two are incompatible, and what was measured is that ten of the
-/// other record's entries and both of its decisions could have been taken.
+/// Which is the one thing here that was a **defect** rather than an absence. `converge` is what an
+/// application calls when it is handed another record, and it answered `Diverged` at a position and
+/// nothing else — a caller reading that concludes the two are incompatible, and what was measured is
+/// that ten of the other record's entries and both of its decisions could have been taken.
+///
+/// **The repair landed afterwards**, together with experiment 13's Request 1, because the queue held
+/// the two as one item and said they were to be answered together or not at all. This phase asserted
+/// the position and could not assert the number it was written to point at; it can now, and it is the
+/// same `LACKING` the retake below reaches by a different route. The published result stands against
+/// the commit it was taken at.
+///
+/// What the refusal says is the **knowledge** half only. This experiment measured that what is left to
+/// decide is always the whole of the other lineage, so a count of decisions in a refusal would be a
+/// constant, and the second assertion below is where that number belongs.
 #[test]
-fn the_operation_a_caller_reaches_for_refuses_where_the_material_was_takeable() {
+fn the_operation_a_caller_reaches_for_says_how_much_was_takeable() {
     let arrangement = assimilation::arranged().expect("the subject is admissible");
 
     let here = scratch("takeable-here");
@@ -893,9 +903,10 @@ fn the_operation_a_caller_reaches_for_refuses_where_the_material_was_takeable() 
     assert!(
         matches!(
             converge::converge(&here, &theirs),
-            Err(ConvergeError::Diverged { position, .. }) if position == DIVERGES_AT
+            Err(ConvergeError::Diverged { position, shared, .. })
+                if position == DIVERGES_AT && shared == BASE_ENTRIES + SHARED_AFTER
         ),
-        "the merge says only where two sequences part"
+        "the merge says where two sequences part, and how much of them is one body of knowledge"
     );
 
     let retaken = assimilation::retaking(&arrangement.here, &arrangement.there, retake(TAKEN_ON))

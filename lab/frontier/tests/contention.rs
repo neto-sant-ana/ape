@@ -322,6 +322,7 @@ fn phase_2_interleaved_the_second_write_is_refused_at_the_entry() {
             position,
             expected,
             found,
+            ..
         }) => {
             assert_eq!(
                 position, BASE_ENTRIES,

@@ -549,6 +549,19 @@ enum Answered {
     Silent,
     /// It reached no entry of that name — which is also its answer to a pin that is entirely true.
     Unfound,
+    /// It said the decision was taken against a journal that is not this one.
+    ///
+    /// **A consumer breaking, and this suite is the consumer that earned it.** This experiment
+    /// measured the last column as `Unfound` and published the reason: a moved coordinate and a true
+    /// coordinate in somebody else's journal were refused by the same guard with the same name, so a
+    /// reader was handed the half of the pair that was never in doubt. That measurement is Request 1
+    /// of Observation 7, and the repair it earned — together with experiment 15's — landed
+    /// afterwards.
+    ///
+    /// The variant is added rather than the cells rewritten to `Refused`, because the column's
+    /// finding is that it is a **constant** and a symbol shared with the witness rows would say the
+    /// witness answered. The result stands against the commit it was taken at.
+    Elsewhere,
 }
 
 /// Every part of a completed pin, put to *what would the receiving record compare this against?*
@@ -566,17 +579,28 @@ enum Answered {
 /// nothing gives a pin that is entirely true. The refusal names an address and cannot say which
 /// side of the pair is the wrong one — the error is itself indexical.
 ///
+/// **And that measurement was Request 1, and the repair it earned has landed.** The last column now
+/// reads `Elsewhere`: a record holding nothing says so, because it offers none of the entries the
+/// decision names. The middle of the first column — a coordinate moved inside the **right** journal —
+/// is still `Unfound`, which is the whole of what the repair changed and did not change. The result
+/// above stands against the commit it was taken at; see the variant's own note.
+///
+/// **What the repair does not do is answer Request 2.** The column is still a constant, so a record
+/// holding nothing still cannot tell a true pin from a false one. It has stopped sending a reader to
+/// look for a corrupted address and has not gained an outcome for *this is not about me*. The two
+/// requests looked adjacent and are not one.
+///
 /// Laid out one row per line, which is what the table is for. A reflowed one reads as a list of
 /// tuples and the column that carries the finding stops being a column.
 #[rustfmt::skip]
 const AUDIT: [(&str, Answered, Answered, Answered); 6] = [
     // The pin as written, so that the last column is readable as a constant rather than as a verdict.
-    ("nothing moved", Answered::Silent, Answered::Silent, Answered::Unfound),
-    ("the coordinate", Answered::Unfound, Answered::Unfound, Answered::Unfound),
-    ("an entry out of the witness", Answered::Refused, Answered::Refused, Answered::Unfound),
-    ("an entry into the witness", Answered::Refused, Answered::Refused, Answered::Unfound),
-    ("the decider, to a party the journal does not hold", Answered::Refused, Answered::Refused, Answered::Unfound),
-    ("the decider, to the other party of the record", Answered::Silent, Answered::Silent, Answered::Unfound),
+    ("nothing moved", Answered::Silent, Answered::Silent, Answered::Elsewhere),
+    ("the coordinate", Answered::Unfound, Answered::Unfound, Answered::Elsewhere),
+    ("an entry out of the witness", Answered::Refused, Answered::Refused, Answered::Elsewhere),
+    ("an entry into the witness", Answered::Refused, Answered::Refused, Answered::Elsewhere),
+    ("the decider, to a party the journal does not hold", Answered::Refused, Answered::Refused, Answered::Elsewhere),
+    ("the decider, to the other party of the record", Answered::Silent, Answered::Silent, Answered::Elsewhere),
 ];
 
 #[test]
@@ -637,6 +661,9 @@ fn every_part_of_the_pin_is_put_to_what_the_receiver_would_compare_it_against() 
 
             match reading::corroborated(&repository) {
                 Ok(_) => Answered::Silent,
+                Err(ReadingError::Lineage(LineageError::DecidedAgainstAnotherJournal {
+                    ..
+                })) => Answered::Elsewhere,
                 Err(ReadingError::Lineage(LineageError::Journal(JournalError::UnknownEntry(
                     _,
                 )))) => Answered::Unfound,
@@ -677,19 +704,28 @@ fn a_record_holding_nothing_answers_a_true_pin_and_a_false_one_alike() {
 
     assert_eq!(
         answers,
-        [Answered::Unfound].into_iter().collect(),
+        [Answered::Elsewhere].into_iter().collect(),
         "one answer for every part of the pin, true or moved"
     );
 }
 
-/// A refusal that names a missing entry cannot say which side of the pair is missing.
+/// A refusal that names a missing entry says which side of the pair is missing.
 ///
-/// The two cells the audit predicted wrong, measured against each other. A record holding the right
-/// journal and a false coordinate, and a record holding nothing and a true one, are refused by the
-/// same guard with the same name — and each names an address, which is the half of the pair that
-/// was **not** in doubt. A reader is told the coordinate; what it needs is which journal.
+/// **This phase measured the opposite, and it is why the sentence now reads this way.** A record
+/// holding the right journal and a false coordinate, and a record holding nothing and a true one,
+/// were refused by the same guard with the same name — each naming an address, which is the half of
+/// the pair that was **not** in doubt. That is Request 1 of Observation 7 and it stands as published,
+/// against the commit it was taken at.
+///
+/// The repair landed afterwards, together with experiment 15's, because the queue held the two as one
+/// item and said they were to be answered together or not at all. What it changed is exactly the half
+/// that was wrong: a coordinate moved inside the right journal keeps `UnknownEntry`, which was always
+/// the complete thing to say about it, and a true coordinate in somebody else's journal now says so.
+///
+/// The discriminator is the witness, which is what this experiment said the record had in hand at the
+/// moment it refused.
 #[test]
-fn a_refusal_that_names_a_missing_entry_cannot_say_which_side_is_missing() {
+fn a_refusal_that_names_a_missing_entry_says_which_side_is_missing() {
     let arrangement = indexicality::arranged().expect("the subject is admissible");
 
     let mut moved = arrangement.taken.clone();
@@ -717,17 +753,27 @@ fn a_refusal_that_names_a_missing_entry_cannot_say_which_side_is_missing() {
     )
     .expect("a whole write");
 
-    let named = |repository: &Repository| match refusal(repository) {
-        ReadingError::Lineage(LineageError::Journal(JournalError::UnknownEntry(entry))) => entry,
-        other => panic!("an unexpected refusal — {other}"),
-    };
+    match refusal(&wrong_pin) {
+        ReadingError::Lineage(LineageError::Journal(JournalError::UnknownEntry(entry))) => {
+            assert_eq!(entry, moved.after, "the address the pin names")
+        }
+        other => panic!("the right journal and a moved coordinate — {other}"),
+    }
 
-    assert_eq!(named(&wrong_pin), moved.after, "the address the pin names");
-    assert_eq!(
-        named(&wrong_journal),
-        arrangement.taken.after,
-        "and the address a true pin names, refused identically"
-    );
+    match refusal(&wrong_journal) {
+        ReadingError::Lineage(LineageError::DecidedAgainstAnotherJournal { entry, witnessed }) => {
+            assert_eq!(
+                entry, arrangement.taken.after,
+                "the address a true pin names"
+            );
+            assert_eq!(
+                witnessed,
+                arrangement.taken.witness.len(),
+                "and how many entries it names that this journal does not offer, which is all of them"
+            );
+        }
+        other => panic!("a true coordinate in somebody else's journal — {other}"),
+    }
 }
 
 /// The one thing a record holding nothing can weigh is the pin against itself.
@@ -854,6 +900,11 @@ enum Weighed {
 /// The number beside each state is what it answers where it answers at all. One row in this table
 /// answers a number the decision's own record does not, with nothing refusing — and it is the row
 /// that is a legitimate record of a legitimate reading, written by nobody in error.
+///
+/// **The last row moved from `Coordinate` to `Witness` when Request 1's repair landed**, and it moved
+/// for the right reason rather than by reclassification. A record founded apart used to be refused by
+/// the coordinate walk failing to arrive; it is now refused by the witness, because the witness is
+/// what says the journal is somebody else's. What answers changed because what is consulted changed.
 #[rustfmt::skip]
 const GUARDS: [(&str, Weighed, Option<i128>); 12] = [
     ("the record as written", Weighed::Nothing, Some(WHEN_EARLY.0)),
@@ -867,7 +918,7 @@ const GUARDS: [(&str, Weighed, Option<i128>); 12] = [
     ("the decider the record's other party", Weighed::Nothing, Some(WHEN_EARLY.0)),
     ("the journal reordered", Weighed::Nothing, Some(WHEN_EARLY.0)),
     ("the harmless insertion", Weighed::Witness, None),
-    ("the record founded apart", Weighed::Coordinate, None),
+    ("the record founded apart", Weighed::Witness, None),
 ];
 
 #[test]
