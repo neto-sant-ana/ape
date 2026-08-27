@@ -4,15 +4,20 @@ The substrate moved to the CLI's repository, and the three experiments were not 
 Going straight to the fourth was a decision, and this is the debt it leaves, stated so that nobody
 later reads an unmeasured prediction as a settled one.
 
-> **Status, 26/08/2026: unpaid on purpose, and inside the row's stand-by.** S2 to S4 are each settled
-> by an *agent* handed the repository, so paying them is agents-row work — and the row is parked while
-> the frontier row is still changing the application. The condition that resumes both is in
-> [`lab/README.md`](../../README.md): two consecutive frontier experiments that add no behaviour to
-> `cli/src`.
+> **Status, 27/08/2026: unpaid, and the stand-by that held them is over.** S2 to S4 are each settled
+> by an *agent* handed the repository, so paying them is agents-row work. The condition that resumes
+> the row is in [`lab/README.md`](../../README.md), and it is met.
 >
-> Running them now would produce debt of exactly the kind this page records. That is not a new
-> argument — it is the one below, under *what would make the debt worth paying*, which already says
-> the three are not the instrument worth building.
+> **This page used to restate that condition, and the copy went stale.** It said *two consecutive
+> frontier experiments that add no behaviour to `cli/src`* — the first version, which the README
+> records as corrected twice and replaced by the coordinate question. By the stale wording the row
+> would still be parked, because experiment 16 added a fourth file to the whole write; by the real one
+> it is not. A reader of this page would have concluded the opposite of what the README says, which is
+> what a second copy of one truth is for. The pointer stays and the restatement is gone.
+>
+> **Paying the three is still not the thing to do first.** That is not the stand-by talking — it is the
+> section below, *what would make the debt worth paying*, which says the instrument worth building is
+> none of the three.
 >
 > **What did come off the list is the composition**, which needed no agent: *read again and admit
 > again* has an order, and it is now written in `cli/src/converge.rs`, the branch that owns the
