@@ -39,10 +39,10 @@ const NOTHING: &str = "nothing —";
 const MODULES: usize = 12;
 
 /// Citations across all of them, for the same reason.
-const CITATIONS: usize = 31;
+const CITATIONS: usize = 34;
 
 /// Concluded experiments across both rows, so a sweep that read none cannot report agreement.
-const RESULTS: usize = 20;
+const RESULTS: usize = 21;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

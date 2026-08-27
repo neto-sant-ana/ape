@@ -33,7 +33,7 @@
 //! that stood then.
 //!
 //! Earned by: 00-reconstruction (Confirmed), 05-coordination (Confirmed),
-//! 11-veracity (Confirmed)
+//! 11-veracity (Confirmed), 16-custody (Confirmed)
 
 use std::collections::BTreeSet;
 
@@ -298,6 +298,19 @@ pub fn replay(
     replay_remaining(canon, journal, &mut replayed)?;
 
     Ok(replayed)
+}
+
+/// What a journal comes to, as addresses, in the order admitted.
+///
+/// Into a canon of its own, because the question is what the journal *is* rather than what it makes
+/// a caller know — admitting into the caller's would leave knowledge somewhere nobody asked for it.
+///
+/// It is a function of the journal and of nothing else, which is what makes it the one derived value
+/// a repository can write without being handed it. See [`crate::repository`].
+pub fn addresses(journal: &[Admission]) -> Result<Vec<EntryId>, JournalError> {
+    let mut aside = Canon::new(ResidentHistory::new());
+
+    Ok(replay(&mut aside, journal)?.entries)
 }
 
 /// Admit whatever `replayed` has not reached yet.

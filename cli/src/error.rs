@@ -115,6 +115,18 @@ pub enum ReadingError {
         position: usize,
         coordinate: &'static str,
     },
+
+    /// The journal offers an entry the record does not claim to hold.
+    ///
+    /// The pair below is the witness's pair one level up, and it exists for the half of a journal no
+    /// witness reaches: what a record admitted after its last decision. Both name the entry, because
+    /// the two send a reader to opposite places — one to a journal that grew, one to a journal that
+    /// was cut.
+    #[error("the journal offers entry {entry}, which the record does not claim to hold")]
+    UnheldKnowledge { entry: crate::journal::EntryId },
+
+    #[error("the record claims to hold entry {entry}, which the journal does not offer")]
+    HeldKnowledgeAbsent { entry: crate::journal::EntryId },
 }
 
 /// What a transfer asked of a repository could not answer.
@@ -281,6 +293,15 @@ pub enum RepositoryError {
     /// contention experiment left the question of whether a repository should be able to say.
     #[error("the generation prepared at {generation} was written over before it could be turned")]
     Contended { generation: String },
+
+    /// A journal a whole write cannot admit, met while deriving what the record claims to hold.
+    ///
+    /// The one refusal here that is not about the directory. A whole write derives the custody claim
+    /// from the journal it is handed, so a journal that does not admit is refused at the write rather
+    /// than at the next read — which is a narrowing of what `write_whole` accepts, and is stated in
+    /// the module rather than discovered.
+    #[error(transparent)]
+    Journal(#[from] JournalError),
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -965,16 +965,28 @@ fn mixtures(related: Related) -> BTreeMap<BTreeSet<File>, Mixed> {
             }
 
             let state = order[..reached].iter().copied().collect::<BTreeSet<_>>();
-            // Read where it is rather than where a pointer would send a reader. The mixture is a fact
-            // on disk as soon as the second writer's file lands, and Part B refuses the turn that
-            // would publish it — so classifying it through the pointer would now be measuring the
-            // repair instead of the state. That the turn is refused is asserted below, once.
-            let outcome = mixed(&into);
 
             assert!(
                 matches!(staged.turn(), Err(RepositoryError::Contended { .. })),
                 "and the writer that prepared it does not get to publish it"
             );
+
+            // A consumer breaking, recorded rather than absorbed. Experiment 16 gave the whole write
+            // a fourth file — the addresses the journal comes to — so a prepared generation now
+            // carries the first writer's claim about a journal the second writer overwrote, and every
+            // mixture is refused by it. That is a real narrowing of the door this phase reports as
+            // left open, and it is measured in 16's own suite; classifying a mixture with the claim
+            // present would be measuring THAT repair instead of the state this phase enumerates,
+            // which is the same reason the turn is weighed before the reading rather than after.
+            //
+            // So the generation is reduced to the three files the application wrote when this ran.
+            std::fs::remove_file(into.custody_path()).expect("a whole write put one there");
+
+            // Read where it is rather than where a pointer would send a reader. The mixture is a fact
+            // on disk as soon as the second writer's file lands, and Part B refuses the turn that
+            // would publish it — so classifying it through the pointer would be measuring the repair
+            // instead of the state.
+            let outcome = mixed(&into);
 
             if let Some(seen) = states.get(&state) {
                 assert_eq!(

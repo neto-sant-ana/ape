@@ -83,20 +83,63 @@
 //! A turn that would publish one is now refused, which is the same shape as before — the states are
 //! out of reach through the write, and not impossible.
 //!
+//! # What the record says about itself
+//!
+//! The three files above are sequences: a journal is one entry per admission, a lineage one record
+//! per decision, a worlds file one record per world. So every claim in them is about **one item**,
+//! and each file's length is a property of that file — which means a file that lost an entry agrees
+//! with itself about how many it has.
+//!
+//! The one claim whose subject is the record's history is a decision's witness, and a witness is
+//! written by a decision out of the prefix that stood when it was taken. What a record admits *after*
+//! its last decision is therefore in no witness, and the custody experiment measured what that costs:
+//! a journal truncated past the last coordinate reads, answers what it answered, and a decision taken
+//! afterwards stands on a prefix that is short — with nothing having said so.
+//!
+//! ```text
+//! journal.json    [ ......... the prefix ......... ][ ... the tail ... ]
+//! lineage.json      each entry named by a witness              nothing
+//! custody.json      every address the journal comes to, whole
+//! ```
+//!
+//! So a whole write records a fourth thing: **the addresses the journal produces**, compared against
+//! the replay on every read. It is the one derived value here the writer does not supply, and the
+//! reason is that it is a function of the journal and of nothing else — unlike a world, which needs
+//! the lineage and the engine, and unlike a witness, which needs to know *when* the decision was
+//! taken. Deriving it beside the journal at write time is `Taken::now`'s argument one level up: both
+//! halves come from one reading, so they cannot disagree when they are written, and corroboration is
+//! a property of the read.
+//!
+//! **Membership rather than order**, for the reason [`Taken::witness`] gives: an entry's identity is
+//! its content, so a journal reordered holds the same entries and the record's own reader answers the
+//! same way. What it must disagree with is a journal that is not the one the record wrote.
+//!
+//! **A repository with no `custody.json` is read as one that makes no such claim**, which is the same
+//! tolerance the pointer has and for a sharper reason: four repositories under
+//! `lab/agents/04-multiagent` were written by parties nobody can re-run, and a required fourth file
+//! would strand them.
+//!
+//! **What it costs.** A whole write now replays the journal it is handed, and every read compares two
+//! sets the size of it. That is the second observable price in this module, and it is paid per write
+//! rather than per entry the way the turn's comparison is.
+//!
 //! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed), 07-atomicity (Confirmed),
-//! 08-contention (Confirmed)
+//! 08-contention (Confirmed), 16-custody (Confirmed)
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::RepositoryError;
-use crate::journal::Admission;
+use crate::journal::{self, Admission, EntryId};
 use crate::lineage::Taken;
 use crate::reading::WorldRecord;
 
 const JOURNAL: &str = "journal.json";
 const LINEAGE: &str = "lineage.json";
 const WORLDS: &str = "worlds.json";
+
+/// What the record claims to hold, as distinct from what any decision stood on.
+const CUSTODY: &str = "custody.json";
 
 /// The file naming the generation a reader reads.
 const CURRENT: &str = "current";
@@ -131,7 +174,7 @@ pub struct RepositoryInput<'a> {
 pub struct Prepared {
     root: PathBuf,
     generation: &'static str,
-    written: [(&'static str, String); 3],
+    written: [(&'static str, String); 4],
 }
 
 impl Prepared {
@@ -255,6 +298,10 @@ impl Repository {
             (JOURNAL, serde_json::to_string_pretty(input.journal)?),
             (LINEAGE, serde_json::to_string_pretty(input.lineage)?),
             (WORLDS, serde_json::to_string_pretty(input.worlds)?),
+            (
+                CUSTODY,
+                serde_json::to_string_pretty(&journal::addresses(input.journal)?)?,
+            ),
         ];
 
         for (name, encoded) in &written {
@@ -345,5 +392,42 @@ impl Repository {
         let encoded = fs::read_to_string(self.worlds_path())?;
 
         Ok(serde_json::from_str(&encoded)?)
+    }
+
+    pub fn custody_path(&self) -> PathBuf {
+        self.live().join(CUSTODY)
+    }
+
+    /// Write what the record claims to hold, into the live generation, one file, visibly.
+    ///
+    /// Not what an application does — a whole write derives this one. It is here for the same reason
+    /// its three neighbours are: a claim nothing can edit from outside is a claim nothing can be
+    /// measured against.
+    pub fn write_custody(&self, held: &[EntryId]) -> Result<(), RepositoryError> {
+        fs::create_dir_all(self.live())?;
+
+        let encoded = serde_json::to_string_pretty(held)?;
+
+        fs::write(self.custody_path(), encoded)?;
+
+        Ok(())
+    }
+
+    /// What the record claims to hold, or nothing where it claims nothing.
+    ///
+    /// Absent is not empty, and the difference decides what a reader may conclude: a repository
+    /// written before this claim existed says nothing about its own extent, and one whose file holds
+    /// `[]` says it holds no entries at all. The first is read as before; the second is refused by
+    /// the first entry the journal offers.
+    pub fn read_custody(&self) -> Result<Option<Vec<EntryId>>, RepositoryError> {
+        let path = self.custody_path();
+
+        if !path.exists() {
+            return Ok(None);
+        }
+
+        let encoded = fs::read_to_string(path)?;
+
+        Ok(Some(serde_json::from_str(&encoded)?))
     }
 }

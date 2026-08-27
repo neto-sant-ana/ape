@@ -279,9 +279,20 @@ the entity it names, and a dated one is not: for seven of the nine kinds the por
 instant over, though the adapter holds it. So completing that change is a port widening — and an
 obligation every adapter would newly owe — which needs the engine, and its own boundary excluded one.
 
-**Two remain, and neither is about what an address is.** A witness of the journal's extent (07), and
-recording that a decision was carried (12). The row stays parked; what would unpark it is two
-experiments, and both of them add a field rather than change what one means.
+**Three of the four are answered.** Experiment 16 ran *a witness of the journal's extent* (07),
+answered it **yes**, and built it: `custody.json`, the addresses the journal comes to, derived by the
+whole write and compared on every read. It changes what a repository **is** and leaves `Taken` and
+`EntryId` untouched, which is why it could run while the row was parked — a fourth file adds a claim
+beside the two that already exist rather than moving either of them.
+
+That is also the face that produced the sharpest reading of the shape: the uncovered region is a
+**fixed point** of a record's life, not a lag. Covering a tail is an operation that opens a new one.
+
+**One remains, and it is not about what an address is either.** Recording that a decision was carried
+(12), which experiment 15 sharpened rather than answered: the field it would occupy already means
+something else, so what is missing is a **second relation** and not a place to put one. The row stays
+parked; what would unpark it is one experiment, and it adds a relation rather than changing what one
+means.
 
 **Corrected twice in six days, and both times for the same reason** — the condition kept measuring
 something adjacent to what it is for.
@@ -300,6 +311,9 @@ thing, and front-loading the large ones makes it worse rather than better:
 11      one comparison in `converge`                          ~37 lines
 12      declined its Part B                                   no behaviour
 13      refused its Part B on the measurement                  no behaviour
+14      built its change, measured it, and reverted it         no behaviour
+15      refused its Part B on both halves                      no behaviour
+16      built its Part B — a fourth file in the whole write    ~90 lines
 ```
 
 **The largest experiments produced the least code.** The bigger the change an experiment weighs, the
@@ -316,6 +330,19 @@ than two silences.
 **The honest limit:** no shape condition is proof against a fifth face arriving. This one is about the
 faces already named by concluded results, which is the recorded cut — without it the condition reads
 *never*, which is the defect the first version had.
+
+**And a second limit, found by running into it rather than by foreseeing it.** The condition is about
+what a `Taken` or an `EntryId` **is**. Experiment 16 changed neither and changed the repository: a
+fourth file, `custody.json`, in every whole write. So it ran while the row was parked, legitimately by
+the letter — and the letter and the reason are not the same size, because the reason given is that *an
+agents subject compiles against `cli` and is measured through it*, which a fourth file also touches.
+
+What makes it harmless here is measured rather than assumed: the file is **optional on read**, and all
+four of `lab/agents/04-multiagent/run-*/repo` were measured rebuilding unchanged, with that suite's
+seven tests green. An additive change to the repository is not what invalidates an agents measurement;
+a change to what a value **means** is. But nothing in the condition says so, and this is the first time
+anything has tested the difference — recorded here, and left as a decision rather than amended,
+because a condition that the thing it constrains gets to relax is not a condition.
 
 Not *the queue is empty*, which never happens: experiment 11 alone added three rows to it. The
 condition is about the application's surface, because that is what an agents-row subject compiles
