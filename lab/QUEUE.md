@@ -104,14 +104,15 @@ refused**, and that is worth reading rather than filing: agreement between the t
 | 12 13 | **A comparison over journals that is about membership rather than sequence** — `converge` refuses two journals holding the same knowledge in a different order, which the record's own reader accepts and answers correctly. Sound and not complete, the same shape 12 measured for the witness. The smallest item here: the incomplete side costs a party an attempt rather than a decision |
 | 12 | **An operation whose result is not a repository** — a partial meeting is a **question**, and every operation the application has returns a record. What it would return instead — the carried set, the left-over set, and nothing written — is a shape nothing here has. The shape everything else 12 asked for needs |
 | 12 15 | **Recording that a decision was carried rather than taken** — three of four decisions survive a meeting and the record cannot say one of them arrived. Distinct from 09's Request 3, which asks how to say *both of us decided this*. **15 measured that the field it would occupy already means something else**: `by` is the party that *took* the decision, and a retaken decision was taken here. The receiving record *can* write the other's party and nothing refuses — an `AgentId` is content-addressed and it learned the agent — so what is missing is not a place to put it but a **second** relation, and the absence of provenance is the shape refusing to hold a sentence that would be false |
-| 07 10 11 | **Which line of knowing a claim is about** — the thing that would let a merge keep the context instead of dissolving it. 07 wanted a witness of the journal's extent; 10 measured why a merge needs one; 11 measured that the line is not only *which* journal but *when each entry was learned*, and that the record has no representation for having been told the same thing twice on two days. It is **not** authenticity, by that candidate's own discriminator: a journal's identity is derivable from what admitting produced, so the distinguishing fact *is* in the record — which puts it with the readmission, the one face of that family that could be answered from inside |
+| 13 16 | **A refusal that says which side is missing** *(second arrival)* — 16 met it from inside one record: a record that lost an entry no world was a function of is refused, later, by a fork it can no longer take, and told `UnknownCommitment`. True, and not the reason. The first arrival where the missing side is the record's **own** journal rather than another party's, which is also the first where the record could say so — it now holds a claim about what it holds |
+| 10 11 16 | **Which line of knowing a claim is about** — the thing that would let a merge keep the context instead of dissolving it. 07 wanted a witness of the journal's extent and **16 wrote one**, which answers the *extent* half and not this one: `custody.json` says which entries a record holds, and says nothing about which line of knowing any of them came down. 10 measured why a merge needs that; 11 measured that the line is not only *which* journal but *when each entry was learned*, and that the record has no representation for having been told the same thing twice on two days. It is **not** authenticity, by that candidate's own discriminator: a journal's identity is derivable from what admitting produced, so the distinguishing fact *is* in the record — which puts it with the readmission, the one face of that family that could be answered from inside |
 | 11 | **What a record owes two writers who disagree about an instant** — experiment 11's Part B refuses where an application would rather record. Two parties learning one fact on different days is ordinary, and the honest answer is not *your journals disagree* but *this entry was learned on day 3 by one of you and day 11 by the other*. Refusing invents nothing, which is why it was built; recording would need a shape nothing has measured |
 | 11 | **A merge that weighs the arriving worlds** — `converge` reads the arriving record's `worlds.json` and discards it, which makes a merge the one operation exempt from the guard that compares a decision against the world it produced. 11 closed the one route it found through that exemption and did not look for a second |
 | 14 | **Something that individuates a prefix rather than an entry** — the direction the address question leaves standing, and the first time the row has one. Experiment 14 measured that fixing a reference costs exactly one thing and that putting it *at the address* is refused: an address must stay a function of the entity it names. What a decision needs pinned is not an entry, it is the **prefix** ending at one — so a value that individuates a prefix would fix a reference and leave every address a name. Named as a direction and not as a design, which is what the methodological constraint requires and what 14 is the argument for |
-| 14 | **A shape change strands four committed repositories, and nothing says so where it would be read** — `lab/agents/04-multiagent/run-*/repo` are written once and read as data by a live suite. Measured: changing what an address is refuses every one of that suite's seven tests, each with an address that no longer resolves. `cli/src/lineage.rs` now says so, and what is queued is whether anything should say it where a *shape* is declared rather than in one field's docstring |
+| 14 16 | **A shape change strands four committed repositories, and nothing says so where it would be read** — `lab/agents/04-multiagent/run-*/repo` are written once and read as data by a live suite. Measured: changing what an address is refuses every one of that suite's seven tests, each with an address that no longer resolves. **16 met it for the first time by a change that could have caused it** — a fourth file in the whole write — and answered it by making the file optional on read, with the four repositories measured rebuilding unchanged. So the hazard is real and the remedy is known; what stays queued is that nothing says either where a *shape* is declared |
+| 14 16 | **A derived guard read a source adjacent to the one it meant, and it had already been published as evidence** — 14 priced its refused change at five places an `EntryId` is compared. 16 made it six (`reading::held`), the scan caught it, and then **stopped** catching it when `rustfmt` fitted the signature onto one line: the scan reads a function's *body*, and that function's addresses arrive as parameters. Repaired in place, and queued as the shape rather than the instance — a derivation that moves with formatting is worth less than the list it replaced, and the two known cases of this family were both found by somebody trying to break the guard rather than by the guard |
 | 03 04 05 | **What a discarded or discredited lineage owes** the ones that took intention from it |
 | 07 08 | **A series of generations, and what would prune one** — where exploration's pruning question meets atomicity's rollback |
-| 07 | **A witness of the journal's extent** — recording how long a journal was, rejected in 07 as a substitute for atomicity, and still the only shape that would roll back a torn journal. It pointed the opposite way from [`05-witness`](candidates/05-witness.md), and experiment 10's answer makes it the surviving direction: the record's one history-shaped claim is the witness, and this asks for a second |
 | 05 08 | **Telling *never decided* from *decided and overwritten*** — the same unanswerable query reached from two directions |
 | 07 08 | **Durability against power loss** — `fsync`, and whether the pointer's rename is the only place it is needed |
 | 00 06 | **Snapshots or indexes**, and when repeated reconstruction justifies one |
@@ -129,10 +130,15 @@ refused**, and that is worth reading rather than filing: agreement between the t
 | 02 | **Substitution** — one entry swapped for another, which no subject so far can produce |
 | 00 01 | **Dependencies, cancellation and unfulfillability** — untravelled paths through the same interpretation |
 
-**Deferred by all sixteen: cost.** No experiment has measured it and every one of them says so. It now
-has terms somebody could measure: reconstruction admits the journal in step with the lineage; every
-read derives and compares; a whole write copies three files rather than replacing three; and a turn
-reads three files before renaming. What is missing is not a method — it is a reason to want the number.
+**Deferred by all seventeen: cost.** No experiment has measured it and every one of them says so. It
+now has terms somebody could measure: reconstruction admits the journal in step with the lineage; every
+read derives and compares; a whole write **replays the journal it is handed** and copies four files
+rather than replacing three; a turn reads four files before renaming; and every read compares two sets
+the size of the journal. What is missing is not a method — it is a reason to want the number.
+
+**And 16 is the first result to add to that list rather than only cite it**, which is worth noting
+because the list is now long enough that *nobody has measured it* has started to do work it should not
+be doing. Four of the five terms above are per-write or per-read over the whole journal.
 
 ---
 
@@ -304,6 +310,19 @@ family                      answered by reading, not by an experiment — three 
                             where it belongs, in `core/src/docs/04-canon.md`, beside the
                             Extension test the reading produced. The question 14 ended on, and
                             the last one that needed an engine decision
+a witness of the journal's
+extent                      16 — YES, and it is the row's oldest item leaving the board. The
+                            witness covers the prefix a decision stood on and nothing since,
+                            and the uncovered region is a FIXED POINT: empty only in the
+                            instant a decision is taken, reopened by the next admission. What
+                            is lost there is not inert — a later decision reaches a different
+                            world and answers a different number, and where it answers the
+                            same it loses a fork it can no longer take. Built as
+                            `custody.json`, derived by the write because a decision's
+                            authority is what stood when it was taken. What 07 originally
+                            wanted it for is answered separately and NO: refusing to read a
+                            moved record is not rolling one back, and 07's own repair already
+                            made a torn write unreachable
 a coordinate that is not
 a position                  13 — the reference IS fixable, and what fixes it is one recording
                             instant per witnessed entry. That value is the one thing in a
