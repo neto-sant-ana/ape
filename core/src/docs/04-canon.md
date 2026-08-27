@@ -125,6 +125,46 @@ This separation keeps the Canon independent from infrastructure while guaranteei
 
 ---
 
+## What the Port Exposes
+
+The Canon assigns canonical metadata, and the port hands only some of it back. An assertion is admitted enveloped — a record carrying the assertion and the instant it was recorded at — and reading is narrower than writing:
+
+* `Knowledge` returns the **assertion**, for every family. The envelope is unwrapped at the read.
+* `CanonicalKnowledge` returns the **record**, for a Commitment and an Event.
+
+That asymmetry is deliberate, and it is the semantic surface rather than an omission. Three places in the engine consult a recording instant, and each of them is about one of those two families:
+
+* a knowledge cut, deciding whether an Event was recorded by the instant it names;
+* selectability, deciding whether a Commitment was recorded by the instant a cut names;
+* applicability, deciding whether a Commitment was recorded by the instant a target world names.
+
+Nothing asks whether a Role, an Action or a Statement was known at an instant, because nothing selects or recognizes one: those are vocabulary, and a cut resolves over what is committed and what has occurred.
+
+Their instants are not lost. They are held in the record the adapter stores, bounded from above by the reference graph — an assertion is admitted after everything it refers to, and recording is monotonic across admission — and available in full to the application, which wrote them.
+
+The single watermark, `recorded_through`, spans every family. It is a property of the history rather than of an entity, which is why it is on the repository and not on a record.
+
+---
+
+## Extension
+
+> _A port may oblige an adapter only to what the engine itself consults._
+
+The question is whether a layer of the engine reads the value in order to decide something, not whether a caller would find it useful.
+
+A caller that wants what the engine does not consult has expressed a want, and it already holds the answer: the application produced the assertion, and what it produced it may keep. A layer that cannot reach a decision without the value has demonstrated a need.
+
+The burden is heavier here than for the ontology, and for a reason that has nothing to do with taste. An ontology's cost is paid by readers of a vocabulary, who can see it. **A port's cost is paid by code the engine cannot see** — every adapter, written or yet to be written, in this repository or outside it. Persistence is application-provided by design, so widening a port is a promise made on behalf of implementations nobody here has read.
+
+The obligation is created in two places and neither is undone:
+
+* **A method obliges every adapter to write something.** There is no default that makes it optional.
+* **A conformance test obliges every adapter to keep something.** Until one exists, an implementation may legitimately discard what it was handed — and for seven of the nine families it may, today, discard the recording instant.
+
+Narrowing is not governed by this. Removing a method costs adapters nothing and costs callers everything, which is an ordinary compatibility question and is decided by the callers.
+
+---
+
 ## Example
 
 ```text

@@ -134,12 +134,25 @@ reads three files before renaming. What is missing is not a method — it is a r
 
 ---
 
-## Engine — nothing queued, and the test that keeps it that way
+## Engine — nothing queued, and the two tests that keep it that way
 
 The engine's layer sequence is **finished as documented**: `00-philosophy` through `07-synthesis` in
 [`../core/src/docs/`](../core/src/docs), each with its implementation. There is no next layer waiting,
 which is why nine experiments have produced findings for the application and four consecutive ones left
 `core/` untouched. That is the structure rather than drift.
+
+**There are two ways in, and until experiment 14 only one of them was guarded.** A concept enters the
+**ontology**; a value enters a **port**. The first has had a test since the ontology was written; the
+second had none, and 14 reached a port decision with nothing to apply to it.
+
+> *A port may oblige an adapter only to what the engine itself consults.*
+
+That is the Extension section of [`04-canon.md`](../core/src/docs/04-canon.md), beside the reading that
+produced it — the engine consults a recording instant in three places and all three are about a
+Commitment or an Event, which is why the port hands back a record for two families and an assertion for
+the other seven. The burden is heavier than the ontology's for a reason particular to ports: an
+ontology's cost is paid by readers of a vocabulary, who can see it, and **a port's cost is paid by
+adapters the engine cannot see** — persistence is application-provided by design.
 
 **And nothing is queued against the ontology**, because the test for entering it is not the one the
 laboratory's evidence naturally satisfies:
@@ -282,6 +295,13 @@ recorded                    14 — no, and not for the reason the item was weigh
                             which the experiment excluded. Two records a day apart
                             also go from thirteen shared addresses to none, and their worlds
                             stay one world — a trade, and a trade is reported rather than taken
+should every adapter owe a
+recording instant for every
+family                      answered by reading, not by an experiment — three call sites, two
+                            families, and the port's shape is the semantic surface. Written
+                            where it belongs, in `core/src/docs/04-canon.md`, beside the
+                            Extension test the reading produced. The question 14 ended on, and
+                            the last one that needed an engine decision
 a coordinate that is not
 a position                  13 — the reference IS fixable, and what fixes it is one recording
                             instant per witnessed entry. That value is the one thing in a
