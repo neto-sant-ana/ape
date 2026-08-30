@@ -150,23 +150,64 @@ fn declared(module: &Path) -> Result<Vec<Claim>, String> {
         .collect()
 }
 
-/// Where each row of the laboratory keeps one directory per concluded experiment.
+/// Where each row of the laboratory keeps one directory per experiment, **read from the laboratory**
+/// rather than listed here.
 ///
-/// Three, because the application may cite any of them, and the paths are asymmetric because the
-/// layout is: the frontier row keeps its documents under a `docs/` beside its crate, and the other
-/// two keep them at their top level.
+/// It was a literal until 30/08/2026, and the literal is what went wrong twice. It read the frontier
+/// row alone until somebody noticed the agents row was invisible; then a third row was added by hand
+/// the day it opened, which worked only because the same hand opened it. A list maintained by whoever
+/// remembers is a bet on memory, and the thing it loses silently is a whole row — the state this guard
+/// is least able to report, because a row nobody cites and a row nobody can resolve look identical.
 ///
-/// `succession` was added the day the row opened, before it had a result to find — deliberately,
-/// because the one time this list lagged the laboratory it lagged silently, and a citation that
-/// resolves nowhere is indistinguishable from a row that has earned nothing. It is unexercised until
-/// that row concludes something; what was checked is that adding it makes the sweep see one more.
+/// **The key is `00-protocol.md`**, not `99-result.md`: an experiment has a protocol from the day it
+/// opens and a result only when it concludes, so keying on the result would make a new row invisible
+/// for exactly as long as it takes to earn something — which is the lag this is meant to remove. It
+/// also excludes `agents/00-question`, a founding-question directory rather than an experiment, and
+/// `candidates/`, which holds no directories at all.
 ///
-/// **This is the third copy of the row list** — `lab/README.md` and `lab/CHARTER.md` hold the others —
-/// and by the laboratory's own standard the third copy is where a list stops being maintained and
-/// starts being derived. Queued rather than done here: deriving it means scanning for the two layouts
-/// above, which is a change to what this guard trusts, and it does not belong in the commit that opens
-/// a row.
-const ROWS: [&str; 3] = ["frontier/docs", "agents", "succession"];
+/// The two layouts are read rather than encoded: a row keeps its experiments at its top level, or
+/// under a `docs/` beside its crate, and which one it does is a fact about the directory.
+fn rows() -> Vec<String> {
+    let laboratory = root().join("../lab");
+    let mut found = Vec::new();
+
+    for entry in std::fs::read_dir(&laboratory).expect("the laboratory is beside the application") {
+        let row = entry.expect("readable").path();
+
+        if !row.is_dir() {
+            continue;
+        }
+
+        for candidate in [row.clone(), row.join("docs")] {
+            if !holds_experiments(&candidate) {
+                continue;
+            }
+
+            found.push(
+                candidate
+                    .strip_prefix(&laboratory)
+                    .expect("under the laboratory")
+                    .display()
+                    .to_string(),
+            );
+            break;
+        }
+    }
+
+    found.sort();
+    found
+}
+
+/// Whether a directory holds experiment directories, which is what makes it a row.
+fn holds_experiments(directory: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(directory) else {
+        return false;
+    };
+
+    entries
+        .filter_map(Result::ok)
+        .any(|entry| entry.path().join("00-protocol.md").is_file())
+}
 
 /// The result document one experiment name resolves to, searching every row.
 ///
@@ -184,7 +225,9 @@ fn result_of(experiment: &str) -> Result<PathBuf, String> {
     // deliberate reach outside itself, and it is a test reading a file rather than the library
     // depending on anything: nothing in `src/` knows the laboratory exists, and a `use` of it does
     // not compile.
-    let found: Vec<PathBuf> = ROWS
+    let rows = rows();
+
+    let found: Vec<PathBuf> = rows
         .iter()
         .map(|row| {
             root()
@@ -200,7 +243,7 @@ fn result_of(experiment: &str) -> Result<PathBuf, String> {
         [only] => Ok(only.clone()),
         [] => Err(format!(
             "{experiment} names no result document in any row of the laboratory ({})",
-            ROWS.join(", ")
+            rows.join(", ")
         )),
         several => Err(format!(
             "{experiment} names a result in {} rows, so a citation of it names no document in \
@@ -297,8 +340,8 @@ fn every_result_document_states_a_verdict() {
     let mut swept = 0;
     let mut refused = Vec::new();
 
-    for row in ROWS {
-        for experiment in experiments(row) {
+    for row in rows() {
+        for experiment in experiments(&row) {
             swept += 1;
 
             if let Err(unstated) = verdicts(&experiment) {
@@ -333,7 +376,17 @@ fn every_result_document_states_a_verdict() {
 /// reads a fixed one, and it announced itself instead of quietly comparing the first two.
 #[test]
 fn the_rows_hold_no_experiment_name_in_common() {
-    let held: Vec<(&str, Vec<String>)> = ROWS.iter().map(|row| (*row, experiments(row))).collect();
+    let rows = rows();
+
+    // A floor rather than a count: it says the scan did not break, and it survives a row being added
+    // — which is the whole point of deriving the list instead of holding one.
+    assert!(
+        rows.len() >= 3,
+        "the scan found {rows:?}; a scan that found none would agree with everything"
+    );
+
+    let held: Vec<(&String, Vec<String>)> =
+        rows.iter().map(|row| (row, experiments(row))).collect();
 
     for (one, mine) in &held {
         for (other, theirs) in &held {
@@ -353,7 +406,7 @@ fn the_rows_hold_no_experiment_name_in_common() {
 
     // An empty row is legitimate — one opens before it concludes anything — but a comparison needs
     // two sides, and which rows were empty is what says how much of the laboratory was compared.
-    let stocked: Vec<&str> = held
+    let stocked: Vec<&String> = held
         .iter()
         .filter(|(_, results)| !results.is_empty())
         .map(|(row, _)| *row)
