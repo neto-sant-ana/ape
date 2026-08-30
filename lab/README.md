@@ -11,12 +11,18 @@ laboratory exists to test. The two rows below are instruments; the charter is th
 which hypothesis an experiment serves. It was written on 29/08/2026, after twenty-three experiments,
 and the first thing it records is why it took that long.
 
-There are two rows, and they differ in **what they are the subject of**:
+There are three rows, and they differ in **what they are the subject of**:
 
 ```text
-frontier/   what must an application do to carry that meaning across a process?
-agents/     does the meaning survive a caller the engine was not designed for?
+frontier/     what must an application do to carry that meaning across a process?
+agents/       does the meaning survive a caller the engine was not designed for?
+succession/   what is the record worth to whoever comes next?
 ```
+
+[`succession/`](succession) opened 29/08/2026, with the charter. The first two are about the
+**writing**; it is about what a later reader gets, and it exists because H3, H4 and H5 fit neither of
+them — a point [`candidates/04-training.md`](candidates/04-training.md) made in writing eleven
+experiments ago and that nobody could act on, because there was nowhere to put it.
 
 Named after where the pressure is applied, which is why neither is named after a crate. `frontier/`
 studies the join between what the engine means and what an application must carry; the reference
@@ -32,6 +38,12 @@ and the difference is not a matter of trust:
 * **`agents/` measures the application as a subject.** A need it finds is recorded as a **request**,
   verbatim, and handed over — never built there. An experiment that repaired what it was measuring
   would be measuring its own repair.
+* **`succession/` produces requirements, not obligations.** It reads the other rows' artefacts as data
+  and says what a *representation* must hold. A requirement derived from reading is weaker evidence
+  than a measurement, and some later experiment has to turn one into an obligation before anything is
+  built on it — calling it an obligation would launder the difference. Its own hazard, which the other
+  two do not have, is stated in [`succession/README.md`](succession/README.md): its subject is prose,
+  and prose is classified by a reader who has an interest in the outcome.
 
 ---
 
@@ -235,6 +247,10 @@ goes beside that one.
 **[`agents/`](agents)** — whether an autonomous LLM agent can express, evaluate and later
 reconstruct an operational decision through APE without extending its ontology, and whether several
 of them can coordinate through it without the engine inferring what any of them meant.
+
+**[`succession/`](succession)** — what a record is worth to somebody who was not there: whether it can
+hold the reasoning that produced a decision and not only the decision, and whether what results is
+navigable by a human and by an agent indiscriminately.
 
 ---
 

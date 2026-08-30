@@ -8,6 +8,18 @@ them serve the list below.
 **This file is not the queue.** [`QUEUE.md`](QUEUE.md) orders work *inside* a hypothesis. This one says
 which hypotheses there are, where each came from, and what has been spent on it.
 
+```text
+H1  the core's gaps, concretized              frontier/            ~40%, swept below
+H2  an auditable trail of a decision          agents/              four runs, then parked
+H3  a substrate for training                  succession/          material gathered, unrun
+H4  a home for what reaches no primitive      succession/          00-testimony OPEN
+H5  navigable by both kinds of reader         succession/          blocked on H4
+```
+
+[`succession/`](succession) opened 29/08/2026 with this file, because H3, H4 and H5 fit neither
+existing row — which [`candidates/04-training.md`](candidates/04-training.md) said in writing eleven
+experiments before anybody could act on it.
+
 ---
 
 ## Why it was written on 29/08/2026, after twenty-three experiments
@@ -119,7 +131,9 @@ belonging to the other row. What every run left behind is recorded in
 [`candidates/04-training.md`](candidates/04-training.md), which names three readings and says which is
 cheapest and which has four runs of prior art.
 
-**Spent:** nothing. Eleven frontier experiments have run since that file was written.
+**Spent:** nothing. Eleven frontier experiments ran while it sat, and the reason is now known and
+fixed: it *"belongs to neither row"* by its own first page, and until [`succession/`](succession)
+existed that sentence was a place it could not be put rather than a thing to act on.
 
 **The constraint it carries**, from the agents row's own written exclusions: a *harness* is not a
 *benchmark of judgment*, and **an argument that APE is for AI** is explicitly not what this laboratory
@@ -174,6 +188,13 @@ about validation strategy"*.
 Thesis's selection is a gap the core left to the application, to be decided on cost, and nobody has
 measured the cost.
 
+**Open: [`succession/00-testimony`](succession/00-testimony/00-protocol.md)**, which answers the first
+half and refuses the second. A representation cannot be compared before the thing to be represented is
+known, and the analogy H4 arrived in already presumes an answer. Its corpus is the eight `ANSWER.md`
+files eight agents wrote across five experiments — **13,382 words produced before this hypothesis
+existed**, by sessions that could not have shaped them to fit it, which is the strongest available
+correction for H4 being emergent.
+
 ---
 
 ## H5 — Does that representation produce an asset navigable by human and autonomous readers indiscriminately?
@@ -186,7 +207,8 @@ and be navigable by different readers, and a result that measures one reader has
 hypothesis. What makes it falsifiable is a task a human and an agent can both be given against the same
 artefact, where the two answers are comparable.
 
-**Spent:** nothing, and it is correctly blocked rather than neglected.
+**Spent:** nothing, and it is correctly blocked rather than neglected. It lives in
+[`succession/`](succession) with H3 and H4.
 
 ---
 

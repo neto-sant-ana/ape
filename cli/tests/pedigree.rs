@@ -41,7 +41,7 @@ const MODULES: usize = 12;
 /// Citations across all of them, for the same reason.
 const CITATIONS: usize = 36;
 
-/// Concluded experiments across both rows, so a sweep that read none cannot report agreement.
+/// Concluded experiments across all rows, so a sweep that read none cannot report agreement.
 const RESULTS: usize = 23;
 
 fn root() -> PathBuf {
@@ -152,10 +152,21 @@ fn declared(module: &Path) -> Result<Vec<Claim>, String> {
 
 /// Where each row of the laboratory keeps one directory per concluded experiment.
 ///
-/// Two, because the application may cite either, and the paths are asymmetric because the layout is:
-/// the frontier row keeps its documents under a `docs/` beside its crate, and the agents row keeps
-/// them at its top level.
-const ROWS: [&str; 2] = ["frontier/docs", "agents"];
+/// Three, because the application may cite any of them, and the paths are asymmetric because the
+/// layout is: the frontier row keeps its documents under a `docs/` beside its crate, and the other
+/// two keep them at their top level.
+///
+/// `succession` was added the day the row opened, before it had a result to find — deliberately,
+/// because the one time this list lagged the laboratory it lagged silently, and a citation that
+/// resolves nowhere is indistinguishable from a row that has earned nothing. It is unexercised until
+/// that row concludes something; what was checked is that adding it makes the sweep see one more.
+///
+/// **This is the third copy of the row list** — `lab/README.md` and `lab/CHARTER.md` hold the others —
+/// and by the laboratory's own standard the third copy is where a list stops being maintained and
+/// starts being derived. Queued rather than done here: deriving it means scanning for the two layouts
+/// above, which is a change to what this guard trusts, and it does not belong in the commit that opens
+/// a row.
+const ROWS: [&str; 3] = ["frontier/docs", "agents", "succession"];
 
 /// The result document one experiment name resolves to, searching every row.
 ///
@@ -312,27 +323,45 @@ fn every_result_document_states_a_verdict() {
 /// No experiment name resolves to two documents, which is what lets a citation name only the name.
 ///
 /// Prevention rather than measurement, and the honest reading of it: the numbers repeat across the
-/// rows — both hold an `04` — and the names do not, so a citation is unambiguous by the naming
+/// rows — two of them hold an `04` — and the names do not, so a citation is unambiguous by the naming
 /// convention rather than by anything enforcing it. This is what turns a convention into a refusal,
 /// and it is the only thing standing between `result_of`'s ambiguity arm and being unreachable
 /// forever.
+///
+/// Pairwise since 29/08/2026, when a third row made the two-row destructuring stop compiling. That is
+/// the failure worth having: a guard that reads a fixed number of rows is the same defect as one that
+/// reads a fixed one, and it announced itself instead of quietly comparing the first two.
 #[test]
 fn the_rows_hold_no_experiment_name_in_common() {
-    let [frontier, agents] = ROWS.map(experiments);
+    let held: Vec<(&str, Vec<String>)> = ROWS.iter().map(|row| (*row, experiments(row))).collect();
 
-    let shared: Vec<&String> = frontier
+    for (one, mine) in &held {
+        for (other, theirs) in &held {
+            if one >= other {
+                continue;
+            }
+
+            let shared: Vec<&String> = mine.iter().filter(|named| theirs.contains(named)).collect();
+
+            assert!(
+                shared.is_empty(),
+                "these names resolve to a result in both {one} and {other}, so a citation of them \
+                 names neither: {shared:?}"
+            );
+        }
+    }
+
+    // An empty row is legitimate — one opens before it concludes anything — but a comparison needs
+    // two sides, and which rows were empty is what says how much of the laboratory was compared.
+    let stocked: Vec<&str> = held
         .iter()
-        .filter(|named| agents.contains(named))
+        .filter(|(_, results)| !results.is_empty())
+        .map(|(row, _)| *row)
         .collect();
 
     assert!(
-        shared.is_empty(),
-        "these names resolve to a result in both rows, so a citation of them names neither: \
-         {shared:?}"
-    );
-    assert!(
-        !frontier.is_empty() && !agents.is_empty(),
-        "both rows have to hold results for the comparison to have compared anything"
+        stocked.len() >= 2,
+        "only {stocked:?} hold results, so the comparison compared nothing"
     );
 }
 
