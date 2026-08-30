@@ -17,6 +17,16 @@ first sweep found four items recorded nowhere at all, which is what
 and whether the later ones sharpened it or repeated it — and what to do with that is a decision this
 file does not make.
 
+**And in practice it made it anyway, for twenty-three experiments.** The sentence above was always
+here and was always true of the file; what was missing is anything *else* to choose against, so
+ripeness became the choice by default. It cannot be: ripeness counts how often a concluded result named
+an item, so it is closed under itself and can only ever surface refinements of what already ran.
+Measured — `frontier 09` to `17` are nine consecutive experiments in one neighbourhood, and
+`agents/05` borrowed its question from the other row by its own protocol's admission.
+
+> **[`CHARTER.md`](CHARTER.md) holds the standing hypotheses.** Ripeness orders work *inside* one of
+> them. It never chooses which one is attacked.
+
 ---
 
 ## The kinds

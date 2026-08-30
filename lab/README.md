@@ -6,6 +6,11 @@ neither of them asks anything — they are what the answers were built into.
 `ape` defines operational meaning. An experiment exists to apply exactly one pressure to it and
 report what happened.
 
+**What the pressure is *for* is in [`CHARTER.md`](CHARTER.md)** — the standing hypotheses this
+laboratory exists to test. The two rows below are instruments; the charter is the subject, and it says
+which hypothesis an experiment serves. It was written on 29/08/2026, after twenty-three experiments,
+and the first thing it records is why it took that long.
+
 There are two rows, and they differ in **what they are the subject of**:
 
 ```text
