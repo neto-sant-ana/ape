@@ -9,6 +9,8 @@ use crate::corpus::Run;
 pub mod hindsight;
 pub mod multiagent_a;
 pub mod multiagent_b;
+pub mod multiagent_b_prime;
+pub mod multiagent_reader;
 pub mod narrative_mismatch;
 pub mod single_agent;
 
@@ -25,6 +27,8 @@ pub fn classified() -> Vec<Claim> {
     claims.extend_from_slice(narrative_mismatch::CLAIMS);
     claims.extend_from_slice(multiagent_a::CLAIMS);
     claims.extend_from_slice(multiagent_b::CLAIMS);
+    claims.extend_from_slice(multiagent_b_prime::CLAIMS);
+    claims.extend_from_slice(multiagent_reader::CLAIMS);
 
     claims
 }
