@@ -6,6 +6,7 @@
 use crate::classification::Claim;
 use crate::corpus::Run;
 
+pub mod hindsight;
 pub mod single_agent;
 
 /// Every claim classified so far, across every testimony that has been read.
@@ -17,6 +18,7 @@ pub fn classified() -> Vec<Claim> {
     let mut claims = Vec::new();
 
     claims.extend_from_slice(single_agent::CLAIMS);
+    claims.extend_from_slice(hindsight::CLAIMS);
 
     claims
 }

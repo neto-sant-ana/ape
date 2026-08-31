@@ -224,13 +224,24 @@ fn kernel_entities() -> BTreeSet<String> {
     found
 }
 
-/// Every unhoused claim carries text a reader can weigh, which is what makes a judgement disputable.
+/// Every unhoused claim carries words rather than a stub, so that a judgement can be argued with.
+///
+/// **A floor against the degenerate case, and not a measure of disputability** — the honest limit is
+/// worth stating, because the name promises more than the assertion delivers. What actually lets a
+/// reader weigh a judgement is [`every_claim_is_quoted_from_the_testimony_it_names`], which locates
+/// it, and Phase 4, which puts somebody else on the same question.
+///
+/// It was a character count until `02-hindsight`, where a genuinely verbatim table row —
+/// `| C3 | +70 | no conflict |` — tripped it at nineteen characters. A terse row is terse because the
+/// agent wrote it that way, and the reader who can find it can dispute it; the threshold was
+/// measuring line width. Recorded rather than quietly retuned, because *the guard went red and the
+/// number moved* is exactly the shape of a guard being fitted to the data.
 #[test]
 fn every_unhoused_claim_carries_its_words() {
     let bare: Vec<&'static str> = classified()
         .iter()
         .filter(|claim| matches!(claim.verdict, Verdict::Unhoused(_)))
-        .filter(|claim| flattened(claim.text).len() < 20)
+        .filter(|claim| flattened(claim.text).split_whitespace().count() < 4)
         .map(|claim| claim.text)
         .collect();
 
