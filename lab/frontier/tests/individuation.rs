@@ -42,7 +42,7 @@ fn held(journal: &[Admission]) -> BTreeSet<EntryId> {
 // Phase 0 — What *the same entry* means, and where the application asks
 // ---------------------------------------------------------------------------------------------
 
-/// The places an address is compared are read out of the application, and there are eight.
+/// The places an address is compared are read out of the application, and there are ten.
 ///
 /// Derived rather than listed, which is the difference between a closed space and a confident one: a
 /// function that starts comparing addresses turns this red and names itself, and the count is what
@@ -66,7 +66,7 @@ fn held(journal: &[Admission]) -> BTreeSet<EntryId> {
 /// The five it reported are unchanged by the repair — checked, and the reason it matters is that a
 /// derived guard whose derivation moves is worth less than the list it replaced.
 #[test]
-fn the_places_an_address_is_compared_are_derived_and_there_are_eight() {
+fn the_places_an_address_is_compared_are_derived_and_there_are_ten() {
     const ADDRESSED: [&str; 4] = ["EntryId", ".entries", ".witness", ".after"];
     const COMPARED: [&str; 5] = ["==", "!=", ".difference(", ".contains(", ".position("];
 

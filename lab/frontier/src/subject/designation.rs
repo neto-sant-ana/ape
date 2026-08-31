@@ -375,6 +375,9 @@ pub fn found(repository: &Repository, founded: &Founded) -> Result<(), SubjectEr
         journal,
         lineage,
         worlds: &worlds,
+        // The record before anything designates anything, which is what every phase starts from —
+        // including the ones that measured what the application did *before* it could hold a plan.
+        designations: &[],
     })?;
 
     Ok(())
@@ -400,6 +403,7 @@ pub fn write(repository: &Repository, working: &Corroborated) -> Result<(), Subj
         journal: &working.journal,
         lineage: &working.decisions,
         worlds: &worlds(&working.lineage),
+        designations: &working.designations,
     })?;
 
     Ok(())

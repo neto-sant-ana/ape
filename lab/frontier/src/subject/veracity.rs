@@ -413,6 +413,7 @@ pub fn input(files: &Files) -> RepositoryInput<'_> {
         journal: &files.journal,
         lineage: &files.lineage,
         worlds: &files.worlds,
+        designations: &[],
     }
 }
 

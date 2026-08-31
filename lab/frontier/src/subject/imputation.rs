@@ -543,6 +543,7 @@ pub fn write_whole(repository: &Repository, files: &Files) -> Result<(), Reposit
         journal: &files.journal,
         lineage: &files.lineage,
         worlds: &files.worlds,
+        designations: &[],
     })
 }
 

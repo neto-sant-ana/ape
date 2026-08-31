@@ -120,17 +120,20 @@ pub const SWAPPED: [usize; 2] = [0, 1];
 /// Derived rather than listed — see the phase that reads this — and the count is the guard: a new
 /// site is a change to the application, and one that is not in this list is this list being wrong.
 ///
-/// **It has caught two, and the list is longer than the result that published it.** Experiment 14
-/// measured five and used them to price a change it went on to refuse — an address that says when the
-/// entry was recorded. Experiment 16 added `reading::held`, when the record gained a claim about what
-/// it holds. The repair earned by 13's Request 1 and 15's defect added two more, both of which are
-/// comparisons made **on an error path** to say which of two faults a refusal is about.
+/// **It has caught four, and the list is twice the length of the result that published it.**
+/// Experiment 14 measured five and used them to price a change it went on to refuse — an address
+/// that says when the entry was recorded. Experiment 16 added `reading::held`, when the record
+/// gained a claim about what it holds. The repair earned by 13's Request 1 and 15's defect added two
+/// more, both of which are comparisons made **on an error path** to say which of two faults a
+/// refusal is about. Experiment 18 added the last two, when the record gained a claim about which of
+/// its worlds it means: one weighs a designation's coordinate against the replay, and one walks the
+/// log to find what the plan was at a coordinate.
 ///
 /// The published five stand against the commit they were taken at, and the growth is recorded here
-/// rather than absorbed: the change 14 priced and refused now costs eight sites, not five. Twice in
-/// two sessions nobody had to notice — the scan caught it and named it, which is the argument for
-/// deriving the next one.
-pub const SITES: [&str; 8] = [
+/// rather than absorbed: the change 14 priced and refused now costs **ten** sites, not five. Three
+/// times in three sessions nobody had to notice — the scan caught it and named it, which is the
+/// argument for deriving the next one.
+pub const SITES: [&str; 10] = [
     "journal::replay_through",
     "lineage::corroborate",
     "lineage::diagnosed",
@@ -139,6 +142,8 @@ pub const SITES: [&str; 8] = [
     "converge::ordered",
     "converge::shared",
     "reading::held",
+    "designation::corroborate",
+    "designation::plan_at",
 ];
 
 /// What the decision answers where the Event was learned early, and where it was learned late.
@@ -623,6 +628,7 @@ pub fn write_whole(repository: &Repository, files: &Files) -> Result<(), Reposit
         journal: &files.journal,
         lineage: &files.lineage,
         worlds: &files.worlds,
+        designations: &[],
     })
 }
 

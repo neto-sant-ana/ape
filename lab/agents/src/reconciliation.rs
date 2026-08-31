@@ -98,6 +98,7 @@ impl Parted {
             journal: &self.shared.journal,
             lineage: &self.shared.decisions,
             worlds: &worlds,
+            designations: &[],
         })
     }
 

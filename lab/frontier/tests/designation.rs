@@ -10,9 +10,9 @@
 //! protocol's fourth criterion is about.
 
 use ape::engine::thesis::ThesisId;
-use ape::kernel::entities::ResourceId;
+use ape::kernel::entities::{AgentId, ResourceId};
 
-use ape_cli::journal::{self, Admission};
+use ape_cli::journal::{self, Admission, EntryId};
 use ape_cli::reading::WorldRecord;
 
 use ape_frontier::subject::designation::{
@@ -781,6 +781,967 @@ fn phase_5_nothing_in_the_record_counts_how_many_times_the_plan_moved() {
         2,
         "and the file holds exactly one identity, so it cannot hold three"
     );
+}
+
+/// Phase 6 — the discriminator, and it collapses from three to two.
+///
+/// The protocol asked whether *which world is live* is a fact about the house, about a record, or
+/// about a party. The first two are not two answers, and this is what shows it: two repositories
+/// founded from one subject are **byte-identical in every file**. A record carries no name, no
+/// identity of its own, and nothing above it — so a claim *about this record* and a claim *about the
+/// house* have the same subject and the same silence, because there is nothing a record could say to
+/// tell itself from another.
+///
+/// What survives is one axis: a designation is either **qualified by a party or it is not**, which is
+/// exactly the axis [`ape_cli::lineage::Taken::by`] already has and for the reason recorded there — a
+/// record reasoning alone has no party to name.
+#[test]
+fn phase_6_two_records_founded_alike_are_one_record_so_house_and_record_are_one_home() {
+    let founded = designation::founded().expect("the subject is admissible");
+
+    let here = designation::scratch("phase-6-here");
+    let there = designation::scratch("phase-6-there");
+    designation::found(&here, &founded).expect("a whole write");
+    designation::found(&there, &founded).expect("and another, elsewhere");
+
+    assert_ne!(here.root(), there.root(), "two directories, not one");
+
+    for file in [
+        "journal.json",
+        "lineage.json",
+        "worlds.json",
+        "custody.json",
+    ] {
+        let (left, right) = (read_file(&here, file), read_file(&there, file));
+        assert!(
+            left.is_some() && right.is_some(),
+            "{file} is on disk in both, or the comparison below is vacuous"
+        );
+        assert_eq!(left, right, "{file} does not distinguish the two records");
+    }
+}
+
+/// C, built: the log the five phases converged on, and it is `Taken`'s shape.
+///
+/// Three fields, and each answers something a phase measured missing.
+///
+/// ```text
+/// plan     which world      checked against `worlds.json`   — Phase 2
+/// after    where in the     checked against the journal     — Phase 5, and it is the
+///          journal it moved                                   project's own way of
+///                                                              asking about time
+/// by       whose plan       checked against the replay      — Phase 3, optional for
+///                                                              the reason `Taken::by` is
+/// ```
+///
+/// **A sequence, and ordered by position rather than by `after`.** Phase 1 is what forces it: an
+/// `EntryId` is content-derived, so two moves with no admission between them carry the same
+/// coordinate and a set would lose one. `after` orders the log against knowledge; the file's own
+/// order is what separates two moves at one coordinate.
+///
+/// This is not `at`. A recording instant is the one value nothing derives — `13-indexicality`'s
+/// finding — so a designation carrying a date would be a claim no receiver can weigh, which is the
+/// class `17-imputation` closed. What the log answers is *what was the plan when the record knew
+/// this much*, and that is checkable.
+mod log {
+    use std::fs;
+    use std::path::PathBuf;
+
+    use ape::engine::thesis::ThesisId;
+    use ape::kernel::entities::AgentId;
+    use ape_cli::journal::EntryId;
+    use ape_cli::repository::Repository;
+
+    pub const DESIGNATIONS: &str = "designations.json";
+
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Designated {
+        pub plan: ThesisId,
+        pub after: EntryId,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub by: Option<AgentId>,
+    }
+
+    /// What the record's log is, once it has been checked.
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum Log {
+        NoClaim,
+        Held(Vec<Designated>),
+        Unresolved(&'static str, String),
+    }
+
+    fn path(repository: &Repository) -> PathBuf {
+        repository
+            .custody_path()
+            .parent()
+            .expect("a custody path is a file inside a generation")
+            .join(DESIGNATIONS)
+    }
+
+    pub fn write(repository: &Repository, held: &[Designated]) -> std::io::Result<()> {
+        let encoded = serde_json::to_string_pretty(held).expect("a log encodes");
+
+        fs::write(path(repository), encoded)
+    }
+
+    /// Read the log, and check every claim in it against the four files.
+    ///
+    /// The first unresolved claim is returned rather than a count, and it says **which** of the three
+    /// references failed. A reader told only that a log is bad has to go and find out how.
+    pub fn read(repository: &Repository) -> Log {
+        let path = path(repository);
+
+        if !path.exists() {
+            return Log::NoClaim;
+        }
+
+        let encoded = fs::read_to_string(&path).expect("the file is readable");
+        let held: Vec<Designated> = serde_json::from_str(&encoded).expect("it holds a log");
+
+        let worlds = repository.read_worlds().expect("worlds.json reads");
+        let journal = repository.read_journal().expect("journal.json reads");
+
+        let mut canon = ape::canon::Canon::new(ape_cli::history::ResidentHistory::new());
+        let replayed = ape_cli::journal::replay(&mut canon, &journal)
+            .expect("the journal this record wrote replays");
+
+        for entry in &held {
+            if !worlds
+                .iter()
+                .any(|world| world.thesis == entry.plan.to_string())
+            {
+                return Log::Unresolved("plan", entry.plan.to_string());
+            }
+            if !replayed.entries.contains(&entry.after) {
+                return Log::Unresolved("after", entry.after.to_string());
+            }
+            if let Some(party) = entry.by {
+                if !replayed.agents.contains(&party) {
+                    return Log::Unresolved("by", party.to_string());
+                }
+            }
+        }
+
+        Log::Held(held)
+    }
+
+    /// What the plan was when the record held everything up to `after`, or nothing before the first.
+    ///
+    /// The last entry at or before that coordinate, by the log's own order. Which is the question P5
+    /// asked, in the coordinate the record can check rather than in a date it cannot.
+    pub fn plan_at(
+        held: &[Designated],
+        after: &EntryId,
+        addresses: &[EntryId],
+    ) -> Option<ThesisId> {
+        let asked = addresses.iter().position(|entry| entry == after)?;
+
+        held.iter()
+            .filter(|entry| {
+                addresses
+                    .iter()
+                    .position(|address| *address == entry.after)
+                    .is_some_and(|at| at <= asked)
+            })
+            .next_back()
+            .map(|entry| entry.plan)
+    }
+}
+
+/// Phase 6 — the log answers what a bare pointer could not, and refuses what A could not.
+#[test]
+fn phase_6_the_log_says_what_the_plan_was_at_each_coordinate() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-6-log");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let mut working = designation::read(&repository).expect("the record reads back");
+    let mut held = Vec::new();
+
+    // Each move is separated by an admission, so the three moves sit at three coordinates. Two moves
+    // at one coordinate is the case the file's own order carries, and the next guard is about it.
+    for move_of in 0..MOVES {
+        designation::admit(
+            &mut working,
+            Admission::Role {
+                label: format!("witness-{move_of}"),
+                recorded_at: "2026-01-11".into(),
+            },
+        )
+        .expect("something is admitted between moves");
+
+        held.push(log::Designated {
+            plan: founded.designated(move_of),
+            after: working
+                .admitted
+                .entries
+                .last()
+                .cloned()
+                .expect("the replay reached an entry"),
+            by: Some(founded.subject.planner),
+        });
+    }
+
+    designation::write(&repository, &working).expect("the record is put back, whole");
+    log::write(&repository, &held).expect("and the log beside it");
+
+    let log::Log::Held(read_back) = log::read(&repository) else {
+        panic!("the log resolves against the record it sits beside");
+    };
+    assert_eq!(read_back, held, "three moves, and the record holds three");
+
+    let addresses = journal::addresses(&working.journal).expect("the journal replays");
+    for move_of in 0..MOVES {
+        assert_eq!(
+            log::plan_at(&read_back, &held[move_of].after, &addresses),
+            Some(founded.designated(move_of)),
+            "at move {move_of} the plan was where the log says it was"
+        );
+    }
+
+    assert_eq!(
+        log::plan_at(&read_back, &addresses[0], &addresses),
+        None,
+        "and before the first move the record had no plan, which is not the same as having one"
+    );
+}
+
+/// Phase 6 — the log carries the party, so two parties hold two plans in one record.
+///
+/// Phase 4 measured the bare pointer's answer to this: the second write overwrote the first with no
+/// comparison anywhere. Here both are present, both are attributed, and neither is arbitrated —
+/// which is `converge`'s own treatment of two decisions, one file over.
+#[test]
+fn phase_6_two_parties_hold_two_plans_and_neither_is_wrong() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-6-parties");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let working = designation::read(&repository).expect("the record reads back");
+    let at = working
+        .admitted
+        .entries
+        .last()
+        .cloned()
+        .expect("the replay reached an entry");
+
+    let held = vec![
+        log::Designated {
+            plan: founded.forks[0],
+            after: at.clone(),
+            by: Some(founded.subject.planner),
+        },
+        log::Designated {
+            plan: founded.forks[1],
+            after: at.clone(),
+            by: Some(founded.subject.steward),
+        },
+        log::Designated {
+            plan: founded.shared().id(),
+            after: at,
+            by: None,
+        },
+    ];
+    log::write(&repository, &held).expect("the log is written");
+
+    let log::Log::Held(read_back) = log::read(&repository) else {
+        panic!("every claim in the log resolves");
+    };
+
+    let of = |party: Option<AgentId>| -> Vec<ThesisId> {
+        read_back
+            .iter()
+            .filter(|entry| entry.by == party)
+            .map(|entry| entry.plan)
+            .collect()
+    };
+
+    assert_eq!(of(Some(founded.subject.planner)), vec![founded.forks[0]]);
+    assert_eq!(of(Some(founded.subject.steward)), vec![founded.forks[1]]);
+    assert_eq!(
+        of(None),
+        vec![founded.shared().id()],
+        "and the unqualified row is the record's own — the answer for a reader who is no party, \
+         and the row Phase 3 measured a per-party file has no place for"
+    );
+}
+
+/// Phase 6 — a log naming a world the record does not hold is refused, and so is a bad coordinate.
+///
+/// Three references, three ways to be wrong, and the refusal says which. Phase 2's file could only
+/// check one of them because it only had one.
+#[test]
+fn phase_6_the_log_refuses_each_of_its_references_by_name() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-6-refusals");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let working = designation::read(&repository).expect("the record reads back");
+    let at = working
+        .admitted
+        .entries
+        .last()
+        .cloned()
+        .expect("the replay reached an entry");
+
+    let absent_world = ThesisId::from([0u8; 32]);
+    log::write(
+        &repository,
+        &[log::Designated {
+            plan: absent_world,
+            after: at.clone(),
+            by: None,
+        }],
+    )
+    .expect("nothing stops it being written");
+    assert_eq!(
+        log::read(&repository),
+        log::Log::Unresolved("plan", absent_world.to_string()),
+        "the world is refused, and named"
+    );
+
+    let absent_entry = EntryId::of(ape::kernel::entities::CommitmentId::from([0xEEu8; 32]));
+    log::write(
+        &repository,
+        &[log::Designated {
+            plan: founded.forks[0],
+            after: absent_entry.clone(),
+            by: None,
+        }],
+    )
+    .expect("nor this");
+    assert_eq!(
+        log::read(&repository),
+        log::Log::Unresolved("after", absent_entry.to_string()),
+        "and so is the coordinate, separately, so a reader is not left guessing which reference failed"
+    );
+
+    let absent_party = AgentId::from([0x11u8; 32]);
+    log::write(
+        &repository,
+        &[log::Designated {
+            plan: founded.forks[0],
+            after: at,
+            by: Some(absent_party),
+        }],
+    )
+    .expect("nor this");
+    assert_eq!(
+        log::read(&repository),
+        log::Log::Unresolved("by", absent_party.to_string()),
+        "and the party, which is `Taken::by`'s check and the reason an identity is used rather \
+         than a label"
+    );
+}
+
+/// Phase 6 — two moves at one coordinate, which is what makes the log a sequence and not a set.
+///
+/// Phase 1's finding, arriving as a constraint on the remedy: an `EntryId` is content-derived, so
+/// two moves with no admission between them carry the **same** `after`. Only the file's own order
+/// separates them, and the last one is the plan.
+#[test]
+fn phase_6_two_moves_at_one_coordinate_are_separated_by_the_logs_own_order() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-6-order");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let working = designation::read(&repository).expect("the record reads back");
+    let at = working
+        .admitted
+        .entries
+        .last()
+        .cloned()
+        .expect("the replay reached an entry");
+
+    // Three DISTINCT worlds rather than `DESIGNATED`, and the red pass is what found it: with the
+    // return in place the first and last entries name the same world, so a `plan_at` that read the
+    // log backwards would have satisfied this guard. What is being measured here is order, and the
+    // arrangement's return is the one thing that hides it.
+    let held: Vec<_> = (0..MOVES)
+        .map(|move_of| log::Designated {
+            plan: founded.forks[move_of],
+            after: at.clone(),
+            by: None,
+        })
+        .collect();
+    log::write(&repository, &held).expect("the log is written");
+
+    let log::Log::Held(read_back) = log::read(&repository) else {
+        panic!("every claim resolves");
+    };
+
+    assert_eq!(
+        read_back.len(),
+        MOVES,
+        "three moves at one coordinate, kept"
+    );
+
+    let coordinates: std::collections::BTreeSet<_> =
+        read_back.iter().map(|entry| entry.after.clone()).collect();
+    assert_eq!(
+        coordinates.len(),
+        1,
+        "and one coordinate between them, so nothing derived can tell them apart"
+    );
+
+    let addresses = journal::addresses(&working.journal).expect("the journal replays");
+    assert_eq!(
+        log::plan_at(&read_back, &at, &addresses),
+        Some(founded.forks[MOVES - 1]),
+        "the plan is the last one written, which the file's order is the only thing to say"
+    );
+    assert_ne!(
+        founded.forks[0],
+        founded.forks[MOVES - 1],
+        "and first and last are different worlds, or the line above measures nothing"
+    );
+}
+
+/// Phase 6 — and the concluded repositories still read, which is the protocol's second criterion.
+///
+/// A log is additive and optional, so a record that has none makes no claim — the same tolerance
+/// `custody.json` has, and for the same reason: four repositories under `lab/agents/04-multiagent`
+/// were written by parties nobody can re-run.
+///
+/// **The file is removed after the write**, which is custody's `unclaimed()` move: a whole write now
+/// puts a log down, so a phase measuring what a record *without* one does must not be handed the
+/// thing it exists to say was missing. What it produces is the shape every repository written before
+/// this experiment has.
+#[test]
+fn phase_6_a_record_with_no_log_makes_no_claim() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-6-silent");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    assert_eq!(
+        log::read(&repository),
+        log::Log::Held(Vec::new()),
+        "a whole write puts an empty log down, which says the plan never moved"
+    );
+
+    std::fs::remove_file(repository.designations_path()).expect("the record loses its log");
+
+    assert_eq!(
+        log::read(&repository),
+        log::Log::NoClaim,
+        "and without the file the record says nothing at all, which is a different sentence"
+    );
+
+    let reread = designation::read(&repository).expect("and the record reads back unchanged");
+    assert_eq!(reread.journal.len(), ENTRIES);
+    assert_eq!(designation::worlds(&reread.lineage).len(), WORLDS);
+    assert!(
+        reread.designations.is_empty(),
+        "the application reads an absent log as no plan, which is what every caller asks"
+    );
+}
+
+/// Phase 6 — the prototype and what was built off it are the same file.
+///
+/// The laboratory's log was written before `ape-cli` had one, and it is kept: it is the measurement,
+/// and `lab/README.md`'s rule is that a concluded arrangement is pinned rather than frozen. What is
+/// worth asserting is that the two did not drift — the application's `Designated` and this
+/// prototype's read each other's bytes, which is the only thing that makes the phases above still
+/// evidence about the thing that shipped.
+#[test]
+fn phase_6_the_prototype_and_the_application_read_the_same_file() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-6-wire");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let working = designation::read(&repository).expect("the record reads back");
+    let at = working
+        .admitted
+        .entries
+        .last()
+        .cloned()
+        .expect("the replay reached an entry");
+
+    // Written by the prototype, read by the application.
+    log::write(
+        &repository,
+        &[log::Designated {
+            plan: founded.forks[0],
+            after: at.clone(),
+            by: Some(founded.subject.planner),
+        }],
+    )
+    .expect("the prototype writes");
+
+    let read_by_application = designation::read(&repository).expect("the application reads it");
+    assert_eq!(read_by_application.designations.len(), 1);
+    assert_eq!(read_by_application.designations[0].plan, founded.forks[0]);
+    assert_eq!(
+        read_by_application.designations[0].by,
+        Some(founded.subject.planner)
+    );
+
+    // And the other way round.
+    designation::write(&repository, &read_by_application).expect("the application writes");
+    assert_eq!(
+        log::read(&repository),
+        log::Log::Held(vec![log::Designated {
+            plan: founded.forks[0],
+            after: at,
+            by: Some(founded.subject.planner),
+        }]),
+        "the prototype reads back what the application wrote"
+    );
+}
+
+/// Phase 7 — what a merge does to two logs, measured before anything is built that does it.
+///
+/// Not in the protocol's procedure, and here because building forced the question: a whole write
+/// takes the log as an input, so `converge` has to supply one and no phase had said which. The row's
+/// rule is that an experiment may not build what it did not measure, so this measures it.
+///
+/// The rule the merge is weighed against is `converge`'s own, one file over: **two decisions cannot
+/// contradict one another**, so a second party's line is a branch rather than a competing version
+/// and the union is a lineage in the same sense either party's was. Phase 6 established the same of
+/// designations — two parties hold two plans and neither is wrong.
+fn merged(arrived: &[log::Designated], held: &[log::Designated]) -> Vec<log::Designated> {
+    let mut merged = arrived.to_vec();
+
+    merged.extend(
+        held.iter()
+            .filter(|entry| !arrived.contains(entry))
+            .cloned(),
+    );
+
+    merged
+}
+
+/// Phase 7 — the union keeps both parties, and keeps each party's own order.
+#[test]
+fn phase_7_a_union_keeps_both_lines_and_each_lines_order() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-7");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let working = designation::read(&repository).expect("the record reads back");
+    let at = working
+        .admitted
+        .entries
+        .last()
+        .cloned()
+        .expect("the replay reached an entry");
+
+    let row = |plan, by| log::Designated {
+        plan,
+        after: at.clone(),
+        by: Some(by),
+    };
+
+    // The planner's plan moved, so its own two rows are at one coordinate and only order tells them
+    // apart. That is the case a merge can destroy, which is why it is the one being merged.
+    let planner = founded.subject.planner;
+    let steward = founded.subject.steward;
+    let arrived = vec![
+        row(founded.forks[0], planner),
+        row(founded.forks[2], planner),
+    ];
+    let held = vec![row(founded.forks[1], steward)];
+
+    let merged = merged(&arrived, &held);
+    log::write(&repository, &merged).expect("the merged log is written");
+
+    let log::Log::Held(read_back) = log::read(&repository) else {
+        panic!("every claim in the merged log resolves");
+    };
+
+    let of = |party: AgentId| -> Vec<ThesisId> {
+        read_back
+            .iter()
+            .filter(|entry| entry.by == Some(party))
+            .map(|entry| entry.plan)
+            .collect()
+    };
+
+    assert_eq!(
+        of(planner),
+        vec![founded.forks[0], founded.forks[2]],
+        "the planner's two rows survive, in the planner's own order"
+    );
+    assert_eq!(
+        of(steward),
+        vec![founded.forks[1]],
+        "and the steward's line is not lost, which is what Phase 4 measured a merge doing"
+    );
+    assert_eq!(read_back.len(), arrived.len() + held.len());
+}
+
+/// Phase 7 — a row already there is not added twice, so converging twice is not two plans.
+///
+/// A designation's fields are its whole content, so two parties that agree hold the **same row** and
+/// the union collapses them — which is the journal's rule for entries, arriving here for the same
+/// reason and without anything having arranged it.
+#[test]
+fn phase_7_two_parties_that_agree_hold_one_row_and_not_two() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-7-agree");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let working = designation::read(&repository).expect("the record reads back");
+    let at = working
+        .admitted
+        .entries
+        .last()
+        .cloned()
+        .expect("the replay reached an entry");
+
+    let same = log::Designated {
+        plan: founded.forks[0],
+        after: at,
+        by: Some(founded.subject.planner),
+    };
+
+    assert_eq!(
+        merged(&[same.clone()], &[same.clone()]),
+        vec![same.clone()],
+        "one row, because a designation is its content"
+    );
+    assert_eq!(
+        merged(&merged(&[same.clone()], &[same.clone()]), &[same.clone()]),
+        vec![same],
+        "and converging again does not grow the log"
+    );
+}
+
+/// Phase 7 — the limit, measured rather than left for somebody to find.
+///
+/// Two **unqualified** rows from two parties at one coordinate cannot be ordered by anything the
+/// records carry: neither has a party to be read under, and the coordinate is the same. The union
+/// puts the arrived one first, and that is the merge's arrival order surviving into the result —
+/// which is the thing `converge`'s own docstring says must not happen for decisions.
+///
+/// It does not reach a decision, a world or a number. It reaches *which unattributed plan a reader
+/// sees last*, in a record where two parties both declined to say whose plan it was. Recorded as a
+/// limit of the shape, and queued.
+#[test]
+fn phase_7_two_unqualified_rows_at_one_coordinate_are_ordered_by_arrival() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-7-limit");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let working = designation::read(&repository).expect("the record reads back");
+    let at = working
+        .admitted
+        .entries
+        .last()
+        .cloned()
+        .expect("the replay reached an entry");
+
+    let anonymous = |plan| log::Designated {
+        plan,
+        after: at.clone(),
+        by: None,
+    };
+    let (here, there) = (anonymous(founded.forks[0]), anonymous(founded.forks[1]));
+
+    assert_eq!(
+        merged(&[here.clone()], &[there.clone()]),
+        vec![here.clone(), there.clone()],
+        "whoever arrived first is first"
+    );
+    assert_eq!(
+        merged(&[there.clone()], &[here.clone()]),
+        vec![there, here],
+        "and the other way round gives the other answer — the order is the merge's, not the record's"
+    );
+}
+
+/// Part B — the two defects the phases measured, gone from the application that shipped them.
+///
+/// Kept apart from the phases and named for what they guard rather than for a phase, because they
+/// are about `ape-cli` and not about the question. Every one of them goes through the application's
+/// own read and write, with nothing of the laboratory's prototype in the path — which is the whole
+/// reason they exist. The phases above prove the *shape*; a shape proven only against a substitute
+/// leaves the code that actually runs with no red behind it.
+mod built {
+    use super::*;
+
+    use ape_cli::designation::Designated;
+    use ape_cli::error::{DesignationError, ReadingError, SubjectError};
+
+    /// The refusal a bad log produces, three error types down, so a guard can match one variant.
+    fn refusal(repository: &ape_cli::repository::Repository) -> Option<DesignationError> {
+        match designation::read(repository) {
+            Err(SubjectError::Reading(ReadingError::Designation(why))) => Some(why),
+            _ => None,
+        }
+    }
+
+    fn claim(plan: ThesisId, after: EntryId, by: Option<AgentId>) -> Designated {
+        Designated { plan, after, by }
+    }
+
+    /// A whole write carries the log, and the next turn does not lose it.
+    ///
+    /// Phase 2's finding, closed: a fifth file written *beside* the live generation was left behind
+    /// by the next turn, and the record then read as one that never claimed anything.
+    #[test]
+    fn a_whole_write_carries_the_log_across_the_turn() {
+        let founded = designation::founded().expect("the subject is admissible");
+        let repository = designation::scratch("built-turn");
+        designation::found(&repository, &founded).expect("a whole write");
+
+        let mut working = designation::read(&repository).expect("the record reads back");
+        let at = working
+            .admitted
+            .entries
+            .last()
+            .cloned()
+            .expect("the replay reached an entry");
+
+        working.designations = vec![claim(founded.forks[0], at, Some(founded.subject.planner))];
+        designation::write(&repository, &working).expect("a whole write");
+
+        // Something unrelated, so the pointer turns to the other generation — which is exactly what
+        // erased the plan before.
+        let mut again = designation::read(&repository).expect("the record reads back");
+        designation::admit(
+            &mut again,
+            Admission::Role {
+                label: "auditor".into(),
+                recorded_at: "2026-01-11".into(),
+            },
+        )
+        .expect("admitted");
+        designation::write(&repository, &again).expect("a whole write");
+
+        let reread = designation::read(&repository).expect("and again");
+
+        assert_eq!(reread.journal.len(), ENTRIES + 1, "the knowledge grew");
+        assert_eq!(
+            reread.designations, again.designations,
+            "and the plan crossed the turn with it"
+        );
+        assert_eq!(reread.designations.len(), 1);
+    }
+
+    /// Converging keeps both parties' plans, where before it left the record claiming nothing.
+    #[test]
+    fn converging_keeps_both_parties_plans() {
+        let founded = designation::founded().expect("the subject is admissible");
+        let repository = designation::scratch("built-merge");
+        designation::found(&repository, &founded).expect("a whole write");
+
+        let mut arrived = designation::read(&repository).expect("the record reads back");
+        let at = arrived
+            .admitted
+            .entries
+            .last()
+            .cloned()
+            .expect("the replay reached an entry");
+
+        arrived.designations = vec![claim(
+            founded.forks[0],
+            at.clone(),
+            Some(founded.subject.planner),
+        )];
+        designation::write(&repository, &arrived).expect("the planner puts its plan back");
+
+        let mut party = designation::read(&repository).expect("the steward reads");
+        party.designations = vec![claim(founded.forks[1], at, Some(founded.subject.steward))];
+        designation::admit(
+            &mut party,
+            Admission::Role {
+                label: "auditor".into(),
+                recorded_at: "2026-01-11".into(),
+            },
+        )
+        .expect("and admits something of its own");
+
+        let merged =
+            ape_cli::converge::converge(&repository, &party).expect("the merge goes through");
+
+        let plans: Vec<_> = merged
+            .designations
+            .iter()
+            .map(|held| (held.plan, held.by))
+            .collect();
+
+        assert_eq!(
+            plans,
+            vec![
+                (founded.forks[0], Some(founded.subject.planner)),
+                (founded.forks[1], Some(founded.subject.steward)),
+            ],
+            "both lines survive the merge, in the arrived-then-held order the union gives"
+        );
+        assert_eq!(
+            designation::read(&repository)
+                .expect("and the record on disk says the same")
+                .designations,
+            merged.designations
+        );
+    }
+
+    /// Converging twice does not grow the log, because a designation is its content.
+    #[test]
+    fn converging_twice_does_not_grow_the_log() {
+        let founded = designation::founded().expect("the subject is admissible");
+        let repository = designation::scratch("built-idempotent");
+        designation::found(&repository, &founded).expect("a whole write");
+
+        let mut party = designation::read(&repository).expect("the record reads back");
+        let at = party
+            .admitted
+            .entries
+            .last()
+            .cloned()
+            .expect("the replay reached an entry");
+        party.designations = vec![claim(founded.forks[0], at, Some(founded.subject.planner))];
+
+        let once = ape_cli::converge::converge(&repository, &party).expect("once");
+        let twice = ape_cli::converge::converge(&repository, &party).expect("and again");
+
+        assert_eq!(once.designations.len(), 1);
+        assert_eq!(twice.designations, once.designations);
+    }
+
+    /// The application's own read refuses each of the three references, by name.
+    ///
+    /// Through `reading::corroborated`, with `write_designations` putting the bad log down the way a
+    /// record edited from outside would — which is what that single-file writer is public for.
+    #[test]
+    fn the_read_refuses_each_reference_and_says_which() {
+        let founded = designation::founded().expect("the subject is admissible");
+        let repository = designation::scratch("built-refusals");
+        designation::found(&repository, &founded).expect("a whole write");
+
+        let working = designation::read(&repository).expect("the record reads back");
+        let at = working
+            .admitted
+            .entries
+            .last()
+            .cloned()
+            .expect("the replay reached an entry");
+
+        let absent_world = ThesisId::from([0u8; 32]);
+        repository
+            .write_designations(&[claim(absent_world, at.clone(), None)])
+            .expect("edited from outside");
+        assert!(
+            matches!(
+                refusal(&repository),
+                Some(DesignationError::PlanIsNotAWorldOfThisRecord { position: 0, .. })
+            ),
+            "a plan that is no world of this record is refused: {:?}",
+            refusal(&repository)
+        );
+
+        let absent_entry = EntryId::of(ape::kernel::entities::CommitmentId::from([0xEEu8; 32]));
+        repository
+            .write_designations(&[claim(founded.forks[0], absent_entry, None)])
+            .expect("edited from outside");
+        assert!(
+            matches!(
+                refusal(&repository),
+                Some(DesignationError::CoordinateIsNotInTheJournal { position: 0, .. })
+            ),
+            "and so is a coordinate the journal does not offer"
+        );
+
+        let absent_party = AgentId::from([0x11u8; 32]);
+        repository
+            .write_designations(&[
+                claim(founded.forks[0], at.clone(), None),
+                claim(founded.forks[1], at, Some(absent_party)),
+            ])
+            .expect("edited from outside");
+        assert!(
+            matches!(
+                refusal(&repository),
+                Some(DesignationError::PartyWasNeverAdmitted { position: 1, .. })
+            ),
+            "and a party never admitted — at position 1, because a log is a sequence and the value \
+             alone would leave a reader searching"
+        );
+    }
+
+    /// And a good log reads, which is the control the three refusals above are worth nothing without.
+    #[test]
+    fn a_log_this_record_can_support_reads() {
+        let founded = designation::founded().expect("the subject is admissible");
+        let repository = designation::scratch("built-control");
+        designation::found(&repository, &founded).expect("a whole write");
+
+        let working = designation::read(&repository).expect("the record reads back");
+        let at = working
+            .admitted
+            .entries
+            .last()
+            .cloned()
+            .expect("the replay reached an entry");
+
+        repository
+            .write_designations(&[
+                claim(founded.forks[0], at.clone(), Some(founded.subject.planner)),
+                claim(founded.forks[1], at, None),
+            ])
+            .expect("edited from outside");
+
+        let reread = designation::read(&repository).expect("and it reads");
+        assert_eq!(reread.designations.len(), 2);
+        assert_eq!(reread.designations[1].by, None, "the unqualified row reads");
+    }
+
+    /// What the plan was at a coordinate, through the application's own walk of the log.
+    #[test]
+    fn the_application_says_what_the_plan_was_at_each_coordinate() {
+        let founded = designation::founded().expect("the subject is admissible");
+        let repository = designation::scratch("built-history");
+        designation::found(&repository, &founded).expect("a whole write");
+
+        let mut working = designation::read(&repository).expect("the record reads back");
+        let mut at = Vec::new();
+
+        for move_of in 0..MOVES {
+            designation::admit(
+                &mut working,
+                Admission::Role {
+                    label: format!("witness-{move_of}"),
+                    recorded_at: "2026-01-11".into(),
+                },
+            )
+            .expect("something is admitted between moves");
+
+            let coordinate = working
+                .admitted
+                .entries
+                .last()
+                .cloned()
+                .expect("the replay reached an entry");
+            working.designations.push(claim(
+                founded.designated(move_of),
+                coordinate.clone(),
+                Some(founded.subject.planner),
+            ));
+            at.push(coordinate);
+        }
+
+        designation::write(&repository, &working).expect("a whole write");
+        let reread = designation::read(&repository).expect("the record reads back");
+
+        for move_of in 0..MOVES {
+            assert_eq!(
+                ape_cli::designation::plan_at(&reread.designations, &at[move_of], &reread.admitted),
+                Some((founded.designated(move_of), Some(founded.subject.planner))),
+                "at move {move_of}"
+            );
+        }
+
+        assert_eq!(
+            ape_cli::designation::plan_at(
+                &reread.designations,
+                &reread.admitted.entries[0],
+                &reread.admitted
+            ),
+            None,
+            "and before the first move the record had no plan"
+        );
+    }
 }
 
 /// One of a repository's files as it stands on disk, or nothing where the record has none.

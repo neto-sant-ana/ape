@@ -562,6 +562,7 @@ fn merge_without_comparing(
             journal: &journal,
             lineage: &pending,
             worlds: &worlds,
+            designations: &[],
         })
         .expect("a whole write");
 }

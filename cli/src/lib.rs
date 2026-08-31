@@ -22,6 +22,7 @@
 
 pub mod archive;
 pub mod converge;
+pub mod designation;
 pub mod error;
 pub mod history;
 pub mod journal;

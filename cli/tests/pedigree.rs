@@ -36,13 +36,13 @@ const NOTHING: &str = "nothing —";
 
 /// The modules of the application. Asserted as a literal because a scan that found none would
 /// otherwise report that every module it did not find is properly attributed.
-const MODULES: usize = 12;
+const MODULES: usize = 13;
 
 /// Citations across all of them, for the same reason.
-const CITATIONS: usize = 36;
+const CITATIONS: usize = 40;
 
 /// Concluded experiments across all rows, so a sweep that read none cannot report agreement.
-const RESULTS: usize = 24;
+const RESULTS: usize = 25;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

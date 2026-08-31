@@ -127,6 +127,31 @@ pub enum ReadingError {
 
     #[error("the record claims to hold entry {entry}, which the journal does not offer")]
     HeldKnowledgeAbsent { entry: crate::journal::EntryId },
+
+    #[error(transparent)]
+    Designation(#[from] DesignationError),
+}
+
+/// A claim about which world a record means, that the record cannot support.
+///
+/// Three references and three refusals, kept apart because they send a reader to three different
+/// files. Each carries the position in the log as well as what failed: a log is a sequence and
+/// naming only the value would leave a reader searching for which of two identical claims is meant.
+#[derive(Debug, thiserror::Error)]
+pub enum DesignationError {
+    #[error("designation {position} names world {plan}, which this record did not decide")]
+    PlanIsNotAWorldOfThisRecord { position: usize, plan: String },
+
+    #[error(
+        "designation {position} was taken after entry {after}, which the journal does not offer"
+    )]
+    CoordinateIsNotInTheJournal {
+        position: usize,
+        after: crate::journal::EntryId,
+    },
+
+    #[error("designation {position} is claimed by {by}, which this record never admitted")]
+    PartyWasNeverAdmitted { position: usize, by: String },
 }
 
 /// What a transfer asked of a repository could not answer.

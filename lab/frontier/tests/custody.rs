@@ -875,6 +875,7 @@ fn a_generation_prepared_by_one_write_refuses_another_writes_journal() {
             journal: &arrangement.files.journal,
             lineage: &arrangement.files.lineage,
             worlds: &arrangement.files.worlds,
+            designations: &[],
         })
         .expect("preparable");
 

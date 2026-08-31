@@ -123,12 +123,33 @@
 //! sets the size of it. That is the second observable price in this module, and it is paid per write
 //! rather than per entry the way the turn's comparison is.
 //!
+//! # And a fifth, which the writer does supply
+//!
+//! ```text
+//! designations.json   which of its worlds this record means, in order
+//! ```
+//!
+//! Custody is the one derived thing here; this is the opposite, and the difference decides its shape.
+//! Nothing produces a plan, so a whole write cannot compute one and a caller has to hand it over —
+//! which is why it is a field of [`RepositoryInput`] rather than something [`Repository::prepare`]
+//! works out. [`crate::designation`] holds the whole of why it is a sequence and not a pointer.
+//!
+//! **It has to be an input to the write**, and that was measured rather than assumed. A fifth file
+//! written beside the live generation is left behind by the next turn — the pointer moves to the
+//! other generation, which never had it — and the record then reads as one that never claimed
+//! anything, which is the same silence as a record that genuinely never did.
+//!
+//! **The same tolerance as custody, and a sharper `[]`.** A repository with no `designations.json`
+//! makes no claim. One whose file holds `[]` says its plan never moved, which is a sentence a write
+//! can honestly make — where an empty custody would be a record claiming to hold no entries.
+//!
 //! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed), 07-atomicity (Confirmed),
-//! 08-contention (Confirmed), 16-custody (Confirmed)
+//! 08-contention (Confirmed), 16-custody (Confirmed), 18-designation (Confirmed)
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::designation::Designated;
 use crate::error::RepositoryError;
 use crate::journal::{self, Admission, EntryId};
 use crate::lineage::Taken;
@@ -140,6 +161,9 @@ const WORLDS: &str = "worlds.json";
 
 /// What the record claims to hold, as distinct from what any decision stood on.
 const CUSTODY: &str = "custody.json";
+
+/// Which of its worlds the record means, in order, and whose meaning each is.
+const DESIGNATIONS: &str = "designations.json";
 
 /// The file naming the generation a reader reads.
 const CURRENT: &str = "current";
@@ -162,6 +186,18 @@ pub struct RepositoryInput<'a> {
     pub journal: &'a [Admission],
     pub lineage: &'a [Taken],
     pub worlds: &'a [WorldRecord],
+    /// Which of its worlds the record means, in order.
+    ///
+    /// Supplied rather than derived, which is what makes it a field here instead of something
+    /// [`Repository::prepare`] computes. Nothing produces a plan, so a whole write that did not
+    /// take one could only carry the previous plan forward — and a write that preserves what it was
+    /// not given is the kind of implicitness this repository is built to avoid.
+    ///
+    /// The cost of that choice is stated rather than hidden: a caller passing `&[]` publishes a
+    /// record whose plan never moved, so a caller that *had* a plan and forgot it here erases it.
+    /// Experiment 18 measured the alternative — a fifth file written beside the live generation is
+    /// left behind by the next turn, and the record then says it never had a plan at all.
+    pub designations: &'a [Designated],
 }
 
 /// Three files written where nothing reads them, and the pointer not yet turned.
@@ -174,7 +210,7 @@ pub struct RepositoryInput<'a> {
 pub struct Prepared {
     root: PathBuf,
     generation: &'static str,
-    written: [(&'static str, String); 4],
+    written: [(&'static str, String); 5],
 }
 
 impl Prepared {
@@ -302,6 +338,10 @@ impl Repository {
                 CUSTODY,
                 serde_json::to_string_pretty(&journal::addresses(input.journal)?)?,
             ),
+            (
+                DESIGNATIONS,
+                serde_json::to_string_pretty(input.designations)?,
+            ),
         ];
 
         for (name, encoded) in &written {
@@ -421,6 +461,43 @@ impl Repository {
     /// the first entry the journal offers.
     pub fn read_custody(&self) -> Result<Option<Vec<EntryId>>, RepositoryError> {
         let path = self.custody_path();
+
+        if !path.exists() {
+            return Ok(None);
+        }
+
+        let encoded = fs::read_to_string(path)?;
+
+        Ok(Some(serde_json::from_str(&encoded)?))
+    }
+
+    pub fn designations_path(&self) -> PathBuf {
+        self.live().join(DESIGNATIONS)
+    }
+
+    /// Write which of its worlds the record means, into the live generation, one file, visibly.
+    ///
+    /// Not what an application does — a whole write takes this one as an input. It is here for the
+    /// same reason its four neighbours are: a claim nothing can edit from outside is a claim nothing
+    /// can be measured against.
+    pub fn write_designations(&self, held: &[Designated]) -> Result<(), RepositoryError> {
+        fs::create_dir_all(self.live())?;
+
+        let encoded = serde_json::to_string_pretty(held)?;
+
+        fs::write(self.designations_path(), encoded)?;
+
+        Ok(())
+    }
+
+    /// Which of its worlds the record means, or nothing where it means to say nothing.
+    ///
+    /// Absent is not empty, and here the two are further apart than they are for custody. A
+    /// repository written before this claim existed says nothing about which world it means; one
+    /// whose file holds `[]` says its plan never moved, which is a sentence a record can honestly
+    /// make and an empty custody could not.
+    pub fn read_designations(&self) -> Result<Option<Vec<Designated>>, RepositoryError> {
+        let path = self.designations_path();
 
         if !path.exists() {
             return Ok(None);

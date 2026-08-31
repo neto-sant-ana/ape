@@ -13,7 +13,8 @@
 //! how those are partitioned, so a record naming a single commitment would report two worlds
 //! as the same world.
 //!
-//! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed), 16-custody (Confirmed)
+//! Earned by: 00-reconstruction (Confirmed), 02-corroboration (Confirmed), 16-custody (Confirmed),
+//! 18-designation (Confirmed)
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -25,6 +26,7 @@ use ape::engine::thesis::{Interpretation, Thesis};
 use ape::kernel::entities::{AgentId, ResourceInstanceId};
 use ape::kernel::value_objects::Date;
 
+use crate::designation::{self, Designated};
 use crate::error::ReadingError;
 use crate::history::ResidentHistory;
 use crate::journal::{Admission, EntryId, Replayed};
@@ -300,6 +302,14 @@ pub struct Corroborated {
     pub admitted: Replayed,
     pub journal: Vec<Admission>,
     pub decisions: Vec<Taken>,
+    /// Which of its worlds the record means, in order, and empty where it says nothing.
+    ///
+    /// A record that makes no claim and one whose plan never moved both arrive here as an empty
+    /// log, and that is the one place the distinction [`Repository::read_designations`] keeps is
+    /// dropped. It is dropped deliberately: every caller of this asks *what is the plan*, and both
+    /// answers to that are *none*. A caller that needs to know whether the record was ever asked
+    /// reads the file.
+    pub designations: Vec<Designated>,
 }
 
 /// The worlds a party's decisions produced, by identity, where anything says who decided.
@@ -348,12 +358,19 @@ pub fn corroborated(repository: &Repository) -> Result<Corroborated, ReadingErro
 
     corroborate(lineage.decided(), &worlds)?;
 
+    // After the worlds are corroborated, because a designation names one of them: weighing a plan
+    // against a worlds file the decisions no longer produce would refuse the plan for the record's
+    // fault, and send a reader to the wrong file.
+    let designations = repository.read_designations()?.unwrap_or_default();
+    designation::corroborate(&designations, &worlds, &admitted)?;
+
     Ok(Corroborated {
         canon,
         lineage,
         admitted,
         journal,
         decisions,
+        designations,
     })
 }
 

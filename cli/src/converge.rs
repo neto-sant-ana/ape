@@ -35,6 +35,15 @@
 //! decisions is a lineage in the same sense either party's was. Nothing is arbitrated because
 //! there is nothing to arbitrate.
 //!
+//! **And so does a plan**, for the same reason and one file over. Two parties hold two designations
+//! and neither is wrong, so the union keeps both and keeps each party's own order — which is what
+//! tells one party's two moves at one coordinate apart. A claim already present is not added twice,
+//! because a designation's fields are its whole content, so two parties that agree hold one claim
+//! and converging twice does not grow the log. Before this, a merge left the record claiming
+//! **nothing**: the plan was not refused, not arbitrated, absent.
+//!
+//! The narrow exception is in [`crate::designation::merge`] and is not repeated here.
+//!
 //! # Order must not survive into the result
 //!
 //! A merge that appended each party's decisions in arrival order would remove the loss and leave
@@ -73,13 +82,14 @@
 //!
 //! Earned by: 05-coordination (Confirmed), 07-atomicity (Confirmed), 08-contention (Confirmed),
 //! 09-collision (Confirmed), 11-veracity (Confirmed), 15-assimilation (Confirmed),
-//! 04-multiagent (Confirmed)
+//! 04-multiagent (Confirmed), 18-designation (Confirmed)
 
 use std::collections::BTreeSet;
 
 use ape::canon::Canon;
 use ape::engine::thesis::{ThesisId, ThesisLookup};
 
+use crate::designation;
 use crate::error::ConvergeError;
 use crate::history::ResidentHistory;
 use crate::journal::{Admission, EntryId};
@@ -109,10 +119,13 @@ pub fn converge(
         .map(WorldRecord::of)
         .collect::<Vec<_>>();
 
+    let designations = designation::merge(&arrived.designations, &held.designations);
+
     repository.write_whole(RepositoryInput {
         journal: &journal.records,
         lineage: &decisions,
         worlds: &worlds,
+        designations: &designations,
     })?;
 
     Ok(Corroborated {
@@ -121,6 +134,7 @@ pub fn converge(
         admitted,
         journal: journal.records,
         decisions,
+        designations,
     })
 }
 
