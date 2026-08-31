@@ -18,6 +18,7 @@ pub mod contention;
 pub mod convergence;
 pub mod coordination;
 pub mod custody;
+pub mod designation;
 pub mod divergence;
 pub mod exploration;
 pub mod imputation;
