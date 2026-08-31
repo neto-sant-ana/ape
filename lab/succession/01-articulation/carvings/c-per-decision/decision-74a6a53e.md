@@ -2,8 +2,8 @@
 kind: decision (genesis)
 world: 74a6a53e4e4d559ff967697523bb44138973421c1d17e718694b8b9eb4fa0905
 arms: [[arm-operations]], [[arm-finance]], [[arm-merged]]
-extends: none — a genesis
-by: nobody
+extends: none — genesis
+taken by: none
 about: ["2f54506ad11b1279c35b86b82a84df617d7d7fc740a92b5294a590b48a309ec2"]
 claims: 1
 ---

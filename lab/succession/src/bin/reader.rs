@@ -41,6 +41,35 @@ use ape_succession::testimony::reconciliation;
 /// The questions a person is asked, by position in the testimony. Every fifth.
 const ASKED: [usize; 10] = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46];
 
+/// A Portuguese gloss for each, shown **beside** the original and never instead of it.
+///
+/// The claim a reader judges is the English one three agents judged; the gloss removes the language
+/// barrier without replacing the text, because a translation is one reading of a sentence and the
+/// agents had to make their own. Identities, field names and crate names stay as they are — they are
+/// references into the record, not prose.
+const GLOSSED: [&str; 10] = [
+    "Os dois diários têm 20 entradas e as primeiras 19 são idênticas, entrada por entrada e instante \
+     por instante. Cada um tem uma vigésima que o outro nunca viu.",
+    "**`converge(mine, theirs)` recusa, e eu medi isso em vez de supor.** A comparação dele é sobre \
+     *sequência* — um diário tem de estender o outro — e nenhum estende.",
+    "Um `Taken` é uma decisão *mais* o prefixo exato sobre o qual ela se apoiava, e \
+     `lineage::rebuild` exige que os dois batam nas duas direções.",
+    "Todas as seis identidades de mundo que qualquer um dos registros reivindicou — incluindo as \
+     duas de finance — voltam **identicamente**.",
+    "*finance decidiu reconhecer a história até 2026-01-08 sob o mundo `74a6a53e…`; quando essa \
+     decisão foi aplicada, estas 21 entradas estavam de pé.*",
+    "Então as duas intenções não apenas discordam sobre o compromisso que operations descartou; uma \
+     delas nomeia conhecimento que o mundo da outra ainda não reconheceu.",
+    "**O campo `by` nas decisões retomadas é a coisa mais fraca do resultado, e quero que isso seja \
+     dito.**",
+    "Toda regra que governa o resultado continua sendo do crate — não forneci política minha alguma \
+     — mas a composição é minha e nada no crate a guarda.",
+    "Tentei fazê-lo recusar editando uma cópia do registro de finance, mas o crate pega um registro \
+     adulterado antes — `reading::corroborated` o recusa antes que a minha guarda seja alcançada, o \
+     que é o crate funcionando corretamente e a minha guarda ainda sem exercício.",
+    "Nada foi lido fora deste diretório e daquele scratchpad.",
+];
+
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -66,7 +95,12 @@ fn main() -> Result<(), String> {
     }
 
     let run = Run::open(&root.join(SOURCE)).map_err(|why| why.to_string())?;
-    let pages = carving::carve(&run, reconciliation::CLAIMS, carving);
+    let pages = carving::carve_in(
+        &run,
+        reconciliation::CLAIMS,
+        carving,
+        ape_succession::articulation::words::Lang::Portuguese,
+    );
 
     let files: Vec<_> = pages
         .iter()
@@ -77,10 +111,12 @@ fn main() -> Result<(), String> {
 
     let questions: Vec<_> = ASKED
         .iter()
-        .map(|at| {
+        .zip(GLOSSED)
+        .map(|(at, gloss)| {
             serde_json::json!({
                 "n": at,
                 "text": reconciliation::CLAIMS[at - 1].text.replace('\n', " "),
+                "gloss": gloss,
             })
         })
         .collect();
@@ -192,7 +228,8 @@ section {{ margin-bottom: 44px; }}
 .trail {{ margin-top: 14px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--mark); background: var(--mark-soft); border: 1px solid var(--rule); border-radius: 3px; padding: 10px 14px; }}
 .q {{ background: var(--card); border: 1px solid var(--rule); border-radius: 3px; padding: 18px 20px; margin-bottom: 14px; box-shadow: var(--shadow); }}
 .q-n {{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }}
-.q-text {{ margin: 6px 0 14px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13.5px; line-height: 1.6; }}
+.q-text {{ margin: 6px 0 10px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13.5px; line-height: 1.6; }}
+.q-gloss {{ margin: 0 0 14px; padding-left: 12px; border-left: 2px solid var(--rule); color: var(--muted); font-size: 14px; }}
 .choices {{ display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }}
 .choices label {{ display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--rule); border-radius: 3px; padding: 6px 12px; cursor: pointer; font-size: 14px; }}
 .choices label:has(input:checked) {{ border-color: var(--accent); background: var(--accent-soft); font-weight: 500; }}
@@ -238,9 +275,11 @@ textarea:focus-visible, .choices label:focus-within {{ outline: 2px solid var(--
       motivo vale tanto quanto responder <em>sim</em>.</p>
     </div>
     <div>
-      <h3>O material está em inglês</h3>
-      <p>O registro e as afirmações não foram traduzidos de propósito: outros leitores receberam
-      exatamente estes textos, e traduzir tornaria as respostas incomparáveis.</p>
+      <h3>Sobre o idioma</h3>
+      <p>O registro está em português. As dez afirmações estão no original em inglês, com uma
+      <em>tradução de apoio</em> logo abaixo de cada uma — o original fica porque outros leitores
+      julgaram exatamente aquelas palavras, e a tradução fica para você não gastar atenção nisso.
+      Códigos como <code>4b8b9b88…</code> e nomes como <code>converge</code> não se traduzem.</p>
     </div>
   </div>
 </section>
@@ -258,8 +297,9 @@ textarea:focus-visible, .choices label:focus-within {{ outline: 2px solid var(--
       <pre id="viewbody" hidden></pre>
     </div>
   </div>
-  <p class="note">A ordem em que você abre os arquivos faz parte do que está sendo medido, e por
-  isso fica visível para você acima. Abra o que quiser, quantas vezes quiser.</p>
+  <p class="note">A lista está em <strong>ordem aleatória</strong> — nada nela indica por onde
+  começar, e isso é de propósito. A ordem em que você abre os arquivos faz parte do que está sendo
+  medido, e por isso fica visível para você acima. Abra o que quiser, quantas vezes quiser.</p>
 </section>
 
 <section>
@@ -290,9 +330,21 @@ const bodyEl = document.getElementById("viewbody");
 const empty = document.getElementById("empty");
 const trailEl = document.getElementById("trail");
 
-FILES.forEach((file, index) => {{
+// The shelf is shuffled per reader, and the order shown is reported back.
+//
+// Unshuffled, the list is the order the generator emits pages in — so "opened the first one" would
+// measure that order, which is a choice nobody made for a reason. Shuffled, it measures what P5
+// asks: a reader who opens the first thing shown had no basis to choose, and one who scans and
+// picks something else was told something by the names.
+const order = FILES.map((_, i) => i);
+for (let i = order.length - 1; i > 0; i--) {{
+  const j = Math.floor(Math.random() * (i + 1));
+  [order[i], order[j]] = [order[j], order[i]];
+}}
+
+order.forEach((index) => {{
   const b = document.createElement("button");
-  b.textContent = file.name;
+  b.textContent = FILES[index].name;
   b.addEventListener("click", () => open(index, b));
   shelf.appendChild(b);
 }});
@@ -320,17 +372,24 @@ QUESTIONS.forEach((q) => {{
   div.innerHTML =
     '<div class="q-n">afirmação ' + q.n + '</div>' +
     '<div class="q-text"></div>' +
+    '<div class="q-gloss"></div>' +
     '<div class="choices">' +
       '<label><input type="radio" name="v' + q.n + '" value="estabelecida"> estabelecida</label>' +
       '<label><input type="radio" name="v' + q.n + '" value="nao estabelecida"> não estabelecida</label>' +
     '</div>' +
     '<textarea id="w' + q.n + '" placeholder="Por quê? Uma ou duas frases — o que nos arquivos resolve, ou o que falta."></textarea>';
   div.querySelector(".q-text").textContent = q.text;
+  div.querySelector(".q-gloss").textContent = q.gloss;
   qs.appendChild(div);
 }});
 
 document.getElementById("build").addEventListener("click", () => {{
-  const lines = ["## trilha", "abriu, em ordem: " + (trail.join(" -> ") || "nada"), ""];
+  const lines = [
+    "## trilha",
+    "lista mostrada nesta ordem: " + order.map((i) => FILES[i].name).join(", "),
+    "abriu, em ordem: " + (trail.join(" -> ") || "nada"),
+    "",
+  ];
   for (const q of QUESTIONS) {{
     const picked = document.querySelector('input[name="v' + q.n + '"]:checked');
     lines.push("## " + q.n);

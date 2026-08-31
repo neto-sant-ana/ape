@@ -3,7 +3,7 @@ kind: decision (fork)
 world: dd201a84e58e1baf5796740358581936cfe93037f1b100ad1ad6d6ea06a0cce6
 arms: [[arm-finance]], [[arm-merged]]
 extends: [[decision-558f991d]]
-by: 108077234acde7911af42ac2a820bcdb2e770e9c923608f9454a2eec6c71970b
+taken by: 108077234acde7911af42ac2a820bcdb2e770e9c923608f9454a2eec6c71970b
 about: ["652a011d545fddb2f76257420dcfac55c0db58e433dd3f887923ddcc4e1d1ebe"]
 claims: 8
 ---

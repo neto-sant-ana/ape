@@ -57,6 +57,7 @@ use std::fmt::Write as _;
 
 use crate::articulation::anchor::{self, Anchored};
 use crate::articulation::record::{Entry, Record, Run, Taken, World};
+use crate::articulation::words::{Lang, Words};
 use crate::classification::{Claim, Verdict};
 
 /// Which unit the record is cut into.
@@ -155,35 +156,35 @@ fn quoted(claim: &Claim) -> String {
 }
 
 /// The name of the page an entity gets under [`Carving::PerEntity`].
-fn entity_page(id: &str, entry: &Entry) -> Option<String> {
+fn entity_page(id: &str, entry: &Entry, w: &Words) -> Option<String> {
     match entry {
-        Entry::Agent { label, .. } => Some(format!("agent-{label}")),
-        Entry::Commitment { .. } => Some(format!("commitment-{}", short(id))),
-        Entry::Event { .. } => Some(format!("event-{}", short(id))),
+        Entry::Agent { label, .. } => Some(format!("{}-{label}", w.page_agent)),
+        Entry::Commitment { .. } => Some(format!("{}-{}", w.page_commitment, short(id))),
+        Entry::Event { .. } => Some(format!("{}-{}", w.page_event, short(id))),
         _ => None,
     }
 }
 
-fn thesis_page(id: &str) -> String {
-    format!("thesis-{}", short(id))
+fn thesis_page(id: &str, w: &Words) -> String {
+    format!("{}-{}", w.page_thesis, short(id))
 }
 
-fn decision_page(world: &World) -> String {
-    format!("decision-{}", short(&world.thesis))
+fn decision_page(world: &World, w: &Words) -> String {
+    format!("{}-{}", w.page_decision, short(&world.thesis))
 }
 
-fn arm_page(arm: &str) -> String {
-    format!("arm-{arm}")
+fn arm_page(arm: &str, w: &Words) -> String {
+    format!("{}-{arm}", w.page_arm)
 }
 
 /// Everything the record says about one entry, as lines.
-fn entry_body(id: &str, entry: &Entry) -> String {
+fn entry_body(id: &str, entry: &Entry, w: &Words) -> String {
     let mut out = String::new();
     let _ = writeln!(out, "`{id}`\n");
 
     match entry {
         Entry::Agent { label, .. } => {
-            let _ = writeln!(out, "An Agent, labelled **{label}**.");
+            let _ = writeln!(out, "{} **{label}**.", w.an_agent);
         }
         Entry::Commitment {
             accountable,
@@ -197,19 +198,24 @@ fn entry_body(id: &str, entry: &Entry) -> String {
             dependencies,
             ..
         } => {
-            let _ = writeln!(out, "A Commitment.\n");
-            let _ = writeln!(out, "- accountable: `{accountable}`");
-            let _ = writeln!(out, "- executors: {executors:?}");
-            let _ = writeln!(out, "- beneficiaries: {beneficiaries:?}");
-            let _ = writeln!(out, "- statement: `{statement}`");
-            let _ = writeln!(out, "- resource instance: `{resource}`");
-            let _ = writeln!(out, "- committed at: {committed_at}, due {due_date}");
+            let _ = writeln!(out, "{}\n", w.a_commitment);
+            let _ = writeln!(out, "- {}: `{accountable}`", w.accountable);
+            let _ = writeln!(out, "- {}: {executors:?}", w.executors);
+            let _ = writeln!(out, "- {}: {beneficiaries:?}", w.beneficiaries);
+            let _ = writeln!(out, "- {}: `{statement}`", w.statement);
+            let _ = writeln!(out, "- {}: `{resource}`", w.resource_instance);
             let _ = writeln!(
                 out,
-                "- magnitude: {}",
-                magnitude.as_deref().unwrap_or("none")
+                "- {}: {committed_at}, {} {due_date}",
+                w.committed_at, w.due
             );
-            let _ = writeln!(out, "- dependencies: {dependencies:?}");
+            let _ = writeln!(
+                out,
+                "- {}: {}",
+                w.magnitude,
+                magnitude.as_deref().unwrap_or(w.none)
+            );
+            let _ = writeln!(out, "- {}: {dependencies:?}", w.dependencies);
         }
         Entry::Event {
             commitment,
@@ -217,13 +223,13 @@ fn entry_body(id: &str, entry: &Entry) -> String {
             occurred_at,
             ..
         } => {
-            let _ = writeln!(out, "An Event.\n");
-            let _ = writeln!(out, "- settles: `{commitment}`");
-            let _ = writeln!(out, "- observation: {observation}");
-            let _ = writeln!(out, "- occurred at: {occurred_at}");
+            let _ = writeln!(out, "{}\n", w.an_event);
+            let _ = writeln!(out, "- {}: `{commitment}`", w.settles);
+            let _ = writeln!(out, "- {}: {observation}", w.observation);
+            let _ = writeln!(out, "- {}: {occurred_at}", w.occurred_at);
         }
         other => {
-            let _ = writeln!(out, "A {}.\n", other.kind());
+            let _ = writeln!(out, "{} {}.\n", w.a_kind, w.kind(other.kind()));
             let _ = writeln!(
                 out,
                 "```json\n{}\n```",
@@ -232,27 +238,36 @@ fn entry_body(id: &str, entry: &Entry) -> String {
         }
     }
 
-    let _ = writeln!(out, "- recorded at: {}", entry.recorded_at());
+    let _ = writeln!(out, "- {}: {}", w.recorded_at, entry.recorded_at());
     out
 }
 
-fn decision_body(taken: &Taken, world: &World, run: &Run, holders: &[&'static str]) -> String {
+fn decision_body(
+    taken: &Taken,
+    world: &World,
+    run: &Run,
+    holders: &[&'static str],
+    w: &Words,
+) -> String {
     let mut out = String::new();
     let _ = writeln!(out, "`{}`\n", world.thesis);
     let _ = writeln!(
         out,
-        "A **{}**, held by: {}.\n",
-        taken.decides,
+        "{} **{}**, {}: {}.\n",
+        w.a_kind,
+        w.decides(&taken.decides),
+        w.held_by,
         holders.join(", ")
     );
-    let _ = writeln!(out, "- produces world: `{}`", world.thesis);
-    let _ = writeln!(out, "- known at: {}", world.known_at);
-    let _ = writeln!(out, "- event head: {:?}", world.event_head);
-    let _ = writeln!(out, "- frozen: {:?}", world.frozen);
-    let _ = writeln!(out, "- open: {:?}", world.open);
+    let _ = writeln!(out, "- {}: `{}`", w.produces_world, world.thesis);
+    let _ = writeln!(out, "- {}: {}", w.known_at, world.known_at);
+    let _ = writeln!(out, "- {}: {:?}", w.event_head, world.event_head);
+    let _ = writeln!(out, "- {}: {:?}", w.frozen, world.frozen);
+    let _ = writeln!(out, "- {}: {:?}", w.open, world.open);
     let _ = writeln!(
         out,
-        "- taken by: {}",
+        "- {}: {}",
+        w.taken_by,
         taken
             .by
             .as_deref()
@@ -262,22 +277,22 @@ fn decision_body(taken: &Taken, world: &World, run: &Run, holders: &[&'static st
                     .into_iter()
                     .find(|(at, _, _)| *at == by)
                     .and_then(|(_, entry, _)| entry.label())
-                    .unwrap_or("an agent this record does not name")
+                    .unwrap_or(w.unnamed_agent)
                     .to_owned();
                 format!("`{by}` ({named})")
             })
-            .unwrap_or_else(|| "nobody — the decision claims no party".to_owned())
+            .unwrap_or_else(|| w.nobody.to_owned())
     );
-    let _ = writeln!(out, "- taken after entry: `{}`", taken.after);
-    let _ = writeln!(out, "- witnessed entries: {}", taken.witness.len());
+    let _ = writeln!(out, "- {}: `{}`", w.taken_after, taken.after);
+    let _ = writeln!(out, "- {}: {}", w.witnessed, taken.witness.len());
 
     if let Some(extends) = &taken.extends {
-        let _ = writeln!(out, "- extends: `{extends}`");
+        let _ = writeln!(out, "- {}: `{extends}`", w.extends);
     }
     for (name, set) in [
-        ("selection", &taken.selection),
-        ("omitted", &taken.omitted),
-        ("introduced", &taken.introduced),
+        (w.selection, &taken.selection),
+        (w.omitted, &taken.omitted),
+        (w.introduced, &taken.introduced),
     ] {
         if !set.is_empty() {
             let _ = writeln!(out, "- {name}: {set:?}");
@@ -291,44 +306,51 @@ fn decision_body(taken: &Taken, world: &World, run: &Run, holders: &[&'static st
 ///
 /// The facts that belong to a journal rather than to anything in it. Custody is here for that
 /// reason: it is a claim about the journal's extent, and no entity is its subject.
-fn arm_body(arm: &Record) -> String {
+fn arm_body(arm: &Record, w: &Words) -> String {
     let mut out = format!("# {}\n\n", arm.arm);
     let _ = writeln!(
         out,
-        "{} journal entries, {} custody addresses, {} decisions, {} worlds.\n",
-        arm.journal.len(),
-        arm.custody.len(),
-        arm.lineage.len(),
-        arm.worlds.len()
+        "{}\n",
+        w.counted(
+            arm.journal.len(),
+            arm.custody.len(),
+            arm.lineage.len(),
+            arm.worlds.len()
+        )
     );
 
-    out.push_str("## Journal, in the order it was admitted\n\n");
+    let _ = writeln!(out, "## {}\n", w.journal_in_order);
     for (position, (id, entry)) in arm.addressed().into_iter().enumerate() {
         let _ = writeln!(
             out,
-            "{}. `{}` — {} recorded {}",
+            "{}. `{}` — {} {} {}",
             position + 1,
             id,
-            entry.kind(),
+            w.kind(entry.kind()),
+            w.recorded_at,
             entry.recorded_at()
         );
     }
 
-    out.push_str("\n## Custody — every address this journal comes to\n\n");
+    let _ = writeln!(out, "\n## {}\n", w.custody_section);
     for id in &arm.custody {
         let _ = writeln!(out, "- `{id}`");
     }
 
-    out.push_str("\n## Decisions, in the order taken\n\n");
+    let _ = writeln!(out, "\n## {}\n", w.decisions_in_order);
     for (position, (taken, world)) in arm.decided().into_iter().enumerate() {
         let _ = writeln!(
             out,
-            "{}. {} producing `{}`, after `{}`, witnessing {} entries",
+            "{}. {} {} `{}`, {} `{}`, {} {} {}",
             position + 1,
-            taken.decides,
+            w.decides(&taken.decides),
+            w.producing,
             world.thesis,
+            w.after,
             taken.after,
-            taken.witness.len()
+            w.witnessing,
+            taken.witness.len(),
+            w.witnessed
         );
     }
 
@@ -337,47 +359,53 @@ fn arm_body(arm: &Record) -> String {
 
 /// Cut the run and the claims into pages.
 pub fn carve(run: &Run, claims: &[Claim], carving: Carving) -> Vec<Page> {
+    carve_in(run, claims, carving, Lang::English)
+}
+
+/// The same, in the words a given reader reads. See [`crate::articulation::words`].
+pub fn carve_in(run: &Run, claims: &[Claim], carving: Carving, lang: Lang) -> Vec<Page> {
     let placed = to_place(claims, run);
+    let w = lang.words();
 
     match carving {
-        Carving::Flat => flat(run, &placed),
-        Carving::PerEntity => per_entity(run, &placed),
-        Carving::PerDecision => per_decision(run, &placed),
+        Carving::Flat => flat(run, &placed, w),
+        Carving::PerEntity => per_entity(run, &placed, w),
+        Carving::PerDecision => per_decision(run, &placed, w),
     }
 }
 
 /// A — one document, reading order, and nothing overflows because nothing was placed.
-fn flat(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
-    let mut body = String::from("# The record\n\n");
+fn flat(run: &Run, placed: &[Placed<'_>], w: &Words) -> Vec<Page> {
+    let mut body = format!("# {}\n\n", w.record);
 
     for arm in &run.arms {
-        let _ = writeln!(body, "# Arm: {}\n", arm.arm);
-        body.push_str(&arm_body(arm));
-        body.push_str("\n## Entries in full\n\n");
+        let _ = writeln!(body, "# {}: {}\n", w.arm, arm.arm);
+        body.push_str(&arm_body(arm, w));
+        let _ = writeln!(body, "\n## {}\n", w.entries_in_full);
 
         for (id, entry) in arm.addressed() {
-            let _ = writeln!(body, "### {} `{}`\n", entry.kind(), short(id));
-            body.push_str(&entry_body(id, entry));
+            let _ = writeln!(body, "### {} `{}`\n", w.kind(entry.kind()), short(id));
+            body.push_str(&entry_body(id, entry, w));
             body.push('\n');
         }
 
-        body.push_str("## Decisions in full\n\n");
+        let _ = writeln!(body, "## {}\n", w.decisions_in_full);
         for (taken, world) in arm.decided() {
             let _ = writeln!(body, "### `{}`\n", short(&world.thesis));
-            body.push_str(&decision_body(taken, world, run, &[arm.arm]));
+            body.push_str(&decision_body(taken, world, run, &[arm.arm], w));
             body.push('\n');
         }
     }
 
-    body.push_str("# What was said about it\n\n");
+    let _ = writeln!(body, "# {}\n", w.said);
     for entry in placed {
         body.push_str(&quoted(entry.claim));
     }
 
     vec![Page {
-        name: "record".to_owned(),
+        name: w.page_record.to_owned(),
         frontmatter: vec![
-            ("kind".to_owned(), "record".to_owned()),
+            ("kind".to_owned(), w.page_record.to_owned()),
             (
                 "arms".to_owned(),
                 run.arms
@@ -392,64 +420,65 @@ fn flat(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
 }
 
 /// The arm pages, which B and C both carry.
-fn arms(run: &Run) -> Vec<Page> {
+fn arms(run: &Run, w: &Words) -> Vec<Page> {
     run.arms
         .iter()
         .map(|arm| Page {
-            name: arm_page(arm.arm),
+            name: arm_page(arm.arm, w),
             frontmatter: vec![
-                ("kind".to_owned(), "arm".to_owned()),
+                ("kind".to_owned(), w.page_arm.to_owned()),
                 ("entries".to_owned(), arm.journal.len().to_string()),
                 ("custody".to_owned(), arm.custody.len().to_string()),
                 ("decisions".to_owned(), arm.lineage.len().to_string()),
                 ("worlds".to_owned(), arm.worlds.len().to_string()),
             ],
-            body: arm_body(arm),
+            body: arm_body(arm, w),
         })
         .collect()
 }
 
 /// B — a page per Agent, Commitment, Event and Thesis, plus arms and vocabulary.
-fn per_entity(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
-    let mut pages = arms(run);
-    let mut vocabulary = String::from("# Vocabulary\n\nThe entries that introduce names.\n\n");
+fn per_entity(run: &Run, placed: &[Placed<'_>], w: &Words) -> Vec<Page> {
+    let mut pages = arms(run, w);
+    let mut vocabulary = format!("# {}\n\n{}\n\n", w.vocabulary, w.vocabulary_note_b);
 
     for (id, entry, holders) in run.entries() {
-        let Some(name) = entity_page(id, entry) else {
+        let Some(name) = entity_page(id, entry, w) else {
             let _ = writeln!(
                 vocabulary,
-                "## {} `{}` — in {}\n",
-                entry.kind(),
+                "## {} `{}` — {} {}\n",
+                w.kind(entry.kind()),
                 short(id),
+                w.in_arms,
                 holders.join(", ")
             );
-            vocabulary.push_str(&entry_body(id, entry));
+            vocabulary.push_str(&entry_body(id, entry, w));
             vocabulary.push('\n');
             continue;
         };
 
-        let mut body = format!("# {name}\n\n{}", entry_body(id, entry));
+        let mut body = format!("# {name}\n\n{}", entry_body(id, entry, w));
         let mine: Vec<&Placed<'_>> = placed
             .iter()
             .filter(|at| at.at.identities.contains(id) || at.at.parties.contains(id))
             .collect();
 
         if !mine.is_empty() {
-            body.push_str("\n## What was said about it\n\n");
+            let _ = writeln!(body, "\n## {}\n", w.said);
             for entry in &mine {
                 body.push_str(&quoted(entry.claim));
             }
         }
 
         let mut frontmatter = vec![
-            ("kind".to_owned(), entry.kind().to_owned()),
+            ("kind".to_owned(), w.kind(entry.kind()).to_owned()),
             ("identity".to_owned(), id.to_owned()),
             (
                 "arms".to_owned(),
                 links(
                     holders
                         .iter()
-                        .map(|arm| arm_page(arm))
+                        .map(|arm| arm_page(arm, w))
                         .collect::<Vec<_>>()
                         .iter()
                         .map(String::as_str),
@@ -463,7 +492,7 @@ fn per_entity(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
                     .decisions()
                     .into_iter()
                     .filter(|(_, taken, _)| taken.by.as_deref() == Some(id))
-                    .map(|(world, _, _)| thesis_page(&world.thesis))
+                    .map(|(world, _, _)| thesis_page(&world.thesis, w))
                     .collect();
 
                 frontmatter.push((
@@ -482,7 +511,7 @@ fn per_entity(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
                             .chain(&world.open)
                             .any(|held| held == id)
                     })
-                    .map(|(world, _, _)| thesis_page(&world.thesis))
+                    .map(|(world, _, _)| thesis_page(&world.thesis, w))
                     .collect();
 
                 frontmatter.push((
@@ -501,9 +530,9 @@ fn per_entity(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
     }
 
     for (world, taken, holders) in run.decisions() {
-        let name = thesis_page(&world.thesis);
+        let name = thesis_page(&world.thesis, w);
         let mut body = format!("# {name}\n\n");
-        body.push_str(&decision_body(taken, world, run, &holders));
+        body.push_str(&decision_body(taken, world, run, &holders, w));
 
         let mine: Vec<&Placed<'_>> = placed
             .iter()
@@ -511,7 +540,7 @@ fn per_entity(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
             .collect();
 
         if !mine.is_empty() {
-            body.push_str("\n## What was said about it\n\n");
+            let _ = writeln!(body, "\n## {}\n", w.said);
             for entry in &mine {
                 body.push_str(&quoted(entry.claim));
             }
@@ -525,21 +554,21 @@ fn per_entity(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
                 run.entries()
                     .into_iter()
                     .find(|(at, _, _)| at == held)
-                    .and_then(|(at, entry, _)| entity_page(at, entry))
+                    .and_then(|(at, entry, _)| entity_page(at, entry, w))
             })
             .collect();
 
         pages.push(Page {
             name,
             frontmatter: vec![
-                ("kind".to_owned(), "thesis".to_owned()),
+                ("kind".to_owned(), w.page_thesis.to_owned()),
                 ("identity".to_owned(), world.thesis.clone()),
                 (
                     "arms".to_owned(),
                     links(
                         holders
                             .iter()
-                            .map(|arm| arm_page(arm))
+                            .map(|arm| arm_page(arm, w))
                             .collect::<Vec<_>>()
                             .iter()
                             .map(String::as_str),
@@ -550,7 +579,7 @@ fn per_entity(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
                     world
                         .thesis_parent
                         .as_deref()
-                        .map(|id| link(&thesis_page(id)))
+                        .map(|id| link(&thesis_page(id, w)))
                         .unwrap_or_else(|| "none".to_owned()),
                 ),
                 ("holds".to_owned(), links(holds.iter().map(String::as_str))),
@@ -561,11 +590,11 @@ fn per_entity(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
     }
 
     pages.push(Page {
-        name: "vocabulary".to_owned(),
-        frontmatter: vec![("kind".to_owned(), "vocabulary".to_owned())],
+        name: w.page_vocabulary.to_owned(),
+        frontmatter: vec![("kind".to_owned(), w.page_vocabulary.to_owned())],
         body: vocabulary,
     });
-    pages.push(overflow(placed, |at| at.is_empty()));
+    pages.push(overflow(placed, w, |at| at.is_empty()));
 
     pages
 }
@@ -575,27 +604,27 @@ fn per_entity(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
 /// Nothing but a decision has a page here, so the vocabulary is the whole journal — which is what
 /// *entities are linked and not owned* means, and what Run 1 got wrong by dropping the five entries
 /// that happened to have pages in B.
-fn per_decision(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
-    let mut pages = arms(run);
-    let mut vocabulary =
-        String::from("# Vocabulary\n\nEvery entry any arm of this record admitted.\n\n");
+fn per_decision(run: &Run, placed: &[Placed<'_>], w: &Words) -> Vec<Page> {
+    let mut pages = arms(run, w);
+    let mut vocabulary = format!("# {}\n\n{}\n\n", w.vocabulary, w.vocabulary_note_c);
 
     for (id, entry, holders) in run.entries() {
         let _ = writeln!(
             vocabulary,
-            "## {} `{}` — in {}\n",
-            entry.kind(),
+            "## {} `{}` — {} {}\n",
+            w.kind(entry.kind()),
             short(id),
+            w.in_arms,
             holders.join(", ")
         );
-        vocabulary.push_str(&entry_body(id, entry));
+        vocabulary.push_str(&entry_body(id, entry, w));
         vocabulary.push('\n');
     }
 
     for (world, taken, holders) in run.decisions() {
-        let name = decision_page(world);
+        let name = decision_page(world, w);
         let mut body = format!("# {name}\n\n");
-        body.push_str(&decision_body(taken, world, run, &holders));
+        body.push_str(&decision_body(taken, world, run, &holders, w));
 
         let mine: Vec<&Placed<'_>> = placed
             .iter()
@@ -603,7 +632,7 @@ fn per_decision(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
             .collect();
 
         if !mine.is_empty() {
-            body.push_str("\n## What was said about it\n\n");
+            let _ = writeln!(body, "\n## {}\n", w.said);
             for entry in &mine {
                 body.push_str(&quoted(entry.claim));
             }
@@ -612,14 +641,17 @@ fn per_decision(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
         pages.push(Page {
             name,
             frontmatter: vec![
-                ("kind".to_owned(), format!("decision ({})", taken.decides)),
+                (
+                    "kind".to_owned(),
+                    format!("{} ({})", w.decision, w.decides(&taken.decides)),
+                ),
                 ("world".to_owned(), world.thesis.clone()),
                 (
                     "arms".to_owned(),
                     links(
                         holders
                             .iter()
-                            .map(|arm| arm_page(arm))
+                            .map(|arm| arm_page(arm, w))
                             .collect::<Vec<_>>()
                             .iter()
                             .map(String::as_str),
@@ -634,13 +666,13 @@ fn per_decision(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
                             run.decisions()
                                 .into_iter()
                                 .find(|(world, _, _)| world.thesis == id)
-                                .map(|(world, _, _)| link(&decision_page(world)))
+                                .map(|(world, _, _)| link(&decision_page(world, w)))
                         })
-                        .unwrap_or_else(|| "none — a genesis".to_owned()),
+                        .unwrap_or_else(|| format!("{} — {}", w.none, w.genesis)),
                 ),
                 (
-                    "by".to_owned(),
-                    taken.by.clone().unwrap_or_else(|| "nobody".to_owned()),
+                    w.taken_by.to_owned(),
+                    taken.by.clone().unwrap_or_else(|| w.none.to_owned()),
                 ),
                 ("about".to_owned(), format!("{:?}", taken.commitments())),
                 ("claims".to_owned(), mine.len().to_string()),
@@ -650,11 +682,11 @@ fn per_decision(run: &Run, placed: &[Placed<'_>]) -> Vec<Page> {
     }
 
     pages.push(Page {
-        name: "vocabulary".to_owned(),
-        frontmatter: vec![("kind".to_owned(), "vocabulary".to_owned())],
+        name: w.page_vocabulary.to_owned(),
+        frontmatter: vec![("kind".to_owned(), w.page_vocabulary.to_owned())],
         body: vocabulary,
     });
-    pages.push(overflow(placed, |at| {
+    pages.push(overflow(placed, w, |at| {
         !run.decisions()
             .into_iter()
             .any(|(world, taken, _)| reaches(taken, world, at))
@@ -679,20 +711,18 @@ fn reaches(taken: &Taken, world: &World, at: &Anchored) -> bool {
 }
 
 /// The claims a carving could not place, and the protocol says its size is a result.
-fn overflow(placed: &[Placed<'_>], unplaced: impl Fn(&Anchored) -> bool) -> Page {
+fn overflow(placed: &[Placed<'_>], w: &Words, unplaced: impl Fn(&Anchored) -> bool) -> Page {
     let mine: Vec<&Placed<'_>> = placed.iter().filter(|at| unplaced(&at.at)).collect();
-    let mut body = String::from(
-        "# Overflow\n\nWhat was said about this record that is not about any one part of it.\n\n",
-    );
+    let mut body = format!("# {}\n\n{}\n\n", w.overflow, w.overflow_note);
 
     for entry in &mine {
         body.push_str(&quoted(entry.claim));
     }
 
     Page {
-        name: "overflow".to_owned(),
+        name: w.page_overflow.to_owned(),
         frontmatter: vec![
-            ("kind".to_owned(), "overflow".to_owned()),
+            ("kind".to_owned(), w.page_overflow.to_owned()),
             ("claims".to_owned(), mine.len().to_string()),
         ],
         body,

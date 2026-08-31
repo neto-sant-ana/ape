@@ -3,7 +3,7 @@ kind: decision (advance)
 world: 558f991d1bd39c3d3578cf226f14940920d6e919c37d2ea4bcf670f68b066e96
 arms: [[arm-finance]], [[arm-merged]]
 extends: [[decision-74a6a53e]]
-by: 108077234acde7911af42ac2a820bcdb2e770e9c923608f9454a2eec6c71970b
+taken by: 108077234acde7911af42ac2a820bcdb2e770e9c923608f9454a2eec6c71970b
 about: []
 claims: 8
 ---
