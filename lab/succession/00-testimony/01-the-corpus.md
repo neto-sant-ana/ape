@@ -49,6 +49,11 @@ run-b                      record and found wrong in specific ways
 appears only under the in-memory boundary is a property of that boundary, and a kind that appears only
 in writers is a property of writing. `run-reader` is the control, and P5 is about it.
 
+> **Corrected in Phase 2: there are two readers.** `02-hindsight` is an audit and says so in its own
+> last line — *it admits nothing to the canon and stores nothing in the archive*. The sentence above
+> is kept as it was published, because what produced it is the finding:
+> [`03-the-corpus-had-two-readers.md`](03-the-corpus-had-two-readers.md).
+
 ## What is deliberately not in the corpus
 
 **The `GOAL.md` beside each answer**, which is the task rather than the testimony. It is read when a

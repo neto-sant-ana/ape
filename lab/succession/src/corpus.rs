@@ -58,12 +58,19 @@ impl Run {
         }
     }
 
-    /// Whether the run wrote to a record or only read one.
+    /// Whether the run left anything in a record, or only read one.
     ///
     /// P5's control: the kinds a reader produces should differ from the kinds a writer produces, and
     /// if they do not, the kinds belong to the record rather than to what the agent was doing.
+    ///
+    /// **`Hindsight` is a reader, and the corpus document published it as a writer.** Its own
+    /// testimony says *the audit reads only — it admits nothing to the canon and stores nothing in
+    /// the archive*, which was found in Phase 2 and is corrected here rather than where it was
+    /// convenient. It builds alternative worlds in memory to interpret them, and persists none: the
+    /// line is what a run **left behind**, because that is what P5 is about. See
+    /// `03-the-corpus-had-two-readers.md`.
     pub fn wrote(&self) -> bool {
-        !matches!(self, Run::MultiagentReader)
+        !matches!(self, Run::MultiagentReader | Run::Hindsight)
     }
 
     /// Whether the run's boundary was the repository or the in-memory engine.
