@@ -12,6 +12,7 @@ pub mod multiagent_b;
 pub mod multiagent_b_prime;
 pub mod multiagent_reader;
 pub mod narrative_mismatch;
+pub mod reconciliation;
 pub mod single_agent;
 
 /// Every claim classified so far, across every testimony that has been read.
@@ -29,6 +30,7 @@ pub fn classified() -> Vec<Claim> {
     claims.extend_from_slice(multiagent_b::CLAIMS);
     claims.extend_from_slice(multiagent_b_prime::CLAIMS);
     claims.extend_from_slice(multiagent_reader::CLAIMS);
+    claims.extend_from_slice(reconciliation::CLAIMS);
 
     claims
 }

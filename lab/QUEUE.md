@@ -237,6 +237,68 @@ citation of this row the application has ever held.
 
 ---
 
+## Owed by `succession/00-testimony` — twenty-two wants nothing selectable held
+
+**Read out of the classification rather than transcribed**, by the suite that produced them
+([`the_classification_says_which_testimonies_it_has_not_read`](succession/tests/classification.rs)),
+because a list copied by hand from a reading is the failure this experiment measured.
+
+**Why they are here at all** is the experiment's method finding, and it is not about H4: a want in a
+result document is *findable* and not *selectable*. The queue orders items in the queue, and ripeness
+— this file's only stated ordering signal — cannot reach what never entered it. `agents/01` recorded
+two frictions in its own result at the first experiment of that row and neither reached here;
+`agents/04`'s four requests are one sentence in the re-run debt above. Nothing said which was which.
+
+**Nine were in a result document. Thirteen were nowhere.**
+
+```text
+recorded in agents/01's result
+  no dry run — an intention must be asserted before its feasibility can be examined, and the
+  overlay that would avoid it is composable and offered by nothing
+  a conflict names the level it reached, not the bound it left, and `Constraint` exposes only
+  `check(value)` — no accessor, no `Display`. THREE agents met this, two by workaround
+  the penalty is not expressible from the world as given
+
+recorded in agents/02's result
+  a refusal dates a decision, and only one decision — nothing comparable for the others
+
+recorded in frontier/15's result, as a mechanism and never as a cost
+  a retake cannot preserve the original witness: the merged record can state a true witness
+  about itself and not the one the other party held
+
+nowhere at all
+  no projected balance — `Accumulation` answers conditions and feasibility, and a reader of a
+  repository alone never finds the level. Reached for by THREE agents
+  `decided_by` cannot tell *unclaimed* from *not this party's*, so silence and denial look the
+  same. TWO agents
+  nothing distinguishes the world a party is IN from the worlds it holds — the tip is
+  application state outside the graph
+  no claim/invoice/receivable: *they billed us* is indistinguishable from *we decided to pay
+  them*, and the counterparty's own intention is nowhere
+  nothing says whether an omission REPLACES an introduction or merely joins it, so a reader
+  cannot tell a substitution from an addition
+  the record cannot say that a fact arrived after the last time anybody looked
+  no `FromStr` on the id types — a hex string cannot become a `ThesisId` except through serde
+  nothing prevents a journal holding one admission record twice
+  a resource with no way to say what its magnitude counts in
+  a world with no vocabulary for goods, so a delivery is recorded as its cash leg
+  two copies of one calendar in an experiment's own fixture
+```
+
+**Six are `ByDesign` and are deliberately not here** — the record does not carry them because the
+ontology says an application should. They are H4's subject rather than the queue's, and
+[`00-testimony/99-result.md`](succession/00-testimony/99-result.md) says why.
+
+**And one item about a guard, found by tripping it.** `cli/tests/pedigree.rs` reads a verdict as *the
+first non-empty line after the heading, and something bold in it* — so it proves a verdict **exists**
+and not that it **is** one. Writing this experiment's result with a caveat banner above the verdict
+line was accepted in silence, with *"Phase 4 has not run"* standing in as the verdict; the document
+was reordered rather than the guard taught. What would fix it is a check that the bold span is one of
+the verdicts the laboratory uses, which is a list, which is a copy — so it is queued rather than
+written, alongside the other known way this family fails.
+
+---
+
 ## Named by `agents/05` — three items, and the first is the largest thing the row has queued
 
 The agents row records a need it finds as a **request**. These are the three that run came back with,

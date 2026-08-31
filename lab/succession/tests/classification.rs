@@ -375,6 +375,28 @@ fn the_classification_says_which_testimonies_it_has_not_read() {
         println!("  {kind:?} {}", counted(kind));
     }
 
+    // P1 is *most of the corpus is housed*, and a table row is the cheapest housed claim there is —
+    // a cast list, a world enumeration. Carrying the number both ways is what stops the prediction
+    // being answered by how many tables the agents happened to draw.
+    let rows = |housed: bool| {
+        claims
+            .iter()
+            .filter(|claim| matches!(claim.verdict, Verdict::Housed(_)) == housed)
+            .filter(|claim| claim.text.trim_start().starts_with('|'))
+            .count()
+    };
+
+    println!(
+        "\nof the housed, {} are markdown table rows and {} are prose ({} non-housed rows)",
+        rows(true),
+        claims
+            .iter()
+            .filter(|claim| matches!(claim.verdict, Verdict::Housed(_)))
+            .count()
+            - rows(true),
+        rows(false),
+    );
+
     println!("\nper run — the rate P2 is about, which is unclassified over everything not housed:");
 
     for run in Run::ALL {
@@ -418,4 +440,28 @@ fn the_classification_says_which_testimonies_it_has_not_read() {
     how_many("met", |it| matches!(it, Standing::Met(_)));
     how_many("by design", |it| matches!(it, Standing::ByDesign(_)));
     how_many("untracked", |it| matches!(it, Standing::Untracked));
+
+    // What the queue is owed, derived rather than remembered: a want or a loss that nothing
+    // selectable holds. `04-a-want-has-a-standing.md` says this list is owed at Phase 5, and a list
+    // transcribed by hand from a reading is the thing this experiment measured going wrong.
+    println!("\nOWED TO THE QUEUE — recorded or untracked, so nothing selectable holds them:\n");
+
+    for claim in claims.iter().filter(|claim| {
+        matches!(
+            claim.standing,
+            Some(Standing::Recorded(_)) | Some(Standing::Untracked)
+        )
+    }) {
+        let flat = flattened(claim.text);
+        let short: String = flat.chars().take(96).collect();
+
+        println!(
+            "  [{}] {:?}\n      {short}…",
+            match claim.standing {
+                Some(Standing::Recorded(where_)) => where_,
+                _ => "nowhere",
+            },
+            claim.run,
+        );
+    }
 }

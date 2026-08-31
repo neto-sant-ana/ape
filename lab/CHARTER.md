@@ -188,8 +188,15 @@ about validation strategy"*.
 Thesis's selection is a gap the core left to the application, to be decided on cost, and nobody has
 measured the cost.
 
-**Open: [`succession/00-testimony`](succession/00-testimony/00-protocol.md)**, which answers the first
-half and refuses the second. A representation cannot be compared before the thing to be represented is
+**[`succession/00-testimony`](succession/00-testimony/99-result.md) — Phase 2 complete, Phase 4
+outstanding.** The leftover is bounded and there are **two** sets of it, decided by whether the reader
+of the testimony has a decision to make: *motivation, want, loss, qualification, method limit* for a
+reader who will check, and *accountability, recommendation, own reasoning, evaluation* for one who
+will choose. Only the first set has an anchor in the record — motivation attaches to one object and
+explains that object — so H4's next question is sharper than the one it was given: **a representation
+built for the anchored shape has no place for the other four.**
+
+It answers the first half and refuses the second. A representation cannot be compared before the thing to be represented is
 known, and the analogy H4 arrived in already presumes an answer. Its corpus is the eight `ANSWER.md`
 files eight agents wrote across five experiments — **13,382 words produced before this hypothesis
 existed**, by sessions that could not have shaped them to fit it, which is the strongest available
