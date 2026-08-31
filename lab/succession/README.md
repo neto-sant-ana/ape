@@ -76,7 +76,9 @@ read the hypothesis on a sample, so that agreement is measured rather than assum
                 holds a `why`, and markdown-with-wikilinks is HTML-with-anchors in other
                 syntax. What is not free is the carving.
 
-                Deferred until `frontier/18-designation` concludes: a carving cannot
-                produce a reference the record does not have, and whether a page can say
-                *this one is the plan* is decided there
+                UNBLOCKED 31/08. `frontier/18-designation` concluded Confirmed: a record
+                can hold a reference to one of its worlds, and it is a LOG rather than a
+                pointer — ordered, coordinate-checked, and attributable where anything
+                says. So a page can say more than *this one is the plan*: it can say
+                *this was the plan, when the record knew this much, and it was theirs*
 ```

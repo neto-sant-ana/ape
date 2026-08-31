@@ -299,6 +299,25 @@ experiments earlier without naming the cause. **It is not a missing state on a T
 already a proposal, and eleven of thirteen decisions in a record are roads not taken. The branches are
 complete; the ref was never built.
 
+> **Answered 31/08 by [`frontier/18-designation`](frontier/docs/18-designation/99-result.md),
+> Confirmed — and what stays on the board is the build, not the question.** The shape is a **log**
+> and not a pointer: `plan · after · by?`, in order, checked three ways. A journal entry is out twice
+> over (taken in silence, and it loses the return, because designating `W₁` twice produces one entry
+> twice); a bare fifth file forgets; and *per party* is not a third home, because a record carries no
+> name and so *the house* and *this record* are one subject with one silence.
+>
+> **And built the same day, on the same branch — this item LEAVES the board.**
+> `cli/src/designation.rs`, a fifth field on `RepositoryInput`, a comparison in
+> `reading::corroborated`, a union in `converge`. `07-synthesis:1341` is ✓.
+>
+> **What it left behind is one narrow limit, and that is the item now.** Two **unqualified**
+> designations from two parties at one coordinate cannot be ordered by anything either record
+> carries, so the union puts the arrived one first and reversing the parties reverses the answer —
+> the merge's arrival order surviving into the result, which is the thing `converge` refuses to let
+> happen to decisions. It reaches no decision, no world and no number; it reaches which unattributed
+> plan a reader sees last, in a record where two parties both declined to say whose plan it was.
+> Measured in Phase 7 rather than discovered later.
+
 **And one item about a guard, found by tripping it.** `cli/tests/pedigree.rs` reads a verdict as *the
 first non-empty line after the heading, and something bold in it* — so it proves a verdict **exists**
 and not that it **is** one. Writing this experiment's result with a caveat banner above the verdict

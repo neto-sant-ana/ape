@@ -9,7 +9,9 @@ them serve the list below.
 which hypotheses there are, where each came from, and what has been spent on it.
 
 ```text
-H1  the core's gaps, concretized              frontier/            ~40%, swept below
+H1  the core's gaps, concretized              frontier/            ~40%, swept below —
+                                                                   and the sweep's own ✓
+                                                                   was wrong once
 H2  an auditable trail of a decision          agents/              four runs, then parked —
                                                                    and 00-testimony found the
                                                                    half it is missing
@@ -80,7 +82,8 @@ distinct places across five layer documents:
 ◐  06-thesis:1314        constructing a Thesis derived from the target, from a resolved
    07-synthesis:1009     transfer — `transfer::applied` exists and no command reaches it
 
-✗  07-synthesis:1341     moving mutable references such as `main`   ← WAS ✓, corrected 31/08
+✓  07-synthesis:1341     moving mutable references such as `main`
+                         ← ✓ 30/08 wrongly, ✗ 31/08, ✓ 31/08 with the obligation built
 
 ✗  01-ontology:33        the meaning that reaches no primitive                       → H4
 ✗  05-hermeneia:482      which hypothesis to ask, and what a failing verdict prevents
@@ -89,9 +92,15 @@ distinct places across five layer documents:
 ✗  07-synthesis:1607     composing applicability with feasibility
 ```
 
-**Three answered, one built and unreachable, six untouched.** So H1 is roughly **30%** answered — and
-the shape of what is left matters more than the fraction: three of the six untouched are the
-*feasibility and candidate* cluster, and two are H4.
+**Four answered, one built and unreachable, five untouched.** So H1 is roughly **40%** answered —
+and the number is back where the sweep first put it, by a different route and for a reason that
+holds this time. The shape of what is left matters more than the fraction: three of the five
+untouched are the *feasibility and candidate* cluster, and two are H4.
+
+**The ✓ that moved twice is worth more than the fraction.** It was marked concretized on 30/08 on the
+strength of something that was not a ref, corrected to ✗ on 31/08 by the operator's git analogy, and
+earned back the same day by `18-designation` building it. What changed between the first ✓ and the
+second is that the second has a guard behind it and a module citing the experiment that earned it.
 
 **One ✓ was wrong, and the correction came from the operator's git analogy.** `07-synthesis:1341` —
 *moving mutable references such as `main`* — was marked concretized because `cli` has `current`. It
@@ -113,11 +122,28 @@ over as the world the house is in now, which is application state outside the gr
 such. A fork is already a proposal — eleven of thirteen decisions in a record are roads not taken. The
 engine's branches are complete; the application never built a `main`.
 
-**Open as [`frontier/18-designation`](frontier/docs/18-designation/00-protocol.md)**, and it goes
-before the carving experiment rather than after: a carving cannot produce a reference the record does
-not have. Its hard part is one sentence from experiment 17 — a `ThesisId` is *derived and never
-admitted*, so a designation names something the Canon has never seen, and the question is not only
-where the reference lives but **what can check it there**.
+**Answered by [`frontier/18-designation`](frontier/docs/18-designation/99-result.md) on 31/08,
+Confirmed** — and answered as a *shape*, not as application behaviour, which is why the mark is ◐ and
+not ✓. Its hard part was one sentence from experiment 17: a `ThesisId` is *derived and never
+admitted*, so a designation names something the Canon has never seen.
+
+```text
+A  a journal entry   OUT, twice: taken in silence, and it loses the return
+B  a fifth file      the check works; the lifecycle does not; a bare pointer forgets
+C  per party         not a third home — a record carries no name, so "the house" and
+                     "this record" are one subject with one silence
+─────────────────────────────────────────────────────────────────────────────────────
+   a log             plan · after · by?, in order, checked three ways
+```
+
+> **A reference to a content-addressed world cannot be held by anything content-addressed.**
+> Designating `W₁` twice produces one entry twice, so the journal took the claim and lost the return
+> — measured: three moves, and `custody.json` and every witness hold two.
+
+**And built the same day, on the same branch.** `cli/src/designation.rs`, a fifth field on
+`RepositoryInput`, a comparison in `reading::corroborated`, a union in `converge` — each citing the
+experiment that earned it. Which is what separates this ✓ from `06-thesis:1314`'s ◐, where
+`transfer::applied` exists and no command reaches it.
 
 **And the sweep found something the fraction hides.** `cli` exposes **eighteen** public functions; the
 application offers **three** commands — a level reading, `transfer`, and `decided`. `converge` has no
