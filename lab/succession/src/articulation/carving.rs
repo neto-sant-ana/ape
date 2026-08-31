@@ -331,11 +331,15 @@ fn flat(record: &Record, placed: &[Placed<'_>]) -> Vec<Page> {
         body.push_str(&quoted(entry.claim));
     }
 
+    // No `carving:` key, and no page count. A page that names how the record was cut tells a reader
+    // it was cut one way among several, which is the experiment.
     vec![Page {
         name: "record".to_owned(),
         frontmatter: vec![
-            ("carving".to_owned(), "flat".to_owned()),
-            ("pages".to_owned(), "1".to_owned()),
+            ("kind".to_owned(), "record".to_owned()),
+            ("entries".to_owned(), record.journal.len().to_string()),
+            ("decisions".to_owned(), record.lineage.len().to_string()),
+            ("worlds".to_owned(), record.worlds.len().to_string()),
         ],
         body,
     }]
@@ -587,8 +591,10 @@ fn reaches(taken: &Taken, world: &World, at: &Anchored) -> bool {
 /// The claims a carving could not place, and the protocol says its size is a result.
 fn overflow(placed: &[Placed<'_>], unplaced: impl Fn(&Anchored) -> bool) -> Page {
     let mine: Vec<&Placed<'_>> = placed.iter().filter(|at| unplaced(&at.at)).collect();
+    // Worded without the laboratory's vocabulary. "Attaches to no page of this carving" tells a
+    // reader the record was cut one way among several, which is the thing being measured.
     let mut body = String::from(
-        "# Overflow\n\nWhat was said about this record that attaches to no page of this carving.\n\n",
+        "# Overflow\n\nWhat was said about this record that is not about any one part of it.\n\n",
     );
 
     for entry in &mine {

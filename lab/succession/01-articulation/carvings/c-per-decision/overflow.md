@@ -5,7 +5,7 @@ claims: 18
 
 # Overflow
 
-What was said about this record that attaches to no page of this carving.
+What was said about this record that is not about any one part of it.
 
 - *(methodlimit)* **`converge(mine, theirs)` refuses, and I measured that rather than assuming it.** Its comparison is over *sequence* — one journal must extend the other — and neither does.
 - *(exposition)* A `Taken` is a decision *plus* the exact prefix it stood on, and `lineage::rebuild` demands the two match in both directions.

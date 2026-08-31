@@ -1,6 +1,8 @@
 ---
-carving: flat
-pages: 1
+kind: record
+entries: 21
+decisions: 5
+worlds: 5
 ---
 
 # The record

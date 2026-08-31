@@ -11,6 +11,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
+use ape_succession::articulation::briefing;
 use ape_succession::articulation::carving::{self, Carving, Page};
 use ape_succession::articulation::record::{self, Record};
 use ape_succession::classification::Verdict;
@@ -250,6 +251,82 @@ fn the_committed_carvings_are_what_the_generator_produces() {
             );
         }
     }
+}
+
+/// **No carving tells its reader that it is a carving.**
+///
+/// An agent that knows the record was cut one way among several is comparing rather than reading,
+/// and every number it produces is about a different question. The scan found two on its first run:
+/// A's frontmatter said `carving: flat`, and both overflow pages said *attaches to no page of this
+/// carving*.
+///
+/// The words are the laboratory's vocabulary, not a general blocklist — a record may perfectly well
+/// contain the word *record*.
+#[test]
+fn no_page_of_any_carving_names_the_experiment() {
+    const FORBIDDEN: [&str; 8] = [
+        "carving",
+        "protocol",
+        "hypothesis",
+        "prediction",
+        "baseline",
+        "articulation",
+        "succession",
+        "experiment",
+    ];
+
+    let mut scanned = 0;
+
+    for carving in Carving::ALL {
+        for page in carved(carving) {
+            let text = page.rendered().to_lowercase();
+            scanned += 1;
+
+            for word in FORBIDDEN {
+                assert!(
+                    !text.contains(word),
+                    "{}/{}.md says {word:?}, which tells its reader what this is",
+                    carving.directory(),
+                    page.name
+                );
+            }
+        }
+    }
+
+    assert_eq!(
+        scanned, 24,
+        "1 + 16 + 7 pages were read; the scan did not break"
+    );
+}
+
+/// The two things every agent is handed identically, so three answers are comparable.
+#[test]
+fn the_instructions_and_the_questions_do_not_vary_by_carving() {
+    let claims = reconciliation::CLAIMS;
+
+    let briefs: Vec<_> = Carving::ALL
+        .into_iter()
+        .map(|carving| briefing::brief(carved(carving), claims))
+        .collect();
+
+    for brief in &briefs[1..] {
+        assert_eq!(
+            brief.instructions, briefs[0].instructions,
+            "three agents asked differently produce three numbers nobody can put side by side"
+        );
+        assert_eq!(brief.questions, briefs[0].questions);
+    }
+
+    assert!(
+        !briefs[0].instructions.to_lowercase().contains("carving"),
+        "and the instructions do not name what varies between them"
+    );
+    assert_eq!(
+        briefs[0].questions.matches("\n## ").count(),
+        46,
+        "every claim is asked, housed or not — leaving the housed ones out would tell an agent \
+         which half it was holding"
+    );
 }
 
 /// The `[[targets]]` a frontmatter value names.
