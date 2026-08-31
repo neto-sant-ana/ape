@@ -113,6 +113,12 @@ over as the world the house is in now, which is application state outside the gr
 such. A fork is already a proposal — eleven of thirteen decisions in a record are roads not taken. The
 engine's branches are complete; the application never built a `main`.
 
+**Open as [`frontier/18-designation`](frontier/docs/18-designation/00-protocol.md)**, and it goes
+before the carving experiment rather than after: a carving cannot produce a reference the record does
+not have. Its hard part is one sentence from experiment 17 — a `ThesisId` is *derived and never
+admitted*, so a designation names something the Canon has never seen, and the question is not only
+where the reference lives but **what can check it there**.
+
 **And the sweep found something the fraction hides.** `cli` exposes **eighteen** public functions; the
 application offers **three** commands — a level reading, `transfer`, and `decided`. `converge` has no
 command. Neither does `holds`, nor `applied`. The nine experiments that answered `06-thesis:309`

@@ -72,7 +72,11 @@ read the hypothesis on a sample, so that agreement is measured rather than assum
                 one, decided by whether the reader of the testimony has a decision to make
 
 01-articulation given hypertext, what is a page and what does a link mean?
-                OPEN. The format turned out to be free — every structure holds a `why`,
-                and markdown-with-wikilinks is HTML-with-anchors in other syntax. What is
-                not free is the carving
+                WRITTEN AND WAITING. The format turned out to be free — every structure
+                holds a `why`, and markdown-with-wikilinks is HTML-with-anchors in other
+                syntax. What is not free is the carving.
+
+                Deferred until `frontier/18-designation` concludes: a carving cannot
+                produce a reference the record does not have, and whether a page can say
+                *this one is the plan* is decided there
 ```
