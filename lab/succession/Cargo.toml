@@ -8,3 +8,10 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+# The row reads the other rows' artefacts AS DATA — `lab/README.md` says so, and that is what these
+# are for. The stance in `src/lib.rs` is about `ape` and `ape-cli`: compiling against the subject
+# would be a claim that this row measures behaviour. A JSON parser is not the subject, and reading
+# the record through the application's own types would make the carving a function of how the
+# application reads rather than of what a later reader has.
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0"
