@@ -1,0 +1,10 @@
+[package]
+name = "ape-succession"
+description = "An experiment: what a record is worth to somebody who was not there."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
