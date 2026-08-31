@@ -278,8 +278,29 @@ and be navigable by different readers, and a result that measures one reader has
 hypothesis. What makes it falsifiable is a task a human and an agent can both be given against the same
 artefact, where the two answers are comparable.
 
-**Spent:** nothing, and it is correctly blocked rather than neglected. It lives in
-[`succession/`](succession) with H3 and H4.
+**And on 31/08/2026 it stopped being blocked on H4 and started being blocked on something this
+laboratory cannot buy.** [`01-articulation`](succession/01-articulation) measured the agent half of
+its own P5 across three carvings and refuted it — every agent read the whole set before answering,
+so the asymmetry between the two kinds of reader did not appear on the side that could be tested.
+
+The human half cannot be tested here. The protocol declared the limit as *n = 1, the operator*, and
+that understates it: **the operator writes the protocols.** A reading by them is n = 1 and
+contaminated, which is a different limitation and a permanent one.
+
+```text
+the autonomous reader    instrumented, isolated, repeatable, and three of them cost tokens
+the human reader         one person, who knows every prediction before opening the file
+```
+
+So H5's falsifiability condition above — *a task a human and an agent can both be given against the
+same artefact* — is satisfiable on one side only. And the remedy has a constraint found before
+anybody was recruited: **a human reader is single-use on one record.** Three carvings need three
+readers; one reader answers for one carving, and spending them on the flat one measures nothing,
+because a single file does not pose the question of where to start.
+
+**Spent:** the agent half, in `01-articulation`, refuted. The human half is pending an uncontaminated
+reader the operator is recruiting — which is the first thing in this charter blocked on somebody who
+is not in the room.
 
 ---
 

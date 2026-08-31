@@ -76,13 +76,19 @@ read the hypothesis on a sample, so that agreement is measured rather than assum
                 holds a `why`, and markdown-with-wikilinks is HTML-with-anchors in other
                 syntax. What is not free is the carving.
 
-                RUNNING 31/08, on `succession/articulation`. `frontier/18-designation`
-                concluded Confirmed and unblocked it: a record can hold a reference to one
-                of its worlds, and it is a LOG rather than a pointer — ordered,
-                coordinate-checked, and attributable where anything says.
+                RAN TWICE 31/08, on `succession/articulation`. Four predictions answered;
+                BLOCKED on the fifth, which needs a human reader this laboratory does not
+                have — the operator wrote the protocol, so their reading is n = 1 AND
+                contaminated. Observation 5.
 
-                The protocol is amended before the run rather than after, on the one
-                sentence 18 falsified, and it carries the confound 18 left behind: an
-                argument for the decision as the unit now exists OUTSIDE these 46
-                questions, and carving C is per decision
+                Run 1's numbers were the instrument: the generator carved one arm of the
+                three, emitted no custody, and dropped five of C's entries. Three agents
+                found all of it. Run 2, repaired and guarded:
+
+                    A flat 17   B per entity 16   C per decision 16   baseline 19/17
+
+                P1, P2 and P3 refuted. The carving difference that IS real is orthogonal
+                to what P2 predicted: a page per entity is a walk through the record's
+                field set, so a reader can enumerate what the record CANNOT say; a page
+                per decision never shows the shape of an entity
 ```
