@@ -9,6 +9,7 @@
 //! application behaviour is a separate reviewed act, after Phase 5, and it is the obligation the
 //! protocol's fourth criterion is about.
 
+use ape::engine::thesis::ThesisId;
 use ape::kernel::entities::ResourceId;
 
 use ape_cli::journal::{self, Admission};
@@ -321,6 +322,476 @@ fn phase_1_admitting_a_designation_leaves_every_decided_world_where_it_was() {
 /// A resource identity no arrangement here admits, for the control in Phase 1.
 fn absent_resource() -> ResourceId {
     ResourceId::from([0xEE; 32])
+}
+
+/// B — a designation as a fifth file, built here rather than in the application.
+///
+/// The row's rules say an experiment may not change the application, and the protocol's Phase 2 says
+/// *B, built*. Both hold by building it where the phases that measure it live: if any of this earns
+/// its way into `ape-cli`, that is a separate reviewed act after Phase 5, and the module that carries
+/// it records the experiment — which is the protocol's fourth criterion and `cli/tests/pedigree.rs`'s
+/// business.
+///
+/// It is the **bare pointer**, deliberately. P5 asks whether one can answer *what was the plan on the
+/// twelfth*, and building the answer into the shape before the phase asks would make the phase a
+/// formality.
+mod fifth_file {
+    use std::fs;
+    use std::path::PathBuf;
+
+    use ape::engine::thesis::ThesisId;
+    use ape_cli::repository::Repository;
+
+    pub const DESIGNATION: &str = "designation.json";
+
+    /// What a record's designation file says, once the record has been asked to check it.
+    ///
+    /// Three states rather than two, and the third is the whole reason B is not A: **absent** is a
+    /// record making no claim, which is custody's tolerance and the reason the repositories under
+    /// `lab/agents` still read; **unresolved** is a claim the record can refuse, which is exactly
+    /// what the admitting layer could not do in Phase 1.
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum Plan {
+        NoClaim,
+        Names(ThesisId),
+        Unresolved(String),
+    }
+
+    /// Where the fifth file goes: beside the four a whole write puts down.
+    ///
+    /// `Repository::live()` is private and [`Repository::custody_path`] is not, so the live
+    /// generation is reached through the accessor for the very file B is modelled on. A laboratory
+    /// reaching past a private boundary would be measuring a shape the application cannot offer.
+    fn path(repository: &Repository) -> PathBuf {
+        repository
+            .custody_path()
+            .parent()
+            .expect("a custody path is a file inside a generation")
+            .join(DESIGNATION)
+    }
+
+    /// Write the record's claim about which of its worlds it means.
+    ///
+    /// Supplied rather than derived, which is the one place B departs from custody: `custody.json`
+    /// is a function of the journal and the write computes it, so nothing can supply a wrong one.
+    /// Nothing derives a plan.
+    pub fn designate(repository: &Repository, plan: ThesisId) -> std::io::Result<()> {
+        let encoded = serde_json::to_string_pretty(&plan).expect("an identity encodes");
+
+        fs::write(path(repository), encoded)
+    }
+
+    /// Read the claim, and check it against `worlds.json`.
+    ///
+    /// The check is existence and nothing more, and that is a property of what a designation is
+    /// rather than a shortcut. Custody's check can disagree with the record — two derivations of one
+    /// fact, and a replay that produces different addresses says so. A plan is derived from nothing,
+    /// so the only thing the record can contradict is *that the world is one of its own*.
+    pub fn plan_of(repository: &Repository) -> Plan {
+        let path = path(repository);
+
+        if !path.exists() {
+            return Plan::NoClaim;
+        }
+
+        let encoded = fs::read_to_string(&path).expect("the file is readable");
+        let named: ThesisId = serde_json::from_str(&encoded).expect("it holds an identity");
+
+        let worlds = repository.read_worlds().expect("worlds.json reads");
+
+        if worlds.iter().any(|world| world.thesis == named.to_string()) {
+            Plan::Names(named)
+        } else {
+            Plan::Unresolved(named.to_string())
+        }
+    }
+}
+
+/// Phase 2 — B holds a plan, and refuses the one thing A could not.
+#[test]
+fn phase_2_a_fifth_file_names_a_world_and_the_record_can_check_it() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-2");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    assert_eq!(
+        fifth_file::plan_of(&repository),
+        fifth_file::Plan::NoClaim,
+        "a record with no designation file makes no such claim — custody's tolerance, and what \
+         keeps every repository already in this workspace readable"
+    );
+
+    let plan = founded.designated(0);
+    fifth_file::designate(&repository, plan).expect("the claim is written");
+
+    assert_eq!(
+        fifth_file::plan_of(&repository),
+        fifth_file::Plan::Names(plan),
+        "and once written it names a world this record holds"
+    );
+}
+
+/// Phase 2 — a designation of a world the record does not hold is refused, by name.
+///
+/// This is the comparison the whole experiment turns on. Phase 1 aimed the same claim at sixty-four
+/// zeroes and the record took it, wrote it whole, and read it back without a word. Here the claim
+/// lives one layer over, next to `worlds.json` instead of inside the journal, and the same claim is
+/// refused — with the identity in the refusal, so a reader is not sent to find out which.
+#[test]
+fn phase_2_a_designation_of_a_world_that_does_not_exist_is_refused() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-2-absent");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let absent = ThesisId::from([0u8; 32]);
+    fifth_file::designate(&repository, absent).expect("nothing stops it being written");
+
+    assert_eq!(
+        fifth_file::plan_of(&repository),
+        fifth_file::Plan::Unresolved(absent.to_string()),
+        "the read refuses it, and names it"
+    );
+}
+
+/// Phase 2 — and the plan moves without the journal moving, which is the whole of B's cheapness.
+///
+/// Three moves, and the record holds eighteen entries throughout. Against Phase 1, where the same
+/// three moves left three journal entries the record could only count as two.
+#[test]
+fn phase_2_moving_the_plan_three_times_leaves_the_journal_where_it_was() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-2-moves");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    for move_of in 0..MOVES {
+        fifth_file::designate(&repository, founded.designated(move_of)).expect("the plan moves");
+
+        assert_eq!(
+            fifth_file::plan_of(&repository),
+            fifth_file::Plan::Names(founded.designated(move_of)),
+            "move {move_of} is where the record says it is"
+        );
+    }
+
+    let reread = designation::read(&repository).expect("the record reads back");
+
+    assert_eq!(
+        reread.journal.len(),
+        ENTRIES,
+        "the journal never heard about any of it"
+    );
+    assert_eq!(
+        designation::worlds(&reread.lineage).len(),
+        WORLDS,
+        "and neither did the worlds"
+    );
+}
+
+/// Phase 2 — the shape's real cost: a supplied fifth file does not survive the next whole write.
+///
+/// `custody.json` is derived **by** the write, so it travels inside the all-or-nothing that puts the
+/// four files in the generation nothing is reading yet. A designation is supplied, and a file written
+/// beside the live generation is a file the next turn leaves behind — the pointer moves to the other
+/// generation, which never had it.
+///
+/// So B's check is custody's shape and B's **lifecycle is not**. Whatever carries a designation has
+/// to be an input to the write, which means [`ape_cli::repository::RepositoryInput`] grows a field.
+/// That is measured here rather than argued, and it is the concrete thing this phase hands over.
+#[test]
+fn phase_2_a_designation_beside_the_generation_is_lost_by_the_next_write() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-2-lost");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let plan = founded.designated(0);
+    fifth_file::designate(&repository, plan).expect("the claim is written");
+    assert_eq!(
+        fifth_file::plan_of(&repository),
+        fifth_file::Plan::Names(plan)
+    );
+
+    let mut working = designation::read(&repository).expect("the record reads back");
+    designation::admit(
+        &mut working,
+        Admission::Role {
+            label: "auditor".into(),
+            recorded_at: "2026-01-11".into(),
+        },
+    )
+    .expect("something unrelated is admitted");
+    designation::write(&repository, &working).expect("and the record is put back, whole");
+
+    assert_eq!(
+        fifth_file::plan_of(&repository),
+        fifth_file::Plan::NoClaim,
+        "the plan is gone, and the record says it never had one — which is the same silence a \
+         record that genuinely never claimed anything gives"
+    );
+}
+
+/// Phase 3 — C: two parties, two plans, and one file that can hold one of them.
+///
+/// The record already answers *who decided what*: `Taken::by` names the planner on two forks and the
+/// steward on one. What it is asked here is whose **plan** the single designation is, and the
+/// measurement is that nothing in the record answers — the two questions are not the same question,
+/// and no field spans them.
+#[test]
+fn phase_3_one_designation_cannot_hold_two_parties_plans() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-3");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let planner_plan = founded.forks[0];
+    let steward_plan = founded.forks[1];
+    assert_ne!(planner_plan, steward_plan);
+
+    fifth_file::designate(&repository, steward_plan).expect("one of them is written");
+
+    let reread = designation::read(&repository).expect("the record reads back");
+    let deciders: Vec<_> = reread.decisions.iter().map(|taken| taken.by).collect();
+
+    assert_eq!(
+        deciders,
+        vec![
+            None,
+            Some(founded.subject.planner),
+            Some(founded.subject.steward),
+            Some(founded.subject.planner),
+        ],
+        "the record does say who decided each world"
+    );
+
+    assert_eq!(
+        fifth_file::plan_of(&repository),
+        fifth_file::Plan::Names(steward_plan),
+        "and it says one world is the plan"
+    );
+
+    // The two facts do not compose into the third. Whose plan this is cannot be read off `by`: the
+    // steward decided this world, and the planner decided two others — nothing says the planner is
+    // not also content with the steward's, and nothing says it is.
+    let claimed_by_steward: Vec<_> = reread
+        .decisions
+        .iter()
+        .filter(|taken| taken.by == Some(founded.subject.steward))
+        .collect();
+
+    assert_eq!(
+        claimed_by_steward.len(),
+        1,
+        "one decision names the steward, which is the strongest thing the record has"
+    );
+    assert!(
+        claimed_by_steward[0].decision.extends().is_some(),
+        "and it is a fork, so it says what was proposed and by whom — not what is meant now"
+    );
+}
+
+/// Phase 3 — and the genesis claims nobody, which is what makes a house plan a separate question.
+///
+/// If a designation were per party, the record would hold one per party and a reader who is not a
+/// party would get nothing. The arrangement has a decision that claims nobody precisely so that the
+/// case is present rather than hypothetical: the shared ancestor is everyone's and no one's, and a
+/// per-party file has no row for it.
+#[test]
+fn phase_3_a_per_party_file_has_no_row_for_a_decision_that_claims_nobody() {
+    let founded = designation::founded().expect("the subject is admissible");
+
+    let unclaimed: Vec<_> = founded
+        .decisions
+        .iter()
+        .filter(|taken| taken.by.is_none())
+        .collect();
+
+    assert_eq!(unclaimed.len(), 1, "the genesis, and only the genesis");
+    assert!(
+        unclaimed[0].decision.extends().is_none(),
+        "and it is the shared ancestor rather than a fork somebody forgot to sign"
+    );
+
+    let parties: std::collections::BTreeSet<_> = founded
+        .decisions
+        .iter()
+        .filter_map(|taken| taken.by)
+        .collect();
+
+    assert_eq!(
+        parties.len(),
+        2,
+        "two parties are answerable for three forks"
+    );
+    assert_eq!(
+        founded.decisions.len() - unclaimed.len(),
+        FORKS,
+        "three of the four worlds are somebody's"
+    );
+    assert_eq!(
+        founded.lineage.decided().len(),
+        WORLDS,
+        "and the fourth is nobody's, so a per-party file does not partition the record"
+    );
+}
+
+/// Phase 4 — two parties, two plans, one file, and nothing says so.
+///
+/// P4 predicted the merge would not refuse two records that disagree about which world is principal.
+/// It does not, and the reason is worse than agreement: the second designation **overwrites** the
+/// first, in place, with no comparison anywhere. A refusal would at least have been a fact.
+#[test]
+fn phase_4_the_second_partys_plan_replaces_the_first_without_a_comparison() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-4");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    let planner_plan = founded.forks[0];
+    let steward_plan = founded.forks[1];
+
+    fifth_file::designate(&repository, planner_plan)
+        .expect("the planner says which world it means");
+    assert_eq!(
+        fifth_file::plan_of(&repository),
+        fifth_file::Plan::Names(planner_plan)
+    );
+
+    fifth_file::designate(&repository, steward_plan).expect("and so does the steward");
+
+    assert_eq!(
+        fifth_file::plan_of(&repository),
+        fifth_file::Plan::Names(steward_plan),
+        "one plan survives, and the record does not hold that there was ever another"
+    );
+}
+
+/// Phase 4 — and converging drops both, because the merge does not know designations exist.
+///
+/// `converge` reads, appends, re-orders, rebuilds, and writes whole. Every one of those steps is
+/// about the four files. A fifth beside them is not merged, not compared, and not carried: after a
+/// merge the record makes no claim at all.
+///
+/// So P4 is **confirmed vacuously**, which is not the same as confirmed. The merge does not refuse
+/// two designations for the reason a decision is not refused — it refuses nothing because it never
+/// sees them.
+#[test]
+fn phase_4_converging_leaves_the_record_claiming_nothing() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-4-merge");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    fifth_file::designate(&repository, founded.forks[0]).expect("a plan is claimed");
+
+    let mut party = designation::read(&repository).expect("a party reads");
+    designation::admit(
+        &mut party,
+        Admission::Role {
+            label: "auditor".into(),
+            recorded_at: "2026-01-11".into(),
+        },
+    )
+    .expect("and admits something of its own");
+
+    let merged = ape_cli::converge::converge(&repository, &party).expect("the merge goes through");
+
+    assert_eq!(
+        merged.journal.len(),
+        ENTRIES + 1,
+        "the knowledge merged, which is what converge is for"
+    );
+    assert_eq!(
+        fifth_file::plan_of(&repository),
+        fifth_file::Plan::NoClaim,
+        "and the plan is gone — not refused, not arbitrated, absent"
+    );
+}
+
+/// Phase 5 — a bare pointer cannot say what the plan was on the twelfth, and neither can anything else.
+///
+/// Two records: one whose plan went `W₁ → W₂ → W₁`, and one that designated `W₁` and never moved.
+/// Every file they hold is compared, byte for byte.
+///
+/// P5 asked whether the answer is derivable from the lineage. It is not, and the arrangement is what
+/// shows it rather than an argument: the lineage of the two records is the same lineage, because
+/// designating is not deciding. The two records are **indistinguishable**, which is the shape
+/// `17-imputation` ended on — an author and a relay were one record there, and a plan that moved and
+/// one that never did are one record here.
+#[test]
+fn phase_5_a_plan_that_moved_and_a_plan_that_never_did_are_one_record() {
+    let founded = designation::founded().expect("the subject is admissible");
+
+    let moved = designation::scratch("phase-5-moved");
+    designation::found(&moved, &founded).expect("a whole write");
+    for move_of in 0..MOVES {
+        fifth_file::designate(&moved, founded.designated(move_of)).expect("the plan moves");
+    }
+
+    let still = designation::scratch("phase-5-still");
+    designation::found(&still, &founded).expect("a whole write");
+    fifth_file::designate(&still, founded.designated(0)).expect("and this one never moves");
+
+    assert_eq!(
+        fifth_file::plan_of(&moved),
+        fifth_file::plan_of(&still),
+        "both records name the same world as the plan"
+    );
+
+    for file in [
+        "journal.json",
+        "lineage.json",
+        "worlds.json",
+        "custody.json",
+        fifth_file::DESIGNATION,
+    ] {
+        // Two absent files compare equal, which is how this family of guard goes green measuring
+        // nothing. Both sides are required to be there before they are required to agree.
+        let (left, right) = (read_file(&moved, file), read_file(&still, file));
+        assert!(
+            left.is_some() && right.is_some(),
+            "{file} is on disk in both records — if it is not, the comparison below is vacuous"
+        );
+
+        assert_eq!(
+            left, right,
+            "{file} is the same in a record whose plan moved three times and one whose never did"
+        );
+    }
+}
+
+/// Phase 5 — and the record cannot even say the plan moved, let alone when.
+///
+/// The weakest form of the question, asked so that the answer is not mistaken for one about
+/// granularity: it is not that the record dates the moves badly. It holds no move.
+#[test]
+fn phase_5_nothing_in_the_record_counts_how_many_times_the_plan_moved() {
+    let founded = designation::founded().expect("the subject is admissible");
+    let repository = designation::scratch("phase-5-count");
+    designation::found(&repository, &founded).expect("a whole write");
+
+    for move_of in 0..MOVES {
+        fifth_file::designate(&repository, founded.designated(move_of)).expect("the plan moves");
+    }
+
+    let reread = designation::read(&repository).expect("the record reads back");
+
+    assert_eq!(reread.journal.len(), ENTRIES, "no entry records a move");
+    assert_eq!(reread.decisions.len(), WORLDS, "no decision records one");
+    assert_eq!(
+        read_file(&repository, fifth_file::DESIGNATION)
+            .expect("the file is there")
+            .matches("\"")
+            .count(),
+        2,
+        "and the file holds exactly one identity, so it cannot hold three"
+    );
+}
+
+/// One of a repository's files as it stands on disk, or nothing where the record has none.
+fn read_file(repository: &ape_cli::repository::Repository, named: &str) -> Option<String> {
+    let generation = repository
+        .custody_path()
+        .parent()
+        .expect("a custody path is a file inside a generation")
+        .to_path_buf();
+
+    std::fs::read_to_string(generation.join(named)).ok()
 }
 
 /// The order the plan names its worlds in, as a phase reads it.
