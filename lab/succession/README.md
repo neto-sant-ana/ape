@@ -76,9 +76,13 @@ read the hypothesis on a sample, so that agreement is measured rather than assum
                 holds a `why`, and markdown-with-wikilinks is HTML-with-anchors in other
                 syntax. What is not free is the carving.
 
-                UNBLOCKED 31/08. `frontier/18-designation` concluded Confirmed: a record
-                can hold a reference to one of its worlds, and it is a LOG rather than a
-                pointer — ordered, coordinate-checked, and attributable where anything
-                says. So a page can say more than *this one is the plan*: it can say
-                *this was the plan, when the record knew this much, and it was theirs*
+                RUNNING 31/08, on `succession/articulation`. `frontier/18-designation`
+                concluded Confirmed and unblocked it: a record can hold a reference to one
+                of its worlds, and it is a LOG rather than a pointer — ordered,
+                coordinate-checked, and attributable where anything says.
+
+                The protocol is amended before the run rather than after, on the one
+                sentence 18 falsified, and it carries the confound 18 left behind: an
+                argument for the decision as the unit now exists OUTSIDE these 46
+                questions, and carving C is per decision
 ```

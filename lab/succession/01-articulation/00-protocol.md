@@ -168,6 +168,10 @@ This reading took an agent's permissions for a property of the boundary.
 hold is which one was **adopted** — `02-hindsight` measured exactly that, and called the live world
 *application state outside the graph*.
 
+> **Amended 31/08, before the run and after `frontier/18-designation`.** The sentence above is kept
+> because it is what sent that experiment; it is no longer true of the application, and the
+> correction is in [the section below](#what-18-designation-changed-and-what-it-did-not).
+
 So what survived of P3b is two items **already in the queue**: *a decision that says it weighed rather
 than meant*, and *on-behalf-of between agents*. This reading re-derived tracked items by a wrong route
 and presented them as new — **one day after building the `Standing` field to stop precisely that**.
@@ -189,6 +193,45 @@ start.
 *The honest limit, stated before the run:* the human side is **n = 1**, the operator, one reading,
 recorded as one reading. It is evidence and it is not a measurement, and no conclusion rests on it
 alone.
+
+## What 18-designation changed, and what it did not
+
+This protocol was written on 31/08 and **held back** on one sentence: a carving cannot produce a
+reference the record does not have, and whether a page can say *this one is the plan* was not this
+experiment's to decide. [`frontier/18-designation`](../../frontier/docs/18-designation/99-result.md)
+decided it, Confirmed, the same day. Everything below is written before any agent is invoked.
+
+**A record can now say which of its worlds it means, and it is a log rather than a pointer.** Ordered
+by position, coordinate-checked against the journal, attributable where anything says. So the third
+paragraph of P3b is superseded: what the record does not hold is no longer *which one was adopted*.
+
+```text
+was      the record holds proposals in abundance and not which was adopted
+is       the record holds proposals in abundance, and a per-party ordered log of
+         which was the plan, at which coordinate — `cli/src/designation.rs`
+```
+
+**And it changes nothing about the material this experiment reads**, which is the part that had to be
+checked rather than assumed. The generator's source is
+[`agents/05-reconciliation/run-a`](../../agents/05-reconciliation), written by parties nobody can
+re-run, and it is a **four-file record with no designation log**. Nothing rewrites it — `lab/README.md`
+names those repositories as the one real veto — so:
+
+* **The baseline stands.** *19 of 46 and 17 of 46* were measured against a record of four JSON files,
+  and the record this experiment carves is that record. The number is not stale; it is about a
+  fixture that has not moved.
+* **No carving gets a plan to carve.** Whatever a page could say about *what the plan was* is
+  unavailable to all three equally, so it discriminates between none of them.
+
+**What it does introduce is a confound, and naming it before the run is the whole point of naming
+it.** 18 found that a designation is [`Taken`]'s shape — *a claim about a world, at a coordinate, by
+somebody* — so the record's two claim-carrying files now have one shape, and that shape is the
+**decision**. Carving C is per decision.
+
+That is an argument for C which arrives from outside this experiment and is not evidence for it. If C
+wins, the reading must say which of the two it won by: the 46 questions, or the fact that the
+laboratory spent the previous day deciding the record's newest claim is decision-shaped. **A result
+for C that cannot separate those is a result about the order the experiments ran in.**
 
 ## Method
 
@@ -227,6 +270,9 @@ experiment is over and says so.
 * **The human reading treated as a measurement.** It is n = 1 and says so.
 * **Markdown argued for.** It is arbitrary among equivalents and the protocol says so at the top;
   finding it good would be finding the reader is an LLM.
+* **C winning without the confound being separated.** See the section on `18-designation`: an
+  argument for the decision as the unit already exists, it came from another row, and a reading that
+  cannot tell it apart from these 46 questions is reporting the order the experiments ran in.
 
 ## Excluded
 
