@@ -10,10 +10,14 @@ which hypotheses there are, where each came from, and what has been spent on it.
 
 ```text
 H1  the core's gaps, concretized              frontier/            ~40%, swept below
-H2  an auditable trail of a decision          agents/              four runs, then parked
+H2  an auditable trail of a decision          agents/              four runs, then parked —
+                                                                   and 00-testimony found the
+                                                                   half it is missing
 H3  a substrate for training                  succession/          material gathered, unrun
-H4  a home for what reaches no primitive      succession/          00-testimony OPEN
-H5  navigable by both kinds of reader         succession/          blocked on H4
+H4  a home for what reaches no primitive      succession/          FIRST HALF ANSWERED —
+                                                                   two shapes, one anchored
+H5  navigable by both kinds of reader         succession/          unblocked, and smaller than
+                                                                   it looked
 ```
 
 [`succession/`](succession) opened 29/08/2026 with this file, because H3, H4 and H5 fit neither
