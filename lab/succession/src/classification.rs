@@ -37,6 +37,66 @@ pub struct Claim {
     /// and the elision changes nothing a reader would classify differently.
     pub text: &'static str,
     pub verdict: Verdict,
+    /// What the laboratory has since done about a claim that **asks** for something.
+    ///
+    /// Present exactly for [`Kind::Want`] and [`Kind::Loss`], and absent for everything else, which
+    /// the constructors enforce rather than a guard: the data the invariant refers to is all local to
+    /// one claim, so it belongs in construction.
+    pub standing: Option<Standing>,
+}
+
+/// Where a want or a loss stands today, so that this experiment cannot re-report the queue.
+///
+/// **Added in Phase 2, after the operator asked whether the opaque constraint had already been
+/// handled** — it had, in one half and not the other, and the first commit of this experiment
+/// reported the recurrence as fresh evidence. Without this field the experiment rediscovers what the
+/// laboratory already holds, which is the drift the charter was written to stop. See
+/// `04-a-want-has-a-standing.md`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Standing {
+    /// In `QUEUE.md` or a `candidates/` file, at this path from the repository root. Checked to
+    /// exist.
+    ///
+    /// **Tracked means selectable.** The queue is what gets read when work is chosen, so an item in
+    /// it can be picked.
+    Tracked(&'static str),
+    /// In a result document and nowhere the queue reads, at this path from the repository root.
+    ///
+    /// **The distinction from [`Standing::Tracked`] is this experiment's sharpest method finding.**
+    /// A finding in a result document is findable by somebody who already knows to look and is
+    /// invisible to selection: the queue orders items *in the queue*, so ripeness cannot reach it,
+    /// ever. `agents/01`'s two frictions have been in its result since the first experiment and are
+    /// in no queue.
+    Recorded(&'static str),
+    /// Served since the testimony was written, and by what.
+    ///
+    /// A met want is the most informative thing in the corpus: it is the only kind of evidence that
+    /// says what happens **after** a boundary grows.
+    Met(&'static str),
+    /// The engine or the laboratory has ruled that the record deliberately does not carry it, and
+    /// where that ruling is written.
+    ///
+    /// **These are H4's target, and realising that is what the category is for.** A want nobody
+    /// noticed is a gap; a want the ontology *correctly* refuses is something else — `02-hindsight`'s
+    /// own result says of one of them that it is *absent by design rather than by omission, and
+    /// filling it is an application's business if any application wants it*. H4 asks exactly that
+    /// question: not whether these belong in a primitive, which is settled and settled *no*, but
+    /// whether they belong **beside** the entity.
+    ByDesign(&'static str),
+    /// Nowhere — not the queue, not a candidate, not a result document, not a ruling.
+    Untracked,
+}
+
+impl Standing {
+    /// The document this standing points at, relative to the repository root, if it points at one.
+    pub fn cited(&self) -> Option<&'static str> {
+        match self {
+            Standing::Tracked(where_) | Standing::Recorded(where_) | Standing::ByDesign(where_) => {
+                Some(where_)
+            }
+            Standing::Met(_) | Standing::Untracked => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

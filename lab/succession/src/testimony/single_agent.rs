@@ -11,7 +11,7 @@
 //! mean"* — and asking whether a record houses that is the wrong question. The reasoning is in
 //! `classification.rs` and the cost is in `02-the-third-verdict.md`.
 
-use crate::classification::{Carrier, Claim, Derived, File, Kind, Verdict};
+use crate::classification::{Carrier, Claim, Derived, File, Kind, Standing, Verdict};
 use crate::corpus::Run;
 
 const fn housed(text: &'static str, carrier: Carrier) -> Claim {
@@ -19,14 +19,37 @@ const fn housed(text: &'static str, carrier: Carrier) -> Claim {
         run: Run::SingleAgent,
         text,
         verdict: Verdict::Housed(carrier),
+        standing: None,
     }
 }
 
+/// A road not taken, a qualification or a method limit — the three kinds that ask for nothing.
 const fn unhoused(text: &'static str, kind: Kind) -> Claim {
     Claim {
         run: Run::SingleAgent,
         text,
         verdict: Verdict::Unhoused(Some(kind)),
+        standing: None,
+    }
+}
+
+/// A want: reached for at the boundary and not found, so it carries where it stands today.
+const fn want(text: &'static str, standing: Standing) -> Claim {
+    Claim {
+        run: Run::SingleAgent,
+        text,
+        verdict: Verdict::Unhoused(Some(Kind::Want)),
+        standing: Some(standing),
+    }
+}
+
+/// A loss: the record cannot say something, so it carries where it stands today.
+const fn loss(text: &'static str, standing: Standing) -> Claim {
+    Claim {
+        run: Run::SingleAgent,
+        text,
+        verdict: Verdict::Unhoused(Some(Kind::Loss)),
+        standing: Some(standing),
     }
 }
 
@@ -35,8 +58,12 @@ const fn exposition(text: &'static str) -> Claim {
         run: Run::SingleAgent,
         text,
         verdict: Verdict::Exposition,
+        standing: None,
     }
 }
+
+/// This run's own result document, which recorded two of its frictions and reached no queue.
+const IN_ITS_RESULT: Standing = Standing::Recorded("lab/agents/01-single-agent/99-result.md");
 
 const ENTITY_COMMITMENT: Carrier = Carrier::Entity("Commitment");
 const ENTITY_EVENT: Carrier = Carrier::Entity("Event");
@@ -223,55 +250,63 @@ pub const CLAIMS: &[Claim] = &[
          `edition`, `license` and `repository` from a workspace root that was not vendored with it",
         Kind::MethodLimit,
     ),
-    unhoused(
+    want(
         "There is no way to ask \"would this be feasible?\" without asserting it first. […] there is \
          no dry run.",
-        Kind::Want,
+        IN_ITS_RESULT,
     ),
     housed(
         "history now permanently contains an intention that never could be realized",
         JOURNAL,
     ),
-    unhoused(
+    want(
         "An application that wanted one would have to implement `Knowledge` + `CanonicalKnowledge` \
          itself as an overlay of the real history plus the candidate […] nothing in the crate offers \
          it.",
-        Kind::Want,
+        IN_ITS_RESULT,
     ),
-    unhoused(
+    loss(
         "The penalty is not expressible from the world as given. The third party is not an admitted \
          Agent, holds no role, and the penalty has no amount.",
-        Kind::Loss,
+        IN_ITS_RESULT,
     ),
     unhoused(
         "the amount would be invented by me, and the whole comparison turns on it, so I left it out \
          rather than fabricate the number that decides the answer.",
         Kind::RoadNotTaken,
     ),
-    unhoused(
+    // Recorded, not untracked — and the search that first said otherwise looked for the AGENT's
+    // words. The laboratory wrote it as "a conflict names the level it reached, not the bound it
+    // left", which is why `03-bounds` is a different want: that one is about what a constraint can
+    // SAY, and this one about what it can be asked.
+    want(
         "`Conflict::OutOfBounds` names the level but not the bound it left. […] `Constraint` exposes \
          only `check(value)` — no accessor for its bound and no `Display`.",
-        Kind::Want,
+        IN_ITS_RESULT,
     ),
     unhoused(
         "The bound in my printed prose is therefore copied by hand out of `world.rs`, which is \
          exactly the kind of second copy that goes stale.",
         Kind::MethodLimit,
     ),
-    unhoused(
+    // Untracked, and measured: this run's result names two frictions and this is neither. Its F2 —
+    // "a reading loses the balance" — was withdrawn before the run and is a different claim.
+    want(
         "There is no \"what is the level now\". `Accumulation` answers conditions and feasibility; a \
          projected balance is not among them.",
-        Kind::Want,
+        Standing::Untracked,
     ),
     unhoused(
         "It did not block me — feasibility answered the question I had — but I expected to be able \
          to print the account's level and could not, without writing the sum myself.",
         Kind::Qualification,
     ),
-    unhoused(
+    // About the experiment's own fixture rather than the record, and nowhere: this run's result
+    // records two faults of the experiment and this is neither.
+    want(
         "`world.rs` exposes `today()` but keeps its `day()` helper private, so `src/main.rs` \
          re-derives January 2026 dates of its own. Two copies of one calendar.",
-        Kind::Want,
+        Standing::Untracked,
     ),
 ];
 

@@ -20,7 +20,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use ape_succession::classification::{Carrier, Kind, Verdict};
+use ape_succession::classification::{Carrier, Kind, Standing, Verdict};
 use ape_succession::corpus::Run;
 use ape_succession::testimony::{classified, unread};
 
@@ -251,6 +251,59 @@ fn every_unhoused_claim_carries_its_words() {
     );
 }
 
+/// Every standing that cites a document cites one that exists.
+///
+/// A want marked *tracked* against a path nobody can open is worse than one marked untracked: it
+/// says the laboratory has the item and sends the reader nowhere. Checked from the repository root
+/// because a standing may cite the engine's own documentation, which is where a *by design* ruling
+/// lives.
+#[test]
+fn every_standing_that_cites_a_document_cites_one_that_exists() {
+    let root = laboratory().join("..");
+
+    let missing: Vec<&str> = classified()
+        .iter()
+        .filter_map(|claim| claim.standing)
+        .filter_map(|standing| standing.cited())
+        .filter(|path| !root.join(path).is_file())
+        .collect();
+
+    assert!(
+        missing.is_empty(),
+        "these standings cite documents that do not exist, so a reader is sent nowhere: {missing:?}"
+    );
+}
+
+/// A claim carries a standing exactly when it asks the record for something.
+///
+/// The constructors already make this true — there is no way to build a want without one — so this
+/// is the assertion that they still do, and the thing it would catch is a sixth constructor written
+/// later that forgets.
+#[test]
+fn a_standing_is_present_exactly_for_the_two_kinds_that_ask() {
+    let mut wrong = Vec::new();
+
+    for claim in classified() {
+        let asks = matches!(
+            claim.verdict,
+            Verdict::Unhoused(Some(Kind::Want)) | Verdict::Unhoused(Some(Kind::Loss))
+        );
+
+        if asks != claim.standing.is_some() {
+            wrong.push(format!(
+                "{:?} asks={asks} standing={:?}: {:?}",
+                claim.run, claim.standing, claim.text
+            ));
+        }
+    }
+
+    assert!(
+        wrong.is_empty(),
+        "a want or a loss carries where it stands, and nothing else does:\n  {}",
+        wrong.join("\n  ")
+    );
+}
+
 /// What Phase 2 has read, and what it has not, reported rather than left to be inferred.
 ///
 /// Not an assertion about completeness — Phase 2 lands run by run on purpose. It fails only if
@@ -310,4 +363,20 @@ fn the_classification_says_which_testimonies_it_has_not_read() {
     ] {
         println!("  {kind:?} {}", counted(kind));
     }
+
+    println!("\nwhere the wants and the losses stand:");
+
+    let standings: Vec<Standing> = claims.iter().filter_map(|claim| claim.standing).collect();
+    let how_many = |label: &str, matching: fn(&Standing) -> bool| {
+        println!(
+            "  {label:<10} {}",
+            standings.iter().filter(|it| matching(it)).count()
+        );
+    };
+
+    how_many("tracked", |it| matches!(it, Standing::Tracked(_)));
+    how_many("recorded", |it| matches!(it, Standing::Recorded(_)));
+    how_many("met", |it| matches!(it, Standing::Met(_)));
+    how_many("by design", |it| matches!(it, Standing::ByDesign(_)));
+    how_many("untracked", |it| matches!(it, Standing::Untracked));
 }

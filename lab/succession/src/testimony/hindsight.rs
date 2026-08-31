@@ -13,7 +13,7 @@
 //! — it admits nothing to the canon and stores nothing in the archive*, which makes it a second
 //! reader in a corpus that was published as having one. See `03-the-corpus-had-two-readers.md`.
 
-use crate::classification::{Carrier, Claim, Derived, File, Kind, Verdict};
+use crate::classification::{Carrier, Claim, Derived, File, Kind, Standing, Verdict};
 use crate::corpus::Run;
 
 const fn housed(text: &'static str, carrier: Carrier) -> Claim {
@@ -21,14 +21,35 @@ const fn housed(text: &'static str, carrier: Carrier) -> Claim {
         run: Run::Hindsight,
         text,
         verdict: Verdict::Housed(carrier),
+        standing: None,
     }
 }
 
+/// A road not taken, a qualification or a method limit — the three kinds that ask for nothing.
 const fn unhoused(text: &'static str, kind: Kind) -> Claim {
     Claim {
         run: Run::Hindsight,
         text,
         verdict: Verdict::Unhoused(Some(kind)),
+        standing: None,
+    }
+}
+
+const fn want(text: &'static str, standing: Standing) -> Claim {
+    Claim {
+        run: Run::Hindsight,
+        text,
+        verdict: Verdict::Unhoused(Some(Kind::Want)),
+        standing: Some(standing),
+    }
+}
+
+const fn loss(text: &'static str, standing: Standing) -> Claim {
+    Claim {
+        run: Run::Hindsight,
+        text,
+        verdict: Verdict::Unhoused(Some(Kind::Loss)),
+        standing: Some(standing),
     }
 }
 
@@ -37,8 +58,25 @@ const fn exposition(text: &'static str) -> Claim {
         run: Run::Hindsight,
         text,
         verdict: Verdict::Exposition,
+        standing: None,
     }
 }
+
+/// Experiment 01's result, which recorded the two frictions this run met again and reached no queue.
+const IN_01: Standing = Standing::Recorded("lab/agents/01-single-agent/99-result.md");
+
+/// This run's own result.
+const IN_02: Standing = Standing::Recorded("lab/agents/02-hindsight/99-result.md");
+
+/// The ontology, which states that what is not necessary to coordination belongs to the application.
+const ONTOLOGY: Standing = Standing::ByDesign("core/src/docs/01-ontology.md");
+
+/// The journal, which enumerates — the capability the auditor's *lower bound* caveat asked for.
+///
+/// Queued as re-run debt S2: *a journal enumerates. Whether an auditor lifts the caveat is
+/// unmeasured.* So the capability arrived and the measurement did not, which is the shape of a met
+/// want this row can say something about.
+const ENUMERATION: Standing = Standing::Met("the repository's journal — re-run debt S2");
 
 const COMMITMENT: Carrier = Carrier::Entity("Commitment");
 const EVENT: Carrier = Carrier::Entity("Event");
@@ -103,10 +141,13 @@ pub const CLAIMS: &[Claim] = &[
         "| `dd0c480b…` | C2 | `Cancelled` → **Cancelled** | 2026-01-06 | `5664085b…` |",
         EVENT,
     ),
-    unhoused(
+    // The same want experiment 01 met, from an agent that never saw 01. There it was copied out of
+    // the fixture by hand; here it is probed through `check`. Two agents, two workarounds, one
+    // absent accessor.
+    want(
         "the resource `cash` behind the instance `account` carries an opaque constraint, so it was \
          **probed** rather than read — `check(-0.0001)` refused, `check(0.0)` allowed",
-        Kind::Want,
+        IN_01,
     ),
     // ---- 1. How the account got here ---------------------------------------------------------
     housed(
@@ -152,9 +193,9 @@ pub const CLAIMS: &[Claim] = &[
         "*Inferred, not read:* the breach falls on **2026-01-20**, C4's due date.",
         Kind::Qualification,
     ),
-    unhoused(
+    want(
         "`Conflict::OutOfBounds` carries only the instance and the level",
-        Kind::Want,
+        IN_01,
     ),
     // ---- 2. The decisions, and what each was decided against ---------------------------------
     exposition("A Thesis records no operation — only a parent, a cut and a selection."),
@@ -251,15 +292,21 @@ pub const CLAIMS: &[Claim] = &[
         "**An infeasible thesis is not by itself a mistake.** Theses exist to compare alternatives, \
          and evaluating a world that turns out infeasible is what they are for.",
     ),
-    unhoused(
+    // The queue holds this one, as "a decision that says it weighed rather than meant" — the request
+    // nearest the ontology, and load-bearing for the training candidate. Named there by experiment
+    // 06 of the other row, and reached here independently by an agent auditing one lineage.
+    loss(
         "The graph carries no marker distinguishing a plan from an exploration — there are no named \
          references in it, and \"main is a convention\" is the engine's own position.",
-        Kind::Loss,
+        Standing::Tracked("lab/QUEUE.md"),
     ),
-    unhoused(
+    // And this half is nowhere: that the world a house is *in* is application state, so a reader of
+    // the record cannot tell which of many worlds is the live one. Measured — neither the queue nor
+    // any candidate mentions a named reference.
+    loss(
         "The only thing privileging W4 is that `hindsight::build()` handed it over as *the world the \
          house is in now*, which is application state outside the graph.",
-        Kind::Loss,
+        Standing::Untracked,
     ),
     unhoused(
         "On that footing, W0 was infeasible and abandoned within the day; W4 is infeasible and is \
@@ -280,10 +327,13 @@ pub const CLAIMS: &[Claim] = &[
          that is exactly what \"interpreted only under its own cut\" buys.",
         CUT,
     ),
-    unhoused(
+    // This run's own result ruled on it: "absent by design rather than by omission, and filling it is
+    // an application's business if any application wants it." Which is H4's question in the
+    // laboratory's own words, two years before H4 was written.
+    loss(
         "What the graph does **not** show is whether anyone looked: projections are derived and never \
          stored, so there is no record of a feasibility check having been run, or skipped.",
-        Kind::Loss,
+        Standing::ByDesign("lab/agents/02-hindsight/99-result.md"),
     ),
     // ---- 4. What alternatives the house had --------------------------------------------------
     unhoused(
@@ -313,17 +363,17 @@ pub const CLAIMS: &[Claim] = &[
          +10 within bounds. It did not have a feasible way to take on both.",
         Kind::RoadNotTaken,
     ),
-    unhoused(
+    loss(
         "Whether dropping the 30 was an acceptable trade is a business question the graph cannot \
          answer; it has no notion of what the house needed.",
-        Kind::Loss,
+        ONTOLOGY,
     ),
-    unhoused(
+    want(
         "**The pool is a lower bound.** It contains exactly the commitments some world in the \
          lineage selected. `CanonicalKnowledge` offers lookup by identity and `head_as_of`, and no \
          enumeration at all — so a commitment the house admitted and never selected anywhere is \
          unreachable from the entry point I was given",
-        Kind::Want,
+        ENUMERATION,
     ),
     unhoused(
         "**Alternatives that were never asserted cannot be enumerated.** \"Commit to 70 instead of \
@@ -332,26 +382,33 @@ pub const CLAIMS: &[Claim] = &[
         Kind::RoadNotTaken,
     ),
     // ---- What I could not determine ----------------------------------------------------------
-    unhoused(
+    // "No field for a reason" is H4's own subject, asked here before H4 existed — which is the
+    // strongest single sentence in the corpus for the hypothesis, and it is tracked in the charter
+    // rather than in the queue because the charter is where the hypothesis lives.
+    want(
         "**Why C2 was cancelled, and who observed it.** The event carries an observation name \
          (`Cancelled`), an `occurred_at` and a `recorded_at`. There is no field for a reason and \
          none for an author",
-        Kind::Want,
+        Standing::Tracked("lab/CHARTER.md"),
     ),
     unhoused(
         "the reading in §3 that calls W1 → W2 \"a correction\" is an interpretation of the shape of \
          the sequence, not a fact read from it.",
         Kind::Qualification,
     ),
-    unhoused(
+    // MET, and the meeting is the interesting part: the application grew `Taken.by` when the
+    // repository landed, and then experiment 17 measured that `by` names who TOOK a decision and not
+    // who relayed it — so the want was served and the serving exposed a different gap, which is now
+    // the queue's "a name for a record".
+    want(
         "**Who took each decision.** A Thesis carries parent, cut and selection — the fields its \
          identity is derived from. No author",
-        Kind::Want,
+        Standing::Met("cli/src/lineage.rs — `Taken.by`"),
     ),
-    unhoused(
+    loss(
         "**When each decision was physically taken.** The cut is *declared* knowledge, not attested \
          provenance; the Thesis layer states this as a non-responsibility.",
-        Kind::Loss,
+        Standing::ByDesign("core/src/docs/06-thesis.md"),
     ),
     housed(
         "the genesis recognizes head `5664085b`, while the instant 2026-01-06 addresses `dd0c480b` \
@@ -359,15 +416,12 @@ pub const CLAIMS: &[Claim] = &[
          genesis was taken **before** the cancellation was recorded.",
         CUT,
     ),
-    unhoused(
-        "Nothing comparable exists for the other decisions.",
-        Kind::Loss,
-    ),
-    unhoused(
+    loss("Nothing comparable exists for the other decisions.", IN_02),
+    loss(
         "**The intraday order of C2 and C3.** Both were recorded on 2026-01-06 **[8]**. A commitment \
          never enters the event chain, so recording date is its only knowledge-time coordinate and \
          there is nothing finer to read.",
-        Kind::Loss,
+        ONTOLOGY,
     ),
     unhoused(
         "I cannot tell whether \"select C3 instead of C2\" was genuinely available at the genesis, or \
@@ -375,11 +429,11 @@ pub const CLAIMS: &[Claim] = &[
          was a real option at that moment is undeterminable.",
         Kind::Qualification,
     ),
-    unhoused(
+    want(
         "**Whether the house held worlds outside this lineage.** `ThesisLookup` resolves a thesis by \
          identity and offers no enumeration, so an abandoned sibling — a fork taken and discarded — \
          would be invisible from the entry point given.",
-        Kind::Want,
+        ENUMERATION,
     ),
     unhoused(
         "Everything above describes the ancestry of the current world, not necessarily everything the \
@@ -392,16 +446,16 @@ pub const CLAIMS: &[Claim] = &[
          do",
         Kind::Qualification,
     ),
-    unhoused(
+    loss(
         "The graph also shows only movements on `account` that some world selected — it carries no \
          claim that no other cash exists.",
-        Kind::Loss,
+        ONTOLOGY,
     ),
-    unhoused(
+    loss(
         "**Whether a feasibility check was ever run before a decision.** Nothing records it. […] the \
          answer to *could* they is a demonstrable yes, and the answer to *did* they is not in the \
          graph.",
-        Kind::Loss,
+        Standing::ByDesign("lab/agents/02-hindsight/99-result.md"),
     ),
     // ---- Reproducing this --------------------------------------------------------------------
     unhoused(
