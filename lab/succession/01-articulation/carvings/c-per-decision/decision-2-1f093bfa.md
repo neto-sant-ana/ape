@@ -1,0 +1,30 @@
+---
+kind: decision (advance)
+world: 1f093bfa4767c65232f55b6f98c534bac595d44715fd8a76ab8439c62c8ffbd3
+extends: [[decision-1-74a6a53e]]
+by: 326993e96a20964d9b4317764638aea39d48c5ee990495221aecc4f437e0f8a3
+about: []
+position: 2
+claims: 3
+---
+
+# Decision 2
+
+`1f093bfa4767c65232f55b6f98c534bac595d44715fd8a76ab8439c62c8ffbd3`
+
+Decision 2 of 5, a **advance**.
+
+- produces world: `1f093bfa4767c65232f55b6f98c534bac595d44715fd8a76ab8439c62c8ffbd3`
+- known at: 2026-01-07
+- frozen: ["3167ccd390cf517c6ddd17ef553772d970784ed8f53d1754392386f604714f4c"]
+- open: ["2f54506ad11b1279c35b86b82a84df617d7d7fc740a92b5294a590b48a309ec2"]
+- taken by: `326993e96a20964d9b4317764638aea39d48c5ee990495221aecc4f437e0f8a3` (operations)
+- taken after entry: `4b8b9b8890365fc386a67977ccd312256ad1ece7ba0b5d1e00451379756609cd`
+- witnessed entries: 20
+- extends: `74a6a53e4e4d559ff967697523bb44138973421c1d17e718694b8b9eb4fa0905`
+
+## What was said about it
+
+- *(methodlimit)* I measured the other order too — the Canon rejects it outright […] Running the whole program with the roles swapped fails at exactly that point, which means operations was the only side of this pair that could host the merge at all.
+- *(roadnottaken)* Reconciling them would take two decisions neither party made — operations advancing its own tip to finance's instant, and then somebody answering what becomes of `2f54506a…`, which operations omitted and finance kept. That answer is not derivable from either record, so I left it open.
+- *(want)* The record has no way to distinguish *finance took this against its own prefix* from *operations retook finance's intention against the merged prefix*

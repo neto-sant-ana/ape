@@ -20,7 +20,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Where the record is, from the repository root.
 pub const SOURCE: &str = "lab/agents/05-reconciliation/run-a/mine";
@@ -29,7 +29,7 @@ pub const SOURCE: &str = "lab/agents/05-reconciliation/run-a/mine";
 ///
 /// `#[serde(other)]` is deliberately absent: an unknown `admits` is a parse failure, because a
 /// carving that silently skipped an entry would report a record that is not the one on disk.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "admits", rename_all = "kebab-case")]
 pub enum Entry {
     Role {
@@ -137,6 +137,11 @@ impl Entry {
 }
 
 /// One decision, flattened the way `lineage.json` holds it.
+///
+/// **`decides` is the kind and not an identity**, which cost this experiment a dead branch before it
+/// was noticed: the file tags the variant, so the value is `genesis`, `advance` or `fork`. A
+/// decision's world is nowhere in `lineage.json` — it is derived, and the record holds it in
+/// `worlds.json` at the same position. See [`Record::decided`].
 #[derive(Debug, Clone, Deserialize)]
 pub struct Taken {
     pub decides: String,
@@ -199,6 +204,7 @@ pub enum RecordError {
     Unreadable { file: PathBuf, why: String },
     NoPointer { root: PathBuf },
     LengthsDisagree { journal: usize, custody: usize },
+    DecisionsAndWorldsDisagree { lineage: usize, worlds: usize },
 }
 
 impl std::fmt::Display for RecordError {
@@ -216,6 +222,11 @@ impl std::fmt::Display for RecordError {
                 f,
                 "the journal offers {journal} entries and custody claims {custody} addresses, so \
                  pairing them by position would name the wrong entry"
+            ),
+            Self::DecisionsAndWorldsDisagree { lineage, worlds } => write!(
+                f,
+                "the record holds {lineage} decisions and {worlds} worlds, so pairing them by \
+                 position would give a decision the wrong world"
             ),
         }
     }
@@ -265,12 +276,29 @@ impl Record {
             });
         }
 
+        if lineage.len() != worlds.len() {
+            return Err(RecordError::DecisionsAndWorldsDisagree {
+                lineage: lineage.len(),
+                worlds: worlds.len(),
+            });
+        }
+
         Ok(Self {
             journal,
             custody,
             lineage,
             worlds,
         })
+    }
+
+    /// Each decision with the world it produced, paired by position.
+    ///
+    /// Position is the only pairing the record offers — `lineage.json` names no world and
+    /// `worlds.json` names no decision — and it is the application's own rule: `reading` refuses a
+    /// record whose decisions produce a different number of worlds than it recorded. Checked at
+    /// [`Record::open`] by the same comparison, so a mispaired record never reaches here.
+    pub fn decided(&self) -> Vec<(&Taken, &World)> {
+        self.lineage.iter().zip(&self.worlds).collect()
     }
 
     /// Each entry with the address it produced.

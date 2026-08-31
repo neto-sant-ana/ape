@@ -17,4 +17,5 @@
 //! while writing this is recorded where it was made rather than in the result.
 
 pub mod anchor;
+pub mod carving;
 pub mod record;
