@@ -21,4 +21,5 @@
 
 pub mod classification;
 pub mod corpus;
+pub mod phase4;
 pub mod testimony;

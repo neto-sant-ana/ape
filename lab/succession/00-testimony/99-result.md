@@ -2,14 +2,18 @@
 
 **Confirmed with a split**, and four of five predictions wrong.
 
-> **Phase 4 has not run, and success criterion 5 is unmet.** The second classifier — a session that has
-> not read this protocol, asked the housed question only — is this row's answer to its own stated
-> hazard, and everything below is one reader's judgement until it does. The protocol calls criteria 3
-> and 5 *the experiment*; this document has 3 and not 5.
+> **Phase 4 ran: 36 of 46, 78%** — [`09`](09-what-the-second-classifier-said.md). A second classifier
+> that had read none of this answered the housed question alone, and the comparison was fixed before
+> it was invoked. Ten disagreements, and six of them are about **where a claim ends** rather than
+> about the record: it sank a sentence on its weakest conjunct where this reading classified by
+> operative content, and the protocol never specified which.
 >
-> It is written now rather than withheld because Phase 2 is complete and the numbers are what a second
-> classifier would be checked against. **Nothing here is settled**, and the section on what the hazard
-> already cost says why that is not a formality.
+> **The check built to falsify this experiment's own amendment fired, and the amendment survived it.**
+> One exposition claim came back established — and the diagnosis is an extraction defect of this
+> reading's, not `Exposition` absorbing what the record holds. It is the first of the three times this
+> row's hazard fired on the classifier that a *mechanism* caught.
+>
+> What that bounds is P1 below, by a few points either way, and nothing else.
 >
 > The banner is below the verdict rather than above it because `cli/tests/pedigree.rs` reads the first
 > non-empty line after the heading — and it accepted this banner as a verdict when it was first. See
@@ -182,11 +186,19 @@ and it was broken on purpose three times.
 ([`02`](02-the-third-verdict.md)), `Standing` ([`04`](04-a-want-has-a-standing.md)), and the
 reformulated split ([`07`](07-the-line-is-whether-the-reader-must-choose.md)).
 
-**And the row's stated hazard fired twice, on the person doing the classifying.** Once trusting a
-directory's name over reading the testimony ([`03`](03-the-corpus-had-two-readers.md)), once trusting
-a search for the agent's words over the laboratory's ([`04`](04-a-want-has-a-standing.md)). Both were
-caught — the first by the corpus, the second by the operator — and neither by a guard. **Phase 4 is
-what would have caught them**, and it has not run.
+**And the row's stated hazard fired three times, on the person doing the classifying.**
+
+```text
+03   a directory's name trusted over the testimony       caught by the corpus
+04   a search for the agent's words over the lab's       caught by the operator
+09   a quotation cut inside its own frame                caught by the guard
+```
+
+The third is the one that matters for method: the row opened saying its subject is prose and prose is
+classified by somebody with an interest in the outcome, and the answer it offered was a second
+classifier. **The answer worked** — and it found the one defect a human reader of this classification
+could not have, because a quotation cut inside another quotation passes every guard that checks
+quotations.
 
 ## What was added to the engine, and to the application
 
