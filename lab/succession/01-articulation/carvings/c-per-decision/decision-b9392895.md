@@ -1,21 +1,22 @@
 ---
 kind: decision (fork)
 world: b939289591aaf9360606e06f1889314e4c7a5ff4d6762508325b801df73a08cb
-extends: [[decision-2-1f093bfa]]
+arms: [[arm-operations]], [[arm-merged]]
+extends: [[decision-1f093bfa]]
 by: 326993e96a20964d9b4317764638aea39d48c5ee990495221aecc4f437e0f8a3
 about: ["2f54506ad11b1279c35b86b82a84df617d7d7fc740a92b5294a590b48a309ec2", "4b8b9b8890365fc386a67977ccd312256ad1ece7ba0b5d1e00451379756609cd"]
-position: 3
 claims: 3
 ---
 
-# Decision 3
+# decision-b9392895
 
 `b939289591aaf9360606e06f1889314e4c7a5ff4d6762508325b801df73a08cb`
 
-Decision 3 of 5, a **fork**.
+A **fork**, held by: operations, merged.
 
 - produces world: `b939289591aaf9360606e06f1889314e4c7a5ff4d6762508325b801df73a08cb`
 - known at: 2026-01-07
+- event head: Some("6d336a99e589182e6450905e02070dfbaa4febcdce6134829b166e570b1a7096")
 - frozen: ["3167ccd390cf517c6ddd17ef553772d970784ed8f53d1754392386f604714f4c"]
 - open: ["4b8b9b8890365fc386a67977ccd312256ad1ece7ba0b5d1e00451379756609cd"]
 - taken by: `326993e96a20964d9b4317764638aea39d48c5ee990495221aecc4f437e0f8a3` (operations)

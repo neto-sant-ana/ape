@@ -24,26 +24,80 @@ fn source() -> PathBuf {
         .expect("the record this experiment carves is in the workspace")
 }
 
-fn opened() -> record::Record {
-    record::Record::open(&source()).expect("the record opens")
+fn opened() -> record::Run {
+    record::Run::open(&source()).expect("the run opens")
 }
 
-/// The record is the one the protocol describes, and every number was written down first.
+/// **The source is `run-a`, and `run-a` is three arms.**
+///
+/// Run 1 carved `run-a/mine` alone and lost four housed claims to it — every claim about *the two
+/// journals* was unreachable because only one had been carved. The numbers here are the testimony's
+/// own arithmetic, and they are what makes those claims derivable at all.
 #[test]
-fn the_source_is_a_four_file_record_of_twenty_one_entries_and_five_decisions() {
-    let record = opened();
+fn the_source_is_three_arms_and_they_stand_in_the_relation_the_testimony_describes() {
+    let run = opened();
 
-    assert_eq!(record.journal.len(), 21, "journal entries");
-    assert_eq!(record.custody.len(), 21, "custody addresses, one per entry");
-    assert_eq!(record.lineage.len(), 5, "decisions");
-    assert_eq!(record.worlds.len(), 5, "worlds");
+    let shape: Vec<(&str, usize, usize, usize)> = run
+        .arms
+        .iter()
+        .map(|arm| {
+            (
+                arm.arm,
+                arm.journal.len(),
+                arm.lineage.len(),
+                arm.worlds.len(),
+            )
+        })
+        .collect();
 
-    assert!(
-        !source().join("a").join("designations.json").exists()
-            && !source().join("b").join("designations.json").exists(),
-        "and no generation holds a designation log, so no carving gets a plan to carve — which the \
-         protocol states and this measures"
+    assert_eq!(
+        shape,
+        vec![
+            ("operations", 20, 3, 3),
+            ("finance", 20, 3, 3),
+            ("merged", 21, 5, 5),
+        ]
     );
+
+    for arm in &run.arms {
+        assert_eq!(
+            arm.custody.len(),
+            arm.journal.len(),
+            "{}: one custody address per entry",
+            arm.arm
+        );
+    }
+
+    let (operations, finance, merged) = (&run.arms[0], &run.arms[1], &run.arms[2]);
+
+    let prefix = operations
+        .custody
+        .iter()
+        .zip(&finance.custody)
+        .take_while(|(here, there)| here == there)
+        .count();
+
+    assert_eq!(
+        prefix, 19,
+        "the two parties' journals are identical for nineteen entries and part at the twentieth"
+    );
+    assert_eq!(
+        merged.custody[..20],
+        operations.custody[..],
+        "and the merge is operations' twenty, unchanged and in order"
+    );
+    assert!(
+        finance.custody.contains(&merged.custody[20]),
+        "followed by the one entry only finance had"
+    );
+
+    for arm in &run.arms {
+        assert!(
+            !source().join("mine/a").join("designations.json").exists(),
+            "no arm holds a designation log, so no carving gets a plan to carve: {}",
+            arm.arm
+        );
+    }
 }
 
 /// The claim set is `00-testimony`'s Reconciliation run, and the baseline is its housed claims.
@@ -79,12 +133,12 @@ fn the_question_set_is_forty_six_claims_of_which_nineteen_are_the_baseline() {
 /// two carvings differing by one claim answer nothing.
 #[test]
 fn nine_of_the_twenty_seven_claims_anchor_and_eighteen_anchor_to_nothing() {
-    let record = opened();
+    let run = opened();
 
     let unplaced: Vec<_> = reconciliation::CLAIMS
         .iter()
         .filter(|claim| !matches!(claim.verdict, Verdict::Housed(_)))
-        .map(|claim| anchor::of(claim.text, &record))
+        .map(|claim| anchor::of(claim.text, &run))
         .collect();
 
     assert_eq!(unplaced.len(), 27);
@@ -116,13 +170,13 @@ fn nine_of_the_twenty_seven_claims_anchor_and_eighteen_anchor_to_nothing() {
 /// better than it reaches the rest, it would be matching noise.
 #[test]
 fn the_rule_reaches_the_housed_claims_far_more_often_than_the_rest() {
-    let record = opened();
+    let run = opened();
 
     let reach = |housed: bool| {
         reconciliation::CLAIMS
             .iter()
             .filter(|claim| matches!(claim.verdict, Verdict::Housed(_)) == housed)
-            .filter(|claim| !anchor::of(claim.text, &record).is_empty())
+            .filter(|claim| !anchor::of(claim.text, &run).is_empty())
             .count()
     };
 
@@ -143,14 +197,14 @@ fn the_rule_reaches_the_housed_claims_far_more_often_than_the_rest() {
 /// never had to: the corpus abbreviates to eight hex digits and the record holds 26 identities.
 #[test]
 fn every_identity_the_corpus_names_resolves_uniquely_in_this_record() {
-    let record = opened();
-    let identities = record.identities();
+    let run = opened();
+    let identities = run.identities();
 
     assert_eq!(identities.len(), 26, "distinct identities in the record");
 
     let named: usize = reconciliation::CLAIMS
         .iter()
-        .map(|claim| anchor::of(claim.text, &record).identities.len())
+        .map(|claim| anchor::of(claim.text, &run).identities.len())
         .sum();
 
     assert_eq!(
@@ -160,7 +214,7 @@ fn every_identity_the_corpus_names_resolves_uniquely_in_this_record() {
     );
 
     assert!(
-        anchor::of("a claim naming `0000000000` and nothing else", &record)
+        anchor::of("a claim naming `0000000000` and nothing else", &run)
             .identities
             .is_empty(),
         "and a prefix the record does not hold anchors to nothing rather than to the nearest thing"

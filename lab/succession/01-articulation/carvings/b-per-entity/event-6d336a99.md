@@ -1,6 +1,7 @@
 ---
 kind: event
 identity: 6d336a99e589182e6450905e02070dfbaa4febcdce6134829b166e570b1a7096
+arms: [[arm-operations]], [[arm-finance]], [[arm-merged]]
 held_by: none
 claims: 0
 ---

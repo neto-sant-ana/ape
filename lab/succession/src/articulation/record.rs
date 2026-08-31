@@ -10,12 +10,31 @@
 //! types renamed. Where a field is unused by any carving it is still read, so that a file this cannot
 //! parse fails loudly rather than being carved with a hole in it.
 //!
-//! # The source, and it is a four-file record
+//! # The source is `run-a`, and `run-a` is THREE arms
 //!
-//! `lab/agents/05-reconciliation/run-a/mine`, live generation — twenty-one journal entries, five
-//! decisions, five worlds. Written by parties nobody can re-run, which `lab/README.md` names as the
-//! one real veto, so it holds no `designations.json` and none of the carvings gets a plan to carve.
-//! Recorded in the protocol before the run.
+//! Run 1 carved `run-a/mine` alone and lost four housed claims by it — every claim the testimony
+//! makes about *the two journals* was unreachable, because only one of them had been carved. The
+//! narrowing was recorded in this docstring and never weighed, which is a way of documenting that
+//! looks like rigour. Observation 3 has the measurement.
+//!
+//! The record the testimony is about is three states, and the arithmetic is the testimony's own:
+//!
+//! ```text
+//! operations   run-a/mine/a     20 entries, 3 decisions   before the merge
+//! finance      run-a/theirs/a   20 entries, 3 decisions
+//! merged       run-a/mine/b     21 entries, 5 decisions   what converge wrote
+//!
+//! operations and finance share an identical prefix of 19, and each holds a twentieth the
+//! other has never seen. merged is operations' 20 followed by finance's 1.
+//! ```
+//!
+//! **`mine/a` is not `mine`'s live generation, and reading it is deliberate.** The repository keeps
+//! two generations so an interrupted write leaves the previous state intact; here that design is
+//! what preserved operations' pre-merge record, and the testimony is entirely about the difference
+//! between before and after.
+//!
+//! Written by parties nobody can re-run, which `lab/README.md` names as the one real veto — so no
+//! arm holds a `designations.json` and none of the carvings gets a plan to carve.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -23,7 +42,18 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 /// Where the record is, from the repository root.
-pub const SOURCE: &str = "lab/agents/05-reconciliation/run-a/mine";
+pub const SOURCE: &str = "lab/agents/05-reconciliation/run-a";
+
+/// The three arms, by the name the testimony calls each and the generation it lives in.
+///
+/// Order is fixed here and is the order every carving renders them in: what each party held, then
+/// what the merge produced. A carving that ordered them differently per run would be a carving
+/// nobody can compare to another.
+pub const ARMS: [(&str, &str); 3] = [
+    ("operations", "mine/a"),
+    ("finance", "theirs/a"),
+    ("merged", "mine/b"),
+];
 
 /// One admitted entry, by the tag the file carries and the fields that tag brings.
 ///
@@ -193,10 +223,93 @@ pub struct World {
 /// one derivation here, and it is checked rather than assumed: see [`Record::open`].
 #[derive(Debug, Clone)]
 pub struct Record {
+    /// What the testimony calls this arm — `operations`, `finance`, `merged`.
+    pub arm: &'static str,
     pub journal: Vec<Entry>,
     pub custody: Vec<String>,
     pub lineage: Vec<Taken>,
     pub worlds: Vec<World>,
+}
+
+/// The three arms of `run-a`, which together are the record the testimony is about.
+#[derive(Debug, Clone)]
+pub struct Run {
+    pub arms: Vec<Record>,
+}
+
+impl Run {
+    /// Open all three, in [`ARMS`] order.
+    pub fn open(root: &Path) -> Result<Self, RecordError> {
+        ARMS.iter()
+            .map(|(arm, at)| Record::open(arm, &root.join(at)))
+            .collect::<Result<Vec<_>, _>>()
+            .map(|arms| Self { arms })
+    }
+
+    /// The arm the merge produced, which is the one a decision or an entity is *newest* in.
+    pub fn merged(&self) -> &Record {
+        self.arms.last().expect("three arms")
+    }
+
+    /// Every identity any arm holds.
+    pub fn identities(&self) -> Vec<&str> {
+        let mut every: Vec<&str> = self.arms.iter().flat_map(Record::identities).collect();
+
+        every.sort_unstable();
+        every.dedup();
+        every
+    }
+
+    /// Every label any arm introduces, by the identity that introduced it.
+    pub fn labelled(&self) -> BTreeMap<String, &str> {
+        self.arms.iter().flat_map(Record::labelled).collect()
+    }
+
+    /// Whether an identity is an Agent in any arm — what [`super::anchor`] takes as a party.
+    pub fn is_agent(&self, id: &str) -> bool {
+        self.entries()
+            .into_iter()
+            .any(|(at, entry, _)| at == id && entry.kind() == "agent")
+    }
+
+    /// Every entry any arm holds, by address, with the arms that hold it.
+    ///
+    /// An [`EntryId`] is content, so an entry in two arms is **one** entry — which is the whole of
+    /// what makes *the two journals share 19* a thing a reader can derive rather than be told.
+    pub fn entries(&self) -> Vec<(&str, &Entry, Vec<&'static str>)> {
+        let mut seen: Vec<(&str, &Entry, Vec<&'static str>)> = Vec::new();
+
+        for arm in &self.arms {
+            for (id, entry) in arm.addressed() {
+                match seen.iter_mut().find(|(at, _, _)| *at == id) {
+                    Some((_, _, holders)) => holders.push(arm.arm),
+                    None => seen.push((id, entry, vec![arm.arm])),
+                }
+            }
+        }
+
+        seen
+    }
+
+    /// Every world any arm decided, with the decision that produced it and the arms holding it.
+    ///
+    /// Paired by position inside each arm, then merged by the world's identity — a `Thesis` is
+    /// content too, so the same world decided in two arms is one world. What can differ is the
+    /// `Taken`, because a re-witnessed decision stands on a different prefix.
+    pub fn decisions(&self) -> Vec<(&World, &Taken, Vec<&'static str>)> {
+        let mut seen: Vec<(&World, &Taken, Vec<&'static str>)> = Vec::new();
+
+        for arm in &self.arms {
+            for (taken, world) in arm.decided() {
+                match seen.iter_mut().find(|(at, _, _)| at.thesis == world.thesis) {
+                    Some((_, _, holders)) => holders.push(arm.arm),
+                    None => seen.push((world, taken, vec![arm.arm])),
+                }
+            }
+        }
+
+        seen
+    }
 }
 
 #[derive(Debug)]
@@ -233,19 +346,13 @@ impl std::fmt::Display for RecordError {
 }
 
 impl Record {
-    /// Open the record the way a reader with a directory does: follow `current`, read four files.
+    /// Open one arm: four files in one generation directory, named.
     ///
-    /// The pointer is followed rather than guessed. `run-a/mine` holds two generations and only one
-    /// of them is live; carving the other would be carving a record nobody reads.
-    pub fn open(root: &Path) -> Result<Self, RecordError> {
-        let pointer = std::fs::read_to_string(root.join("current"))
-            .map_err(|_| RecordError::NoPointer {
-                root: root.to_path_buf(),
-            })?
-            .trim()
-            .to_owned();
-
-        let live = root.join(pointer);
+    /// The generation is given rather than read from `current`, because two of the three arms this
+    /// experiment carves are **not** live — `mine/a` is what operations held before the merge, and
+    /// it exists only because the repository keeps the generation it replaced.
+    pub fn open(arm: &'static str, live: &Path) -> Result<Self, RecordError> {
+        let live = live.to_path_buf();
         let read = |name: &str| -> Result<String, RecordError> {
             let file = live.join(name);
             std::fs::read_to_string(&file).map_err(|why| RecordError::Unreadable {
@@ -284,6 +391,7 @@ impl Record {
         }
 
         Ok(Self {
+            arm,
             journal,
             custody,
             lineage,
@@ -321,7 +429,7 @@ impl Record {
             .collect()
     }
 
-    /// Every identity the record holds, from any of its four files.
+    /// Every identity this arm holds, from any of its four files.
     pub fn identities(&self) -> Vec<&str> {
         let mut every: Vec<&str> = self.custody.iter().map(String::as_str).collect();
 

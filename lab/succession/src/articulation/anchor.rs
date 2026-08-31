@@ -35,7 +35,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::articulation::record::Record;
+use crate::articulation::record::Run;
 
 /// A claim's attachment points, in the record's own vocabulary.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -95,9 +95,9 @@ fn names(text: &str, word: &str) -> bool {
     })
 }
 
-/// What one claim attaches to, by the two derivations above.
-pub fn of(text: &str, record: &Record) -> Anchored {
-    let identities = record.identities();
+/// What one claim attaches to, by the two derivations above, across every arm of the run.
+pub fn of(text: &str, run: &Run) -> Anchored {
+    let identities = run.identities();
     let mut anchored = Anchored::default();
 
     for prefix in prefixes(text) {
@@ -111,13 +111,8 @@ pub fn of(text: &str, record: &Record) -> Anchored {
         }
     }
 
-    for (label, id) in record.labelled() {
-        let is_agent = record
-            .addressed()
-            .into_iter()
-            .any(|(at, entry)| at == id && entry.kind() == "agent");
-
-        if is_agent && names(text, &label) {
+    for (label, id) in run.labelled() {
+        if run.is_agent(id) && names(text, &label) {
             anchored.parties.insert(id.to_owned());
         }
     }

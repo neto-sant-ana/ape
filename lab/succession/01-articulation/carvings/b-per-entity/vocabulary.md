@@ -6,7 +6,7 @@ kind: vocabulary
 
 The entries that introduce names.
 
-## role `3d359fe8`
+## role `3d359fe8` — in operations, finance, merged
 
 `3d359fe8c7ff74044b22d66f9a5bf29cf848739401b16456a69ccf64829d6f4f`
 
@@ -21,7 +21,7 @@ A role.
 ```
 - recorded at: 2026-01-01
 
-## role `48845bf3`
+## role `48845bf3` — in operations, finance, merged
 
 `48845bf3932457367beba3b252731695cbef505e4c5b6bce1acf708444564626`
 
@@ -36,7 +36,7 @@ A role.
 ```
 - recorded at: 2026-01-01
 
-## resource `9da39b54`
+## resource `9da39b54` — in operations, finance, merged
 
 `9da39b547d3ee483bdbbd98aee6e1508639cb3f4c37c3511c43dc23843fa949a`
 
@@ -57,7 +57,7 @@ A resource.
 ```
 - recorded at: 2026-01-01
 
-## eligibility `c3f30e2a`
+## eligibility `c3f30e2a` — in operations, finance, merged
 
 `c3f30e2ad08cfc63e35ea0450be520dea705fb93b6130bd9527ac23512e97ca9`
 
@@ -76,7 +76,7 @@ A eligibility.
 ```
 - recorded at: 2026-01-01
 
-## eligibility `6f7276c6`
+## eligibility `6f7276c6` — in operations, finance, merged
 
 `6f7276c6013b0d533edcc0868ef65748efd55f437e9bc928061f78ce83e38c8c`
 
@@ -95,7 +95,7 @@ A eligibility.
 ```
 - recorded at: 2026-01-01
 
-## resource-instance `8098643f`
+## resource-instance `8098643f` — in operations, finance, merged
 
 `8098643f890f456c60ef73ea3ef46c9e7bbf9715d52ca29437907427a5174100`
 
@@ -111,7 +111,7 @@ A resource-instance.
 ```
 - recorded at: 2026-01-01
 
-## action `f08e6708`
+## action `f08e6708` — in operations, finance, merged
 
 `f08e670889cebb746387802e39f869ca2f76c9c29d9a61a83a3d74fa364ba859`
 
@@ -130,7 +130,7 @@ A action.
 ```
 - recorded at: 2026-01-01
 
-## action `5f5255e4`
+## action `5f5255e4` — in operations, finance, merged
 
 `5f5255e453e4eaff04dc1546aa57c86a036a1e6daad4df76b2508639237e6600`
 
@@ -149,7 +149,7 @@ A action.
 ```
 - recorded at: 2026-01-01
 
-## statement `dabb76d3`
+## statement `dabb76d3` — in operations, finance, merged
 
 `dabb76d32d2548e014a176f70c72f2bdf0d2ace3e5dcd65220a3ed07e2231666`
 
@@ -176,7 +176,7 @@ A statement.
 ```
 - recorded at: 2026-01-01
 
-## statement `1cb6093b`
+## statement `1cb6093b` — in operations, finance, merged
 
 `1cb6093bb3776703e8e19199a07367dabf4a349793cdf7027ea7cdb5e5c25fe3`
 
@@ -203,7 +203,7 @@ A statement.
 ```
 - recorded at: 2026-01-01
 
-## eligibility `23375b37`
+## eligibility `23375b37` — in operations, finance, merged
 
 `23375b3765fd8e21a5f638f5bd0b4e47853763fc8d070d87cd3b1cd449a5bb67`
 
@@ -222,7 +222,7 @@ A eligibility.
 ```
 - recorded at: 2026-01-03
 
-## eligibility `8a9be0af`
+## eligibility `8a9be0af` — in operations, finance, merged
 
 `8a9be0af9c5f0016ce00305211f29d191b2ad03ea9ff0d8493f7e145f6cde742`
 

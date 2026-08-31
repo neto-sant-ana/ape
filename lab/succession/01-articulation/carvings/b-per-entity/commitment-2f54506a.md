@@ -1,6 +1,7 @@
 ---
 kind: commitment
 identity: 2f54506ad11b1279c35b86b82a84df617d7d7fc740a92b5294a590b48a309ec2
+arms: [[arm-operations]], [[arm-finance]], [[arm-merged]]
 held_by: [[thesis-74a6a53e]], [[thesis-1f093bfa]], [[thesis-558f991d]], [[thesis-dd201a84]]
 claims: 1
 ---

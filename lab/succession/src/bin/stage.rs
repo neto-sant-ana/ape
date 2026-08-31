@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 
 use ape_succession::articulation::briefing;
 use ape_succession::articulation::carving::{self, Carving};
-use ape_succession::articulation::record::{Record, SOURCE};
+use ape_succession::articulation::record::{Run, SOURCE};
 use ape_succession::testimony::reconciliation;
 
 fn root() -> PathBuf {
@@ -48,7 +48,7 @@ fn main() -> Result<(), String> {
         ));
     }
 
-    let record = Record::open(&root.join(SOURCE)).map_err(|why| why.to_string())?;
+    let record = Run::open(&root.join(SOURCE)).map_err(|why| why.to_string())?;
     let claims = reconciliation::CLAIMS;
 
     for carving in Carving::ALL {

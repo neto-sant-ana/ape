@@ -13,27 +13,151 @@ use std::path::{Path, PathBuf};
 
 use ape_succession::articulation::briefing;
 use ape_succession::articulation::carving::{self, Carving, Page};
-use ape_succession::articulation::record::{self, Record};
+use ape_succession::articulation::record::{self, Run};
 use ape_succession::classification::Verdict;
 use ape_succession::testimony::reconciliation;
 
-fn opened() -> Record {
+fn opened() -> Run {
     let source = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(record::SOURCE)
         .canonicalize()
         .expect("the record this experiment carves is in the workspace");
 
-    Record::open(&source).expect("the record opens")
+    Run::open(&source).expect("the run opens")
 }
 
 fn carved(carving: Carving) -> Vec<Page> {
     carving::carve(&opened(), reconciliation::CLAIMS, carving)
 }
 
+/// **Every carving carries the whole record — every entry, every decision, every address.**
+///
+/// The guard whose absence let Run 1 through. `the_same_twenty_seven_claims_appear_in_all_three
+/// _carvings` checks the **claims**; nothing checked the **record**, so the generator carved one arm
+/// of three, emitted no custody at all, and dropped five of C's twenty-one entries — and three
+/// agents found it before any guard did.
+///
+/// It asserts against the run rather than against a literal, so a source that grows is carried
+/// rather than counted: this cannot be satisfied by updating a number.
+#[test]
+fn every_carving_carries_every_entry_every_decision_and_every_address() {
+    let run = opened();
+
+    for carving in Carving::ALL {
+        let whole: String = carved(carving)
+            .iter()
+            .map(Page::rendered)
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        for arm in &run.arms {
+            for (id, entry) in arm.addressed() {
+                assert!(
+                    whole.contains(id),
+                    "{} does not carry entry `{}` ({}) of arm {}",
+                    carving.directory(),
+                    &id[..8],
+                    entry.kind(),
+                    arm.arm
+                );
+            }
+
+            // Not `whole.contains(address)`: custody IS the journal's addresses, so that assertion
+            // is satisfied by the journal listing and cannot tell a rendered custody from an
+            // absent one. Measured — dropping the custody section left it green. What custody adds
+            // is the CLAIM that this is the whole of the journal, so what is checked is that the
+            // list exists and is as long as the journal.
+            let listed = whole
+                .split("## Custody")
+                .skip(1)
+                .map(|section| {
+                    section
+                        .lines()
+                        .skip(1)
+                        .take_while(|line| line.starts_with("- `") || line.trim().is_empty())
+                        .filter(|line| line.starts_with("- `"))
+                        .count()
+                })
+                .max()
+                .unwrap_or(0);
+
+            assert!(
+                listed >= arm.custody.len(),
+                "{} lists {listed} custody addresses where arm {} comes to {} — a claim about a \
+                 journal's extent has nowhere to land",
+                carving.directory(),
+                arm.arm,
+                arm.custody.len()
+            );
+
+            for (taken, world) in arm.decided() {
+                assert!(
+                    whole.contains(&world.thesis),
+                    "{} does not carry world `{}` of arm {}",
+                    carving.directory(),
+                    &world.thesis[..8],
+                    arm.arm
+                );
+                assert!(
+                    whole.contains(&taken.after),
+                    "{} does not carry the coordinate a decision of arm {} was taken at",
+                    carving.directory(),
+                    arm.arm
+                );
+            }
+        }
+    }
+}
+
+/// And the whole record means the bodies too, not just the identities.
+///
+/// C's defect in Run 1 was that commitments appeared as bare hex in a decision's frontmatter and
+/// nowhere else — the identity was there and the amount, the due date and the parties were not. An
+/// identity check alone would have passed it.
+#[test]
+fn every_carving_carries_the_body_of_every_commitment_and_event() {
+    let run = opened();
+
+    for carving in Carving::ALL {
+        let whole: String = carved(carving)
+            .iter()
+            .map(Page::rendered)
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let mut checked = 0;
+
+        for (id, entry, _) in run.entries() {
+            let expected = match entry {
+                record::Entry::Commitment { due_date, .. } => {
+                    format!("committed at: {}, due {due_date}", entry.recorded_at())
+                }
+                record::Entry::Event { occurred_at, .. } => {
+                    format!("occurred at: {occurred_at}")
+                }
+                _ => continue,
+            };
+            checked += 1;
+
+            assert!(
+                whole.contains(&expected),
+                "{} holds `{}` as an identity and not as a body — {expected:?} is missing",
+                carving.directory(),
+                &id[..8]
+            );
+        }
+
+        assert!(
+            checked >= 5,
+            "the scan weighed {checked} commitments and events; it did not break"
+        );
+    }
+}
+
 /// The shape of each carving, and it is what P4 is a prediction about.
 #[test]
-fn the_three_carvings_are_one_page_sixteen_pages_and_seven_pages() {
+fn the_three_carvings_are_one_page_nineteen_pages_and_ten_pages() {
     let counted = |carving| carving::placement(&opened(), reconciliation::CLAIMS, carving);
 
     let (flat, entity, decision) = (
@@ -44,12 +168,13 @@ fn the_three_carvings_are_one_page_sixteen_pages_and_seven_pages() {
 
     assert_eq!(flat.pages, 1, "A is one document");
     assert_eq!(
-        entity.pages, 16,
-        "B — 4 agents, 4 commitments, 1 event, 5 theses, vocabulary, overflow"
+        entity.pages, 19,
+        "B — 3 arms, the entities and worlds of all three, vocabulary, overflow"
     );
     assert_eq!(
-        decision.pages, 7,
-        "C — 5 decisions, vocabulary, overflow. The asymmetry P4 predicts is 16 against 7"
+        decision.pages, 10,
+        "C — 3 arms, the decided worlds of all three, vocabulary, overflow. The asymmetry P4 \
+         predicts is 19 against 10"
     );
 
     for at in [&flat, &entity, &decision] {
@@ -294,8 +419,8 @@ fn no_page_of_any_carving_names_the_experiment() {
     }
 
     assert_eq!(
-        scanned, 24,
-        "1 + 16 + 7 pages were read; the scan did not break"
+        scanned, 30,
+        "1 + 19 + 10 pages were read; the scan did not break"
     );
 }
 

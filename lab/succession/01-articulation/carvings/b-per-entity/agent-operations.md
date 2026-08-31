@@ -1,6 +1,7 @@
 ---
 kind: agent
 identity: 326993e96a20964d9b4317764638aea39d48c5ee990495221aecc4f437e0f8a3
+arms: [[arm-operations]], [[arm-finance]], [[arm-merged]]
 decided: [[thesis-1f093bfa]], [[thesis-b9392895]]
 claims: 3
 ---
