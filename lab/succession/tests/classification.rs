@@ -28,14 +28,25 @@ fn laboratory() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
 }
 
-/// Markdown emphasis removed and whitespace collapsed, so a quotation matches across a line wrap.
+/// Markdown formatting removed and whitespace collapsed, so a quotation matches across a line wrap.
 ///
-/// The comparison has to survive three things that are formatting rather than content: the corpus is
-/// hard-wrapped, so a sentence spans lines; the classification stores it as one line; and a claim
-/// quoted out of a table carries the cell pipes with it. Stripping `*`, backticks and `|` keeps the
-/// words and their order, which is what *verbatim* is being asked to mean here.
+/// The comparison has to survive four things that are formatting rather than content: the corpus is
+/// hard-wrapped, so a sentence spans lines; the classification stores it as one line; a claim quoted
+/// out of a table carries the cell pipes with it; and one quoted out of a blockquote carries a `>` at
+/// the start of every line. Stripping those keeps the words and their order, which is what *verbatim*
+/// is being asked to mean here.
+///
+/// **The blockquote marker is stripped per line rather than everywhere**, and the distinction is not
+/// pedantry: `cash >= 0` appears in the corpus, and a filter that removed every `>` would quietly
+/// turn it into `cash = 0` in the message a reader is shown when a quotation fails.
 fn flattened(text: &str) -> String {
-    let kept: String = text
+    let unquoted: Vec<&str> = text
+        .lines()
+        .map(|line| line.trim_start().trim_start_matches('>').trim_start())
+        .collect();
+
+    let kept: String = unquoted
+        .join(" ")
         .chars()
         .filter(|glyph| !matches!(glyph, '*' | '`' | '|' | '#'))
         .collect();
