@@ -364,6 +364,34 @@ fn the_classification_says_which_testimonies_it_has_not_read() {
         println!("  {kind:?} {}", counted(kind));
     }
 
+    println!("\nper run — the rate P2 is about, which is unclassified over everything not housed:");
+
+    for run in Run::ALL {
+        let mine: Vec<_> = claims.iter().filter(|claim| claim.run == run).collect();
+
+        if mine.is_empty() {
+            continue;
+        }
+
+        let orphans = mine
+            .iter()
+            .filter(|claim| claim.verdict == Verdict::Unhoused(None))
+            .count();
+        let asked = mine
+            .iter()
+            .filter(|claim| matches!(claim.verdict, Verdict::Unhoused(_)))
+            .count();
+
+        println!(
+            "  {:<18} {orphans:>2} of {asked:>2}   ({} claims, {} exposition)",
+            format!("{run:?}"),
+            mine.len(),
+            mine.iter()
+                .filter(|claim| claim.verdict == Verdict::Exposition)
+                .count(),
+        );
+    }
+
     println!("\nwhere the wants and the losses stand:");
 
     let standings: Vec<Standing> = claims.iter().filter_map(|claim| claim.standing).collect();

@@ -7,6 +7,7 @@ use crate::classification::Claim;
 use crate::corpus::Run;
 
 pub mod hindsight;
+pub mod narrative_mismatch;
 pub mod single_agent;
 
 /// Every claim classified so far, across every testimony that has been read.
@@ -19,6 +20,7 @@ pub fn classified() -> Vec<Claim> {
 
     claims.extend_from_slice(single_agent::CLAIMS);
     claims.extend_from_slice(hindsight::CLAIMS);
+    claims.extend_from_slice(narrative_mismatch::CLAIMS);
 
     claims
 }
