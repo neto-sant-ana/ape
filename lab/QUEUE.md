@@ -289,6 +289,16 @@ nowhere at all
 ontology says an application should. They are H4's subject rather than the queue's, and
 [`00-testimony/99-result.md`](succession/00-testimony/99-result.md) says why.
 
+**And one that is H1's rather than this experiment's, found by following the git analogy the project
+takes its architecture from.** The application has no **named reference to a world** — no `main`.
+`cli`'s `current` names which *generation of files* a reader reads, alternating two directories with
+an atomic rename, which is plumbing; nothing names which of a record's worlds is the house's plan.
+`07-synthesis:1341` delegates exactly this to the application, [`CHARTER.md`](CHARTER.md) had it
+marked concretized, and the mark is now corrected. `agents/02-hindsight` measured the consequence two
+experiments earlier without naming the cause. **It is not a missing state on a Thesis** — a fork is
+already a proposal, and eleven of thirteen decisions in a record are roads not taken. The branches are
+complete; the ref was never built.
+
 **And one item about a guard, found by tripping it.** `cli/tests/pedigree.rs` reads a verdict as *the
 first non-empty line after the heading, and something bold in it* — so it proves a verdict **exists**
 and not that it **is** one. Writing this experiment's result with a caveat banner above the verdict

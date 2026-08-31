@@ -16,8 +16,8 @@ H2  an auditable trail of a decision          agents/              four runs, th
 H3  a substrate for training                  succession/          material gathered, unrun
 H4  a home for what reaches no primitive      succession/          FIRST HALF ANSWERED —
                                                                    two shapes, one anchored
-H5  navigable by both kinds of reader         succession/          unblocked, and smaller than
-                                                                   it looked
+H5  navigable by both kinds of reader         succession/          NOT a separate question —
+                                                                   01-articulation is both
 ```
 
 [`succession/`](succession) opened 29/08/2026 with this file, because H3, H4 and H5 fit neither
@@ -76,10 +76,11 @@ distinct places across five layer documents:
 ✓  01-ontology:29        application vocabulary composed from the primitives
 ✓  04-canon:143          the recording instants, held by whoever wrote them
 ✓  06-thesis:309         proving when the application actually decided     ← the nine experiments
-✓  07-synthesis:1341     moving mutable references such as `main`
 
 ◐  06-thesis:1314        constructing a Thesis derived from the target, from a resolved
    07-synthesis:1009     transfer — `transfer::applied` exists and no command reaches it
+
+✗  07-synthesis:1341     moving mutable references such as `main`   ← WAS ✓, corrected 31/08
 
 ✗  01-ontology:33        the meaning that reaches no primitive                       → H4
 ✗  05-hermeneia:482      which hypothesis to ask, and what a failing verdict prevents
@@ -88,9 +89,29 @@ distinct places across five layer documents:
 ✗  07-synthesis:1607     composing applicability with feasibility
 ```
 
-**Four answered, one built and unreachable, five untouched.** So H1 is roughly 40% answered — and the
-shape of what is left matters more than the fraction: three of the five untouched are the *feasibility
-and candidate* cluster, and two are H4.
+**Three answered, one built and unreachable, six untouched.** So H1 is roughly **30%** answered — and
+the shape of what is left matters more than the fraction: three of the six untouched are the
+*feasibility and candidate* cluster, and two are H4.
+
+**One ✓ was wrong, and the correction came from the operator's git analogy.** `07-synthesis:1341` —
+*moving mutable references such as `main`* — was marked concretized because `cli` has `current`. It
+does, and `current`'s own docstring says what it is: *the file naming the **generation** a reader
+reads*, alternating between two directories with an atomic rename. **That is plumbing, not a ref.**
+
+In the terms the project takes its architecture from: `current` is the pointer to which object store
+is live; `main` is a ref to a **commit**. A Thesis is a branch, and *within* a branch the codebase is
+what it is — nothing is missing from the world. What is missing is the reference **beside** the
+worlds saying which one is the house's plan, and after a write `current` says *read generation b*
+while generation b holds five worlds and names none of them principal.
+
+[`agents/02-hindsight`](agents/02-hindsight/99-result.md) measured the consequence two experiments
+before anybody named the cause: *the only thing privileging W4 is that `hindsight::build()` handed it
+over as the world the house is in now, which is application state outside the graph.*
+
+**And it is not a missing state on a Thesis**, which is the reading
+[`succession/01-articulation`](succession/01-articulation/00-protocol.md) got wrong and records as
+such. A fork is already a proposal — eleven of thirteen decisions in a record are roads not taken. The
+engine's branches are complete; the application never built a `main`.
 
 **And the sweep found something the fraction hides.** `cli` exposes **eighteen** public functions; the
 application offers **three** commands — a level reading, `transfer`, and `decided`. `converge` has no
@@ -212,6 +233,13 @@ correction for H4 being emergent.
 
 **Origin: emergent**, with H4 and downstream of it — there is nothing to navigate until H4 has an
 answer.
+
+**And it stopped being downstream on 31/08/2026, because H4's *in what representation* dissolved.**
+Every structure that holds a value holds a `why`; markdown-with-wikilinks is HTML-with-anchors in
+other syntax. The format is free, so what distinguishes one hypertext from another is **only** whether
+a reader can find their way through it — which is this hypothesis, and it is now the whole of what
+[`01-articulation`](succession/01-articulation/00-protocol.md) has left to measure. H5 is not a check
+run after a representation is chosen. It is the thing that chooses it.
 
 **The word that carries the weight is *indiscriminately*.** Two representations can both be navigable
 and be navigable by different readers, and a result that measures one reader has measured half a

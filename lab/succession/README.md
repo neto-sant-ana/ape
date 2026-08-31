@@ -67,8 +67,12 @@ read the hypothesis on a sample, so that agreement is measured rather than assum
 ## Experiments
 
 ```text
-00-testimony   what did eight agents say that the record cannot hold?
-               Phase 2 complete, Phase 4 outstanding — 423 claims, and the leftover is
-               TWO bounded sets rather than one, decided by whether the reader of the
-               testimony has a decision to make
+00-testimony    what did eight agents say that the record cannot hold?
+                CONCLUDED — 423 claims, and the leftover is TWO bounded sets rather than
+                one, decided by whether the reader of the testimony has a decision to make
+
+01-articulation given hypertext, what is a page and what does a link mean?
+                OPEN. The format turned out to be free — every structure holds a `why`,
+                and markdown-with-wikilinks is HTML-with-anchors in other syntax. What is
+                not free is the carving
 ```
