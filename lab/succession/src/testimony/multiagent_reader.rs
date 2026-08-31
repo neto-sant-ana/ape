@@ -81,7 +81,14 @@ const fn exposition(text: &'static str) -> Claim {
 }
 
 const COMMITMENT: Carrier = Carrier::Entity("Commitment");
-const WORLDS: Carrier = Carrier::File(File::Worlds);
+
+/// This testimony's world rows are carried by the lineage and not by `worlds.json`, which differs
+/// from `02-hindsight` and is deliberate rather than an oversight.
+///
+/// `hindsight`'s table is *identity, cut, frozen, open, level, verdict* — no decider anywhere, so the
+/// worlds file holds all of it. These three rows are *Base / Source / Target line*, and the reason
+/// this agent printed them is **whose line each one is**. `by` lives in the lineage; the worlds file
+/// has no column for it. Same shape, different content, different carrier.
 const LINEAGE: Carrier = Carrier::File(File::Lineage);
 const FEASIBILITY: Carrier = Carrier::Derived(Derived::Feasibility);
 const APPLICABILITY: Carrier = Carrier::Derived(Derived::Applicability);
